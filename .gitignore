@@ -280,12 +280,6 @@ media/product_images
 media/structure_images
 media/ateliers_images
 
-# Migrations
-accounts/migrations
-home/migrations
-shop/migrations
-workshop/migrations
-
 config.py
 
 .pre-commit-config.yaml
