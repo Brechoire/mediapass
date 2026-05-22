@@ -17,6 +17,7 @@ jobs:
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       DEV: false
       DB_ENGINE: django.db.backends.sqlite3
+      DISABLE_SSL: true
 
     steps:
       - uses: actions/checkout@v4
