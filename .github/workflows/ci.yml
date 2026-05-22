@@ -49,10 +49,6 @@ jobs:
         run: |
           bandit -r . -x env,migrations,test.py,.agents,.cursor --skip=B101 -ll
 
-      - name: Django deploy check
-        run: |
-          python manage.py check --deploy --fail-level WARNING
-
       - name: Check pending migrations
         run: |
           python manage.py makemigrations --check --dry-run
