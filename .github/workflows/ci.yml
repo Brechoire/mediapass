@@ -27,14 +27,39 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install flake8 bandit
+
+      - name: Lint with flake8
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=env,migrations,.agents,.cursor,.github
+
+      - name: Security scan with bandit
+        run: |
+          bandit -r . -x env,migrations,test.py,.agents,.cursor --skip=B101 -ll
+
+      - name: Django deploy check
+        run: |
+          python manage.py check --deploy --fail-level WARNING
 
       - name: Check pending migrations
         run: |
           python manage.py makemigrations --check --dry-run
+
+      - name: Check for debug print statements
+        run: |
+          ! grep -rn "print(" --include="*.py" app/ accounts/ shop/ workshop/ notifications/ kakemono/ distribution/ analytics/ home/ visitor_tracking/ library_workshops/ | grep -v "__str__\|#.*print"
 
       - name: Run tests
         run: |
