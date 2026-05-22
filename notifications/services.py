@@ -4,10 +4,14 @@ Ce module contient les fonctions pour envoyer des emails de notification,
 notamment les rappels de réservation.
 """
 
+import logging
+
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+
+logger = logging.getLogger(__name__)
 
 
 def send_reservation_reminder_email(reservation, recipients):
@@ -54,8 +58,7 @@ def send_reservation_reminder_email(reservation, recipients):
         email.send()
         return True
     except Exception as e:
-        # Log l'erreur si nécessaire
-        print(f"Erreur lors de l'envoi de l'email de rappel: {e}")
+        logger.error("Erreur lors de l'envoi de l'email de rappel: %s", e)
         return False
 
 
@@ -100,6 +103,6 @@ def send_workshop_reminder_email(workshop, participants, recipients):
         email.send()
         return True
     except Exception as e:
-        print(f"Erreur lors de l'envoi du rappel d'atelier: {e}")
+        logger.error("Erreur lors de l'envoi du rappel d'atelier: %s", e)
         return False
 
