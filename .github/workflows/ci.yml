@@ -13,6 +13,11 @@ jobs:
       matrix:
         python-version: ["3.11"]
 
+    env:
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      DEV: false
+      DB_ENGINE: django.db.backends.sqlite3
+
     steps:
       - uses: actions/checkout@v4
 
@@ -33,7 +38,3 @@ jobs:
       - name: Run tests
         run: |
           python manage.py test --verbosity=2
-        env:
-          SECRET_KEY: ci-test-key-not-for-production
-          DEV: false
-          DB_ENGINE: django.db.backends.sqlite3
