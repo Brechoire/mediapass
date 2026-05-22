@@ -1,0 +1,219 @@
+{% extends "base_new.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}Modifier {{ form.instance.name }} | Ateliers{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <a href="{% url 'workshop_list' %}" class="inline-flex items-center gap-1 text-white/60 hover:text-white text-sm transition-colors mb-3">
+                    <i class="bx bx-arrow-back"></i> Retour à la liste
+                </a>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="bx bx-calendar-edit text-2xl text-white"></i>
+                    </div>
+                    <h1 class="text-3xl sm:text-4xl font-bold text-white">
+                        {% if form.instance.pk %}Modifier{% else %}Ajouter{% endif %} un atelier
+                    </h1>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {% if form.non_field_errors %}
+    <div class="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4 text-red-700 text-sm space-y-1">
+        <div class="flex items-start gap-2 font-medium mb-1"><i class="bx bx-error-circle mt-0.5 shrink-0"></i><span>Erreur de validation</span></div>
+        {% for error in form.non_field_errors %}
+        <div class="flex items-start gap-2 ml-6"><span>{{ error }}</span></div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if locations|length == 0 %}
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-4"><i class="bx bx-map text-3xl text-amber-600"></i></div>
+        <h3 class="text-lg font-semibold text-amber-800 mb-2">Aucun lieu disponible</h3>
+        <p class="text-amber-700 text-sm mb-4">Pour modifier un atelier, vous devez d'abord créer un lieu.</p>
+        <a href="{% url 'location_create' %}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4a6fa5] text-white font-medium text-sm hover:bg-[#3d5f8f] transition-colors"><i class="bx bx-plus"></i> Ajouter un lieu</a>
+    </div>
+    {% else %}
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-info-circle mr-1.5"></i> Informations de base</h5>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-[#4a6fa5] mb-1.5" for="{{ form.name.id_for_label }}">{{ form.name.label }} <span class="text-red-500">*</span></label>
+                        {{ form.name|add_class:"w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all" }}
+                        {% if form.name.errors %}<p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.name.errors|join:", " }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-[#4a6fa5] mb-1.5" for="locations">{{ form.location.label }} <span class="text-red-500">*</span></label>
+                        <select id="locations" name="{{ form.location.name }}"
+                            class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20fill%3D%22none%22%20stroke%3D%22%23b0bedb%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_0.75rem_center] bg-[length:1.25rem]">
+                            {% for location in locations %}
+                            <option value="{{ location.pk }}" {% if location.pk == form.instance.location.pk %}selected{% endif %}>{{ location.name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.location.errors %}<p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.location.errors|join:", " }}</p>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-time mr-1.5"></i> Dates et horaires</h5>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-[#4a6fa5] mb-1.5" for="{{ form.date.id_for_label }}">{{ form.date.label }} <span class="text-red-500">*</span></label>
+                        {{ form.date|add_class:"w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all" }}
+                        {% if form.date.errors %}<p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.date.errors|join:", " }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-[#4a6fa5] mb-1.5" for="{{ form.date_end.id_for_label }}">{{ form.date_end.label }}</label>
+                        {{ form.date_end|add_class:"w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all" }}
+                        {% if form.date_end.errors %}<p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.date_end.errors|join:", " }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-[#4a6fa5] mb-1.5" for="{{ form.start_time.id_for_label }}">{{ form.start_time.label }} <span class="text-red-500">*</span></label>
+                        {{ form.start_time|add_class:"w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all" }}
+                        {% if form.start_time.errors %}<p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.start_time.errors|join:", " }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-[#4a6fa5] mb-1.5" for="{{ form.end_time.id_for_label }}">{{ form.end_time.label }} <span class="text-red-500">*</span></label>
+                        {{ form.end_time|add_class:"w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all" }}
+                        {% if form.end_time.errors %}<p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.end_time.errors|join:", " }}</p>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-group mr-1.5"></i> Participants</h5>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-[#4a6fa5] mb-1.5" for="{{ form.number_registered.id_for_label }}">{{ form.number_registered.label }}</label>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="decrement('{{ form.number_registered.id_for_label }}')" class="w-9 h-9 flex items-center justify-center rounded-lg border border-[#dce3ef] text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors cursor-pointer"><i class="bx bx-minus text-sm"></i></button>
+                            {{ form.number_registered|add_class:"w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] text-center focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all" }}
+                            <button type="button" onclick="increment('{{ form.number_registered.id_for_label }}')" class="w-9 h-9 flex items-center justify-center rounded-lg border border-[#dce3ef] text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors cursor-pointer"><i class="bx bx-plus text-sm"></i></button>
+                        </div>
+                        {% if form.number_registered.errors %}<p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.number_registered.errors|join:", " }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-[#4a6fa5] mb-1.5" for="{{ form.number_attendees.id_for_label }}">{{ form.number_attendees.label }}</label>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="decrement('{{ form.number_attendees.id_for_label }}')" class="w-9 h-9 flex items-center justify-center rounded-lg border border-[#dce3ef] text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors cursor-pointer"><i class="bx bx-minus text-sm"></i></button>
+                            {{ form.number_attendees|add_class:"w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] text-center focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all" }}
+                            <button type="button" onclick="increment('{{ form.number_attendees.id_for_label }}')" class="w-9 h-9 flex items-center justify-center rounded-lg border border-[#dce3ef] text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors cursor-pointer"><i class="bx bx-plus text-sm"></i></button>
+                        </div>
+                        {% if form.number_attendees.errors %}<p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.number_attendees.errors|join:", " }}</p>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-cog mr-1.5"></i> Options</h5>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="flex items-center gap-3 p-3 bg-white rounded-xl border border-[#dce3ef] cursor-pointer hover:bg-[#e8eef7] transition-colors">
+                        {{ form.poster_required }} <span class="text-sm text-[#4a6fa5]">{{ form.poster_required.label }}</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-white rounded-xl border border-[#dce3ef] cursor-pointer hover:bg-[#e8eef7] transition-colors">
+                        {{ form.class_welcome }} <span class="text-sm text-[#4a6fa5]">{{ form.class_welcome.label }}</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-note mr-1.5"></i> Observations</h5>
+            </div>
+            <div class="p-6">
+                <label class="block text-sm font-medium text-[#4a6fa5] mb-1.5" for="{{ form.observations.id_for_label }}">{{ form.observations.label }}</label>
+                {{ form.observations|add_class:"w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all resize-y min-h-[80px]" }}
+                {% if form.observations.errors %}<p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.observations.errors|join:", " }}</p>{% endif %}
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-image mr-1.5"></i> Image de l'atelier</h5>
+            </div>
+            <div class="p-6">
+                <div class="w-full max-w-sm mx-auto mb-4">
+                    <div class="aspect-video border-2 border-dashed border-[#dce3ef] rounded-xl flex items-center justify-center bg-[#f8f9fc]" id="imagePreview">
+                        {% if form.instance.image %}
+                        <img src="{{ form.instance.image.url }}" alt="Aperçu" id="previewImg" class="max-w-full max-h-full object-contain p-2">
+                        {% else %}
+                        <div class="text-center text-[#b0bedb]"><i class="bx bx-image text-4xl mb-2"></i><p class="text-sm">Aperçu de l'image</p></div>
+                        {% endif %}
+                    </div>
+                </div>
+                {{ form.image|add_class:"w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all" }}
+                {% if form.image.errors %}<p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.image.errors|join:", " }}</p>{% endif %}
+            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#4a6fa5] text-white font-medium text-sm hover:bg-[#3d5f8f] transition-colors shadow-sm">
+                <i class="bx bx-save"></i> {% if form.instance.pk %}Mettre à jour{% else %}Créer l'atelier{% endif %}
+            </button>
+        </div>
+    </form>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const imgInput = document.querySelector('input[type="file"]');
+    const preview = document.getElementById('imagePreview');
+    if (imgInput && preview) {
+        imgInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const existing = preview.querySelector('img');
+                    if (existing) { existing.src = e.target.result; }
+                    else {
+                        const img = document.createElement('img');
+                        img.id = 'previewImg';
+                        img.src = e.target.result;
+                        img.className = 'max-w-full max-h-full object-contain p-2';
+                        preview.innerHTML = '';
+                        preview.appendChild(img);
+                    }
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+});
+function increment(id) { const i = document.getElementById(id); if (i) i.value = parseInt(i.value || 0) + 1; }
+function decrement(id) { const i = document.getElementById(id); if (i) { const v = parseInt(i.value || 0); if (v > 0) i.value = v - 1; } }
+</script>
+{% endblock %}

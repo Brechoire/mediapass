@@ -1,0 +1,157 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Faire une réservation{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- En-tête -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-6">
+            <i class="bx bx-calendar-plus text-3xl text-indigo-600"></i>
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Faire une réservation</h1>
+                <p class="text-gray-600 mt-1">Créez une nouvelle réservation de ressource</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="bg-white border border-gray-200 rounded-xl shadow">
+        <div class="px-6 py-4 bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-t-xl">
+            <div class="flex items-center gap-2">
+                <i class="bx bx-edit text-white"></i>
+                <h3 class="text-lg font-semibold text-white">Informations de la réservation</h3>
+            </div>
+        </div>
+        
+        <form method="post" class="p-6">
+            {% csrf_token %}
+            
+            <!-- Champs du formulaire -->
+            <div class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="{{ form.product.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                            {{ form.product.label }}
+                        </label>
+                        <select name="{{ form.product.name }}" id="{{ form.product.id_for_label }}" class="tw-input w-full text-sm" required>
+                            <option value="">Sélectionnez un produit</option>
+                            {% for choice in form.product.field.queryset %}
+                                <option value="{{ choice.pk }}" {% if form.product.value == choice.pk %}selected{% endif %}>{{ choice.name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.product.errors %}
+                            <div class="mt-1 text-sm text-red-600">
+                                {% for error in form.product.errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.quantity.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                            {{ form.quantity.label }}
+                        </label>
+                        <input type="number" name="{{ form.quantity.name }}" id="{{ form.quantity.id_for_label }}" value="{{ form.quantity.value|default:1 }}" class="tw-input w-full text-sm" min="1" required>
+                        {% if form.quantity.errors %}
+                            <div class="mt-1 text-sm text-red-600">
+                                {% for error in form.quantity.errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="{{ form.start_date.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                            {{ form.start_date.label }}
+                        </label>
+                        <input type="date" name="{{ form.start_date.name }}" id="{{ form.start_date.id_for_label }}" value="{{ form.start_date.value|default:'' }}" class="tw-input w-full text-sm" required>
+                        {% if form.start_date.errors %}
+                            <div class="mt-1 text-sm text-red-600">
+                                {% for error in form.start_date.errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.end_date.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                            {{ form.end_date.label }}
+                        </label>
+                        <input type="date" name="{{ form.end_date.name }}" id="{{ form.end_date.id_for_label }}" value="{{ form.end_date.value|default:'' }}" class="tw-input w-full text-sm" required>
+                        {% if form.end_date.errors %}
+                            <div class="mt-1 text-sm text-red-600">
+                                {% for error in form.end_date.errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="{{ form.deposit_time.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                            {{ form.deposit_time.label }}
+                        </label>
+                        <input type="time" name="{{ form.deposit_time.name }}" id="{{ form.deposit_time.id_for_label }}" value="{{ form.deposit_time.value|default:'' }}" class="tw-input w-full text-sm" required>
+                        {% if form.deposit_time.errors %}
+                            <div class="mt-1 text-sm text-red-600">
+                                {% for error in form.deposit_time.errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.pickup_time.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                            {{ form.pickup_time.label }}
+                        </label>
+                        <input type="time" name="{{ form.pickup_time.name }}" id="{{ form.pickup_time.id_for_label }}" value="{{ form.pickup_time.value|default:'' }}" class="tw-input w-full text-sm" required>
+                        {% if form.pickup_time.errors %}
+                            <div class="mt-1 text-sm text-red-600">
+                                {% for error in form.pickup_time.errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        {{ form.description.label }}
+                    </label>
+                    <textarea name="{{ form.description.name }}" id="{{ form.description.id_for_label }}" class="tw-input w-full text-sm" rows="4" placeholder="Description de la réservation...">{{ form.description.value|default:'' }}</textarea>
+                    {% if form.description.errors %}
+                        <div class="mt-1 text-sm text-red-600">
+                            {% for error in form.description.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Boutons d'action -->
+            <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
+                <a href="{% url 'product_list_user' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
+                    <i class="bx bx-arrow-back"></i>
+                    Annuler
+                </a>
+                <button type="submit" class="inline-flex items-center gap-2 px-6 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                    <i class="bx bx-save"></i>
+                    Créer la réservation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

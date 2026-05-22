@@ -1,0 +1,119 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Catégories | {{ block.super }}{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="bx bx-category text-2xl text-white"></i>
+                    </div>
+                    <h1 class="text-3xl sm:text-4xl font-bold text-white">Catégories</h1>
+                </div>
+                <p class="text-white/70 text-sm">Gérez les catégories de ressources</p>
+            </div>
+            <a href="{% url 'category_create' %}"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors shrink-0">
+                <i class="bx bx-plus text-sm"></i> Nouvelle catégorie
+            </a>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4">
+        <form method="get" class="md:flex md:items-center gap-3">
+            <div class="relative flex-1">
+                <i class="bx bx-search absolute left-3.5 top-1/2 -translate-y-1/2 text-[#b0bedb] text-lg"></i>
+                <input type="text" name="q" value="{{ q }}" placeholder="Rechercher une catégorie..."
+                    class="w-full pl-10 pr-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all" />
+            </div>
+            <div class="flex items-center gap-2 mt-3 md:mt-0">
+                <button type="submit"
+                    class="px-4 py-2.5 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-colors">
+                    <i class="bx bx-filter-alt"></i> Filtrer
+                </button>
+                {% if q %}
+                <a href="{% url 'category_list' %}"
+                    class="px-4 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors whitespace-nowrap">
+                    <i class="bx bx-x"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {% if categorys %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="categoriesGrid">
+        {% for cat in categorys %}
+        <div class="category-item bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+            <div class="p-5">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        {% if cat.name == 'Numérique' %}
+                        <div class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-devices text-xl text-[#4a6fa5]"></i></div>
+                        {% elif cat.name == 'Expositions' %}
+                        <div class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-image-alt text-xl text-[#4a6fa5]"></i></div>
+                        {% elif cat.name == 'Bébés lecteurs' %}
+                        <div class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-book-reader text-xl text-[#4a6fa5]"></i></div>
+                        {% else %}
+                        <div class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-collection text-xl text-[#4a6fa5]"></i></div>
+                        {% endif %}
+                        <h3 class="text-base font-semibold text-[#1e293b]">{{ cat.name }}</h3>
+                    </div>
+                    <div class="relative group">
+                        <button class="p-1.5 rounded-lg text-[#b0bedb] hover:bg-[#e8eef7] transition-colors cursor-pointer">
+                            <i class="bx bx-dots-vertical-rounded"></i>
+                        </button>
+                        <div class="absolute right-0 mt-1 w-44 bg-white rounded-xl border border-[#dce3ef] shadow-lg z-10 py-1 hidden group-hover:block">
+                            <a href="{% url 'category_detail' cat.pk %}" class="flex items-center gap-2 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
+                                <i class="bx bx-show"></i> Voir
+                            </a>
+                            <a href="{% url 'category_update' cat.pk %}" class="flex items-center gap-2 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
+                                <i class="bx bx-edit"></i> Modifier
+                            </a>
+                            <a href="{% url 'category_delete' cat.pk %}" class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                               onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette catégorie ?');">
+                                <i class="bx bx-trash"></i> Supprimer
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">
+                        <i class="bx bx-package text-xs"></i> {{ cat.product_count }} produit{{ cat.product_count|pluralize }}
+                    </span>
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-700">
+                        <i class="bx bx-calendar-check text-xs"></i> {{ cat.active_reservations }} réservation{{ cat.active_reservations|pluralize }}
+                    </span>
+                </div>
+                <a href="{% url 'category_detail' cat.pk %}"
+                    class="inline-flex items-center justify-center w-full gap-1.5 px-4 py-2 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-colors">
+                    Accéder aux ressources <i class="bx bx-right-arrow-alt"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-20">
+        <div class="w-16 h-16 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4">
+            <i class="bx bx-category text-3xl text-[#4a6fa5]"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-[#4a6fa5] mb-1">Aucune catégorie</h3>
+        <p class="text-[#b0bedb] text-sm mb-4">Commencez par créer votre première catégorie.</p>
+        <a href="{% url 'category_create' %}"
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4a6fa5] text-white font-medium text-sm hover:bg-[#3d5f8f] transition-colors shadow-sm">
+            <i class="bx bx-plus"></i> Créer une catégorie
+        </a>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

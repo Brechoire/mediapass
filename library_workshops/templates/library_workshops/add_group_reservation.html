@@ -1,0 +1,322 @@
+{% extends "base_new.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- En-tête -->
+        <div class="mb-8">
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">{{ title }}</h1>
+                        <p class="text-gray-600 mt-2">
+                            <i class="bx bx-calendar text-indigo-600"></i>
+                            {{ workshop.start_date|date:"d/m/Y" }}
+                            {% if not workshop.is_single_day %}
+                                - {{ workshop.end_date|date:"d/m/Y" }}
+                            {% endif %}
+                            <i class="bx bx-time text-emerald-600 ml-4"></i>
+                            {{ workshop.start_time|time:"H:i" }} - {{ workshop.end_time|time:"H:i" }}
+                        </p>
+                    </div>
+                    <a href="{% url 'library_workshops:workshop_participants' workshop.id %}" 
+                       class="inline-flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="bx bx-arrow-back"></i>
+                        Retour aux participants
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Informations de l'atelier -->
+        <div class="mb-8">
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <i class="bx bx-info-circle text-indigo-600"></i>
+                        Informations de l'atelier
+                    </h2>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900">{{ workshop.title }}</h3>
+                            <p class="text-gray-600 mt-2">{{ workshop.description|truncatewords:30 }}</p>
+                        </div>
+                        <div class="flex flex-col justify-between">
+                            <div class="flex gap-2 mb-4">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {{ workshop.age_range_display }}
+                                </span>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    {{ workshop.location.name|default:"Non défini" }}
+                                </span>
+                            </div>
+                            <div class="text-right">
+                                {% if workshop.is_full %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        Complet
+                                    </span>
+                                {% elif workshop.available_spots <= 3 %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        {{ workshop.available_spots }} places
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                        {{ workshop.current_participants_count }}/{{ workshop.max_participants }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulaire de réservation de groupe -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <i class="bx bx-group text-indigo-600"></i>
+                    Réservation de groupe
+                </h2>
+            </div>
+            <div class="p-6">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <!-- Informations du responsable -->
+                    <div class="mb-8">
+                        <h3 class="text-md font-semibold text-indigo-600 mb-4 flex items-center gap-2">
+                            <i class="bx bx-user"></i>
+                            Informations du responsable du groupe
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="{{ form.leader_first_name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    {{ form.leader_first_name.label }}
+                                </label>
+                                <input type="text" id="{{ form.leader_first_name.id_for_label }}" name="{{ form.leader_first_name.name }}" 
+                                       class="tw-input w-full" value="{{ form.leader_first_name.value|default:'' }}">
+                                {% if form.leader_first_name.errors %}
+                                    <div class="mt-1 text-sm text-red-600">
+                                        {{ form.leader_first_name.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div>
+                                <label for="{{ form.leader_last_name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    {{ form.leader_last_name.label }}
+                                </label>
+                                <input type="text" id="{{ form.leader_last_name.id_for_label }}" name="{{ form.leader_last_name.name }}" 
+                                       class="tw-input w-full" value="{{ form.leader_last_name.value|default:'' }}">
+                                {% if form.leader_last_name.errors %}
+                                    <div class="mt-1 text-sm text-red-600">
+                                        {{ form.leader_last_name.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div>
+                                <label for="{{ form.leader_age.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    {{ form.leader_age.label }}
+                                </label>
+                                <input type="number" id="{{ form.leader_age.id_for_label }}" name="{{ form.leader_age.name }}" 
+                                       class="tw-input w-full" value="{{ form.leader_age.value|default:'' }}">
+                                {% if form.leader_age.errors %}
+                                    <div class="mt-1 text-sm text-red-600">
+                                        {{ form.leader_age.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div>
+                                <label for="{{ form.leader_email.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    {{ form.leader_email.label }}
+                                </label>
+                                <input type="email" id="{{ form.leader_email.id_for_label }}" name="{{ form.leader_email.name }}" 
+                                       class="tw-input w-full" value="{{ form.leader_email.value|default:'' }}">
+                                {% if form.leader_email.help_text %}
+                                    <div class="mt-1 text-sm text-gray-500">{{ form.leader_email.help_text }}</div>
+                                {% endif %}
+                                {% if form.leader_email.errors %}
+                                    <div class="mt-1 text-sm text-red-600">
+                                        {{ form.leader_email.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div>
+                                <label for="{{ form.leader_phone.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    {{ form.leader_phone.label }}
+                                </label>
+                                <input type="tel" id="{{ form.leader_phone.id_for_label }}" name="{{ form.leader_phone.name }}" 
+                                       class="tw-input w-full" value="{{ form.leader_phone.value|default:'' }}">
+                                {% if form.leader_phone.help_text %}
+                                    <div class="mt-1 text-sm text-gray-500">{{ form.leader_phone.help_text }}</div>
+                                {% endif %}
+                                {% if form.leader_phone.errors %}
+                                    <div class="mt-1 text-sm text-red-600">
+                                        {{ form.leader_phone.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Informations du groupe -->
+                    <div class="mb-8">
+                        <h3 class="text-md font-semibold text-emerald-600 mb-4 flex items-center gap-2">
+                            <i class="bx bx-group"></i>
+                            Informations du groupe
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="{{ form.group_size.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    {{ form.group_size.label }}
+                                </label>
+                                <input type="number" id="{{ form.group_size.id_for_label }}" name="{{ form.group_size.name }}" 
+                                       class="tw-input w-full" value="{{ form.group_size.value|default:'' }}" min="2" max="10">
+                                {% if form.group_size.help_text %}
+                                    <div class="mt-1 text-sm text-gray-500">{{ form.group_size.help_text }}</div>
+                                {% endif %}
+                                {% if form.group_size.errors %}
+                                    <div class="mt-1 text-sm text-red-600">
+                                        {{ form.group_size.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div>
+                                <label for="{{ form.status.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                    {{ form.status.label }}
+                                </label>
+                                <select id="{{ form.status.id_for_label }}" name="{{ form.status.name }}" class="tw-select w-full">
+                                    {% for value, label in form.status.field.choices %}
+                                        <option value="{{ value }}" {% if form.status.value == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.status.errors %}
+                                    <div class="mt-1 text-sm text-red-600">
+                                        {{ form.status.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Notes supplémentaires -->
+                    <div class="mb-8">
+                        <label for="{{ form.additional_notes.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                            {{ form.additional_notes.label }}
+                        </label>
+                        <textarea id="{{ form.additional_notes.id_for_label }}" name="{{ form.additional_notes.name }}" 
+                                  rows="4" class="tw-textarea w-full">{{ form.additional_notes.value|default:'' }}</textarea>
+                        {% if form.additional_notes.help_text %}
+                            <div class="mt-1 text-sm text-gray-500">{{ form.additional_notes.help_text }}</div>
+                        {% endif %}
+                        {% if form.additional_notes.errors %}
+                            <div class="mt-1 text-sm text-red-600">
+                                {{ form.additional_notes.errors.0 }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Aperçu de la réservation -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+                        <h4 class="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                            <i class="bx bx-info-circle"></i>
+                            Aperçu de la réservation
+                        </h4>
+                        <p class="text-sm text-blue-700">
+                            Cette réservation créera automatiquement <strong id="group-preview">2</strong> participants :
+                            <br>
+                            • <strong id="leader-preview">Le responsable</strong> (avec ses informations complètes)
+                            <br>
+                            • <strong id="members-preview">1 autre personne</strong> (membre du groupe)
+                        </p>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row gap-3 justify-between">
+                        <a href="{% url 'library_workshops:workshop_participants' workshop.id %}" 
+                           class="inline-flex items-center justify-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                            <i class="bx bx-x"></i>
+                            Annuler
+                        </a>
+                        <button type="submit" class="inline-flex items-center justify-center gap-2 px-6 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors">
+                            <i class="bx bx-group"></i>
+                            Créer la réservation de groupe
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const groupSizeInput = document.getElementById('{{ form.group_size.id_for_label }}');
+    const leaderAgeInput = document.getElementById('{{ form.leader_age.id_for_label }}');
+    const groupPreview = document.getElementById('group-preview');
+    const leaderPreview = document.getElementById('leader-preview');
+    const membersPreview = document.getElementById('members-preview');
+    
+    // Validation de l'âge selon la tranche d'âge de l'atelier
+    const minAge = {{ workshop.min_age|default:"0" }};
+    const maxAge = {{ workshop.max_age|default:"120" }};
+    const isAllAges = {{ workshop.is_all_ages|yesno:"true,false" }};
+    
+    if (!isAllAges) {
+        leaderAgeInput.addEventListener('input', function() {
+            const age = parseInt(this.value);
+            if (age < minAge || age > maxAge) {
+                this.setCustomValidity(`L'âge doit être entre ${minAge} et ${maxAge} ans.`);
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+    
+    // Mise à jour de l'aperçu en temps réel
+    function updatePreview() {
+        const groupSize = parseInt(groupSizeInput.value) || 2;
+        const membersCount = groupSize - 1;
+        
+        groupPreview.textContent = groupSize;
+        
+        if (membersCount === 1) {
+            membersPreview.textContent = '1 autre personne';
+        } else {
+            membersPreview.textContent = `${membersCount} autres personnes`;
+        }
+    }
+    
+    groupSizeInput.addEventListener('input', updatePreview);
+    
+    // Validation du statut selon la disponibilité
+    const statusSelect = document.getElementById('{{ form.status.id_for_label }}');
+    const isFull = {{ workshop.is_full|yesno:"true,false" }};
+    
+    if (isFull) {
+        // Si l'atelier est complet, forcer le statut "liste d'attente"
+        statusSelect.value = 'waiting';
+        statusSelect.disabled = true;
+        
+        // Ajouter un message d'information
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3';
+        infoDiv.innerHTML = '<i class="bx bx-info-circle text-yellow-600"></i> L\'atelier est complet. Le groupe sera automatiquement ajouté à la liste d\'attente.';
+        statusSelect.parentNode.appendChild(infoDiv);
+    }
+    
+    // Initialisation de l'aperçu
+    updatePreview();
+});
+</script>
+{% endblock %}

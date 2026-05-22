@@ -1,0 +1,1155 @@
+{% extends 'base_new.html' %}
+{% load static %}
+
+{% block title %}Statistiques des ateliers{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="p-3 bg-indigo-100 rounded-xl">
+                        <i class="bx bx-bar-chart-alt-2 text-3xl text-indigo-600"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">Statistiques des ateliers {{ selected_year }}</h1>
+                        <p class="text-gray-600 mt-1">Analyse détaillée des performances</p>
+                    </div>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <form method="get" action="" class="flex gap-2">
+                        <select name="year" class="tw-input text-sm" onchange="this.form.submit()">
+                            {% for year in available_years %}
+                                <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                            <i class="bx bx-filter"></i>
+                            Filtrer
+                        </button>
+                    </form>
+                    <a href="?export=1&year={{ selected_year }}" class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                        <i class="bx bx-export"></i>
+                        Exporter en Word
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerte d'information -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+            <div class="flex items-center gap-2">
+                <i class="bx bx-info-circle text-blue-600"></i>
+                <p class="text-blue-800 text-sm">
+                    Ces statistiques incluent tous les ateliers de l'année {{ selected_year }}.
+                </p>
+            </div>
+        </div>
+
+        <!-- Cartes de résumé -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Total ateliers -->
+            <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg p-6 text-white hover:shadow-xl transition-shadow">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="p-3 bg-white bg-opacity-20 rounded-lg">
+                        <i class="bx bx-calendar-event text-2xl"></i>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-3xl font-bold">{{ total_workshops }}</div>
+                        <div class="text-indigo-100 text-sm">Ateliers au total</div>
+                    </div>
+                </div>
+                <div class="w-full bg-white bg-opacity-20 rounded-full h-2">
+                    <div class="bg-white rounded-full h-2" style="width: 100%"></div>
+                </div>
+            </div>
+
+            <!-- Participants inscrits -->
+            <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg p-6 text-white hover:shadow-xl transition-shadow">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="p-3 bg-white bg-opacity-20 rounded-lg">
+                        <i class="bx bx-user-plus text-2xl"></i>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-3xl font-bold">{{ total_registered }}</div>
+                        <div class="text-emerald-100 text-sm">Participants inscrits</div>
+                    </div>
+                </div>
+                <div class="w-full bg-white bg-opacity-20 rounded-full h-2">
+                    <div class="bg-white rounded-full h-2" style="width: 100%"></div>
+                </div>
+            </div>
+
+            <!-- Participants présents -->
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white hover:shadow-xl transition-shadow">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="p-3 bg-white bg-opacity-20 rounded-lg">
+                        <i class="bx bx-user-check text-2xl"></i>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-3xl font-bold">{{ total_attendees }}</div>
+                        <div class="text-blue-100 text-sm">Participants présents</div>
+                    </div>
+                </div>
+                <div class="w-full bg-white bg-opacity-20 rounded-full h-2">
+                    <div class="bg-white rounded-full h-2" style="width: 100%"></div>
+                </div>
+            </div>
+
+            <!-- Taux de présence -->
+            <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-lg p-6 text-white hover:shadow-xl transition-shadow">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="p-3 bg-white bg-opacity-20 rounded-lg">
+                        <i class="bx bx-line-chart text-2xl"></i>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-3xl font-bold">{{ attendance_rate|floatformat:1 }}%</div>
+                        <div class="text-yellow-100 text-sm">Taux de présence</div>
+                    </div>
+                </div>
+                <div class="w-full bg-white bg-opacity-20 rounded-full h-2">
+                    <div class="bg-white rounded-full h-2" style="width: {{ attendance_rate|floatformat:1 }}%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparaisons avec l'année précédente -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            {% if previous_year_data %}
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <h5 class="text-lg font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                    <i class="bx bx-line-chart text-blue-600"></i>
+                    Tous les ateliers {{ previous_year_data.period }}
+                </h5>
+                <p class="text-blue-700 text-sm mb-4">Comparaison avec {{ previous_year_data.year }} (1er jan - aujourd'hui)</p>
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-sm font-medium text-blue-900">Nombre d'ateliers :</p>
+                        {% if previous_year_data.workshops_variation > 0 %}
+                            <span class="text-emerald-600 font-semibold">+{{ previous_year_data.workshops_variation|floatformat:1 }}%</span>
+                        {% elif previous_year_data.workshops_variation < 0 %}
+                            <span class="text-red-600 font-semibold">{{ previous_year_data.workshops_variation|floatformat:1 }}%</span>
+                        {% else %}
+                            <span class="text-gray-600 font-semibold">0%</span>
+                        {% endif %}
+                        <p class="text-xs text-blue-600">({{ total_workshops_to_date }} contre {{ previous_year_data.total_workshops }})</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-blue-900">Nombre d'inscrits :</p>
+                        {% if previous_year_data.registered_variation > 0 %}
+                            <span class="text-emerald-600 font-semibold">+{{ previous_year_data.registered_variation|floatformat:1 }}%</span>
+                        {% elif previous_year_data.registered_variation < 0 %}
+                            <span class="text-red-600 font-semibold">{{ previous_year_data.registered_variation|floatformat:1 }}%</span>
+                        {% else %}
+                            <span class="text-gray-600 font-semibold">0%</span>
+                        {% endif %}
+                        <p class="text-xs text-blue-600">({{ total_registered_to_date }} contre {{ previous_year_data.total_registered }})</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if previous_year_data_no_class %}
+            <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
+                <h5 class="text-lg font-semibold text-emerald-900 mb-3 flex items-center gap-2">
+                    <i class="bx bx-line-chart text-emerald-600"></i>
+                    Ateliers classiques {{ previous_year_data_no_class.period }}
+                </h5>
+                <p class="text-emerald-700 text-sm mb-4">Comparaison avec {{ previous_year_data_no_class.year }} (1er jan - aujourd'hui)</p>
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-sm font-medium text-emerald-900">Nombre d'ateliers :</p>
+                        {% if previous_year_data_no_class.workshops_variation > 0 %}
+                            <span class="text-emerald-600 font-semibold">+{{ previous_year_data_no_class.workshops_variation|floatformat:1 }}%</span>
+                        {% elif previous_year_data_no_class.workshops_variation < 0 %}
+                            <span class="text-red-600 font-semibold">{{ previous_year_data_no_class.workshops_variation|floatformat:1 }}%</span>
+                        {% else %}
+                            <span class="text-gray-600 font-semibold">0%</span>
+                        {% endif %}
+                        <p class="text-xs text-emerald-600">({{ previous_year_data_no_class.total_workshops_to_date }} contre {{ previous_year_data_no_class.total_workshops }})</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-emerald-900">Nombre d'inscrits :</p>
+                        {% if previous_year_data_no_class.registered_variation > 0 %}
+                            <span class="text-emerald-600 font-semibold">+{{ previous_year_data_no_class.registered_variation|floatformat:1 }}%</span>
+                        {% elif previous_year_data_no_class.registered_variation < 0 %}
+                            <span class="text-red-600 font-semibold">{{ previous_year_data_no_class.registered_variation|floatformat:1 }}%</span>
+                        {% else %}
+                            <span class="text-gray-600 font-semibold">0%</span>
+                        {% endif %}
+                        <p class="text-xs text-emerald-600">({{ previous_year_data_no_class.total_registered_to_date }} contre {{ previous_year_data_no_class.total_registered }})</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if previous_year_data_class %}
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                <h5 class="text-lg font-semibold text-yellow-900 mb-3 flex items-center gap-2">
+                    <i class="bx bx-line-chart text-yellow-600"></i>
+                    Accueils de classe {{ previous_year_data_class.period }}
+                </h5>
+                <p class="text-yellow-700 text-sm mb-4">Comparaison avec {{ previous_year_data_class.year }} (1er jan - aujourd'hui)</p>
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-sm font-medium text-yellow-900">Nombre d'ateliers :</p>
+                        {% if previous_year_data_class.workshops_variation > 0 %}
+                            <span class="text-emerald-600 font-semibold">+{{ previous_year_data_class.workshops_variation|floatformat:1 }}%</span>
+                        {% elif previous_year_data_class.workshops_variation < 0 %}
+                            <span class="text-red-600 font-semibold">{{ previous_year_data_class.workshops_variation|floatformat:1 }}%</span>
+                        {% else %}
+                            <span class="text-gray-600 font-semibold">0%</span>
+                        {% endif %}
+                        <p class="text-xs text-yellow-600">({{ previous_year_data_class.total_workshops_to_date }} contre {{ previous_year_data_class.total_workshops }})</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-yellow-900">Nombre d'inscrits :</p>
+                        {% if previous_year_data_class.registered_variation > 0 %}
+                            <span class="text-emerald-600 font-semibold">+{{ previous_year_data_class.registered_variation|floatformat:1 }}%</span>
+                        {% elif previous_year_data_class.registered_variation < 0 %}
+                            <span class="text-red-600 font-semibold">{{ previous_year_data_class.registered_variation|floatformat:1 }}%</span>
+                        {% else %}
+                            <span class="text-gray-600 font-semibold">0%</span>
+                        {% endif %}
+                        <p class="text-xs text-yellow-600">({{ previous_year_data_class.total_registered_to_date }} contre {{ previous_year_data_class.total_registered }})</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Graphiques principaux -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Types d'ateliers -->
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Types d'ateliers</h3>
+                </div>
+                <div class="p-6">
+                    <div class="h-64">
+                        <canvas id="typeDistribution"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistiques par lieu -->
+            <div class="lg:col-span-2 bg-white border border-gray-200 rounded-xl shadow-sm">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Statistiques par lieu</h3>
+                </div>
+                <div class="p-6">
+                    <div class="h-64">
+                        <canvas id="locationStats"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistiques par commune -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-8">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">Statistiques par commune</h3>
+            </div>
+            <div class="p-6">
+                <div class="h-64">
+                    <canvas id="communeStats"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Évolution mensuelle et tableau détaillé -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Évolution mensuelle -->
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Évolution mensuelle</h3>
+                </div>
+                <div class="p-6">
+                    <div class="h-64">
+                        <canvas id="monthlyStats"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tableau détaillé par commune -->
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Tableau détaillé par commune</h3>
+                </div>
+                <div class="p-6">
+                    <!-- Filtres -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label for="filterCommune" class="block text-sm font-medium text-gray-700 mb-1">Filtrer par commune :</label>
+                            <input type="text" id="filterCommune" class="tw-input w-full text-sm" placeholder="Rechercher une commune...">
+                        </div>
+                        <div>
+                            <label for="filterMinAteliers" class="block text-sm font-medium text-gray-700 mb-1">Min ateliers :</label>
+                            <input type="number" id="filterMinAteliers" class="tw-input w-full text-sm" min="0" placeholder="0">
+                        </div>
+                        <div>
+                            <label for="filterMinParticipants" class="block text-sm font-medium text-gray-700 mb-1">Min participants :</label>
+                            <input type="number" id="filterMinParticipants" class="tw-input w-full text-sm" min="0" placeholder="0">
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between mb-4">
+                        <button type="button" id="resetFilters" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            <i class="bx bx-refresh"></i>
+                            Réinitialiser
+                        </button>
+                        <span class="text-sm text-gray-500">
+                            Affichage de <span id="visibleRows">{{ commune_table_data|length }}</span> communes sur {{ commune_table_data|length }} total
+                        </span>
+                    </div>
+                    
+                    <!-- Tableau -->
+                    <div class="overflow-x-auto max-h-96">
+                        <table class="min-w-full divide-y divide-gray-200" id="communeTable">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th onclick="sortTable(0)" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                                        Commune <i class="bx bx-sort text-gray-400 ml-1"></i>
+                                    </th>
+                                    <th onclick="sortTable(1)" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                                        Total <i class="bx bx-sort text-gray-400 ml-1"></i>
+                                    </th>
+                                    <th onclick="sortTable(2)" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                                        Classiques <i class="bx bx-sort text-gray-400 ml-1"></i>
+                                    </th>
+                                    <th onclick="sortTable(3)" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                                        Accueils <i class="bx bx-sort text-gray-400 ml-1"></i>
+                                    </th>
+                                    <th onclick="sortTable(4)" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                                        Participants <i class="bx bx-sort text-gray-400 ml-1"></i>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for commune in commune_table_data %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ commune.commune }}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                            {{ commune.total_ateliers }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            {{ commune.ateliers_classiques }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            {{ commune.accueils_classe }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                            {{ commune.total_participants }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistiques de participation -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Graphique de participation -->
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Statistiques de participation</h3>
+                </div>
+                <div class="p-6">
+                    <div class="h-64">
+                        <canvas id="participationStats"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Taux de remplissage et présence -->
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Taux de remplissage</h3>
+                </div>
+                <div class="p-6 space-y-6">
+                    <!-- Statistiques de participation -->
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h4 class="text-sm font-medium text-gray-900 mb-3">Taux de remplissage (hors accueils de classe)</h4>
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Moyenne :</span>
+                                <span class="font-medium">{{ participation_stats.moyenne|floatformat:1 }} participants</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Maximum :</span>
+                                <span class="font-medium">{{ participation_stats.maximum|default:0 }} participants</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Minimum :</span>
+                                <span class="font-medium">{{ participation_stats.minimum|default:0 }} participants</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Taux de présence global -->
+                    <div class="bg-indigo-50 rounded-lg p-4">
+                        <h4 class="text-sm font-medium text-indigo-900 mb-3">Taux de présence global</h4>
+                        <div class="flex items-center gap-3">
+                            <div class="flex-1 bg-white rounded-full h-6 overflow-hidden">
+                                <div class="bg-emerald-500 h-full rounded-full flex items-center justify-center text-white text-xs font-medium" 
+                                     style="width: {{ attendance_rate|floatformat:1 }}%">
+                                    {{ attendance_rate|floatformat:1 }}%
+                                </div>
+                            </div>
+                            <span class="text-sm font-medium text-indigo-900">{{ total_attendees }} / {{ total_registered }}</span>
+                        </div>
+                        <p class="text-xs text-indigo-700 mt-2">Participants présents par rapport aux inscrits</p>
+                    </div>
+
+                    <!-- Graphique de participation 2 -->
+                    <div class="h-48">
+                        <canvas id="participationStats2"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top ateliers -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-8">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">Top ateliers</h3>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Top 5 par inscrits -->
+                    <div>
+                        <h4 class="text-md font-medium text-gray-900 mb-4">Top 5 des ateliers par inscrits</h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inscrits</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    {% for workshop in most_registered %}
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ workshop.name }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ workshop.date|date:"d/m/Y" }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                                {{ workshop.number_registered }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Top 5 par taux de présence -->
+                    <div>
+                        <h4 class="text-md font-medium text-gray-900 mb-4">Top 5 par taux de présence</h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Taux</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Présents/Inscrits</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    {% for workshop in best_attendance %}
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ workshop.name }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ workshop.date|date:"d/m/Y" }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                                {{ workshop.attendance_rate|floatformat:1 }}%
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-900">{{ workshop.number_attendees }}/{{ workshop.number_registered }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistiques détaillées -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-8">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">Statistiques détaillées</h3>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                            <span class="text-sm text-gray-600">Nombre total d'ateliers</span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                {{ total_workshops }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                            <span class="text-sm text-gray-600">Nombre d'ateliers standards</span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                {{ total_workshops_except_class }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between py-2">
+                            <span class="text-sm text-gray-600">Nombre d'accueils de classe</span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                {{ total_accueil_classe }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                            <span class="text-sm text-gray-600">Total participants inscrits</span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                {{ total_registered }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                            <span class="text-sm text-gray-600">Participants hors accueils de classe</span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                {{ total_registered_except_class }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between py-2">
+                            <span class="text-sm text-gray-600">Participants en accueils de classe</span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                {{ total_registered_only_class_welcome }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bilan détaillé par commune -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+            <div class="px-6 py-4 bg-indigo-600 text-white rounded-t-xl">
+                <h3 class="text-lg font-semibold flex items-center gap-2">
+                    <i class="bx bx-analyse"></i>
+                    Bilan détaillé des animations {{ bilan_data.current_year }}
+                </h3>
+            </div>
+            <div class="p-6">
+                <!-- Bilan narratif -->
+                <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-6">
+                    <h4 class="text-lg font-semibold text-indigo-900 mb-4 flex items-center gap-2">
+                        <i class="bx bx-file-text"></i>
+                        Bilan des animations {{ bilan_data.current_year }}
+                    </h4>
+                    
+                    <div class="prose prose-indigo max-w-none">
+                        <p class="text-lg text-indigo-800 mb-4">
+                            L'année {{ bilan_data.current_year }} a été marquée par une activité soutenue avec 
+                            <strong>{{ total_workshops }}</strong> ateliers organisés dans <strong>{{ bilan_data.total_communes }}</strong> communes, 
+                            mobilisant <strong>{{ total_registered }}</strong> participants inscrits.
+                        </p>
+
+                        <p class="text-indigo-700 mb-4">
+                            Cette année a été particulièrement riche en défis et opportunités. 
+                            {% if bilan_data.mediatheque_36_impact.was_closed %}
+                            La fermeture de la médiathèque du 36 a nécessité une réorganisation importante de nos activités, 
+                            nous obligeant à repenser la répartition géographique de nos animations.
+                            {% endif %}
+                            Par ailleurs, la période estivale de juillet a été marquée par mes congés, 
+                            période durant laquelle les centres aérés ont exprimé une forte demande d'animations, 
+                            créant une opportunité intéressante pour développer nos partenariats.
+                        </p>
+
+                        <h5 class="text-indigo-900 font-semibold mb-3">Répartition géographique des activités</h5>
+                        <p class="text-indigo-700 mb-3">
+                            L'analyse par commune révèle une répartition inégale mais stratégique de nos activités. 
+                            Les communes les plus actives cette année sont :
+                        </p>
+                        <ul class="list-disc list-inside text-indigo-700 mb-4 space-y-1">
+                            {% for commune in bilan_data.top_communes %}
+                            <li>
+                                <strong>{{ commune.commune }}</strong> avec {{ commune.total_ateliers }} ateliers 
+                                ({{ commune.ateliers_classiques }} ateliers classiques et {{ commune.accueils_classe }} accueils de classe), 
+                                totalisant {{ commune.total_participants }} participants.
+                            </li>
+                            {% endfor %}
+                        </ul>
+
+                        <h5 class="text-indigo-900 font-semibold mb-3">Types d'animations privilégiés</h5>
+                        <p class="text-indigo-700 mb-3">
+                            L'analyse par type d'animation montre une préférence marquée pour les ateliers classiques dans certaines communes :
+                        </p>
+                        <ul class="list-disc list-inside text-indigo-700 mb-4 space-y-1">
+                            {% for commune in bilan_data.communes_with_most_classics %}
+                            <li>
+                                <strong>{{ commune.commune }}</strong> se distingue avec {{ commune.ateliers_classiques }} ateliers classiques, 
+                                démontrant un fort intérêt pour ce type d'activité.
+                            </li>
+                            {% endfor %}
+                        </ul>
+
+                        <p class="text-indigo-700 mb-3">
+                            Concernant les accueils de classe, les communes les plus engagées sont :
+                        </p>
+                        <ul class="list-disc list-inside text-indigo-700 mb-4 space-y-1">
+                            {% for commune in bilan_data.communes_with_most_accueils %}
+                            <li>
+                                <strong>{{ commune.commune }}</strong> avec {{ commune.accueils_classe }} accueils de classe, 
+                                témoignant d'un partenariat solide avec les établissements scolaires.
+                            </li>
+                            {% endfor %}
+                        </ul>
+
+                        {% if previous_year_data %}
+                        <h5 class="text-indigo-900 font-semibold mb-3">Évolution par rapport à {{ bilan_data.previous_year }}</h5>
+                        <p class="text-indigo-700 mb-3">
+                            La comparaison avec l'année précédente révèle des tendances intéressantes :
+                        </p>
+                        <p class="text-indigo-700 mb-2">
+                            <strong>Communes en progression :</strong>
+                            {% for commune in commune_table_data %}
+                                {% if commune.variation_ateliers > 0 %}
+                                {{ commune.commune }} (+{{ commune.variation_ateliers }} ateliers, +{{ commune.variation_percentage|floatformat:1 }}%){% if not forloop.last %}, {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                        </p>
+                        <p class="text-indigo-700 mb-4">
+                            <strong>Communes en baisse :</strong>
+                            {% for commune in commune_table_data %}
+                                {% if commune.variation_ateliers < 0 %}
+                                {{ commune.commune }} ({{ commune.variation_ateliers }} ateliers, {{ commune.variation_percentage|floatformat:1 }}%){% if not forloop.last %}, {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                        </p>
+                        {% endif %}
+
+                        {% if bilan_data.communes_without_activities %}
+                        <h5 class="text-yellow-800 font-semibold mb-3">Communes sans activité</h5>
+                        <p class="text-indigo-700 mb-4">
+                            Il convient de noter que certaines communes n'ont pas organisé d'ateliers cette année : 
+                            {% for commune in bilan_data.communes_without_activities %}
+                            {{ commune.commune }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}. 
+                            Cette situation représente une opportunité de développement pour l'année prochaine.
+                        </p>
+                        {% endif %}
+
+                        <h5 class="text-indigo-900 font-semibold mb-3">Perspectives et recommandations</h5>
+                        <p class="text-indigo-700 mb-3">
+                            <strong>Points forts à maintenir :</strong>
+                            La diversification des animations par commune, l'équilibre entre ateliers classiques et accueils de classe, 
+                            ainsi que le fort taux de participation dans les communes actives constituent des acquis précieux.
+                        </p>
+                        <p class="text-indigo-700">
+                            <strong>Axes d'amélioration :</strong>
+                            Il sera essentiel de développer les animations dans les communes moins actives, 
+                            {% if bilan_data.mediatheque_36_impact.was_closed %}
+                            de compenser l'impact de la fermeture de la médiathèque du 36, 
+                            {% endif %}
+                            et de capitaliser sur la forte demande des centres aérés durant la période estivale. 
+                            La qualité des animations existantes doit également être maintenue pour assurer la satisfaction des participants.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<!-- Charger Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+{{ workshops_by_month|json_script:"workshops-by-month" }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Initialisation des graphiques...');
+        
+        // Enregistrer le plugin datalabels
+        if (window.ChartDataLabels) {
+            Chart.register(ChartDataLabels);
+        }
+
+        // Configuration des couleurs
+        const colors = {
+            primary: '#6366f1',
+            secondary: '#06b6d4',
+            success: '#10b981',
+            info: '#06b6d4',
+            warning: '#f59e0b',
+            danger: '#ef4444'
+        };
+
+        // Types d'ateliers
+        const typeCtx = document.getElementById('typeDistribution');
+        if (typeCtx) {
+            console.log('Initialisation du graphique des types');
+            new Chart(typeCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Ateliers standards', 'Accueils de classe'],
+                    datasets: [{
+                        data: [{{ total_workshops_except_class|default:0 }}, {{ total_accueil_classe|default:0 }}],
+                        backgroundColor: [colors.primary, colors.secondary]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        datalabels: {
+                            display: function(context) {
+                                return context.dataset.data[context.dataIndex] > 0;
+                            },
+                            color: function(context) {
+                                return context.dataset.borderColor;
+                            },
+                            font: {
+                                weight: 'bold',
+                                size: 10
+                            },
+                            formatter: function(value) {
+                                return Math.round(value);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Statistiques par lieu
+        const locationCtx = document.getElementById('locationStats');
+        if (locationCtx) {
+            console.log('Initialisation du graphique des lieux');
+            const locationData = {
+                labels: [{% for loc in workshops_by_location %}'{{ loc.location__name|default:"" }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                counts: [{% for loc in workshops_by_location %}{{ loc.count|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                registered: [{% for loc in workshops_by_location %}{{ loc.total_registered|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}]
+            };
+
+            console.log('Données des lieux:', locationData);
+
+            new Chart(locationCtx, {
+                type: 'bar',
+                data: {
+                    labels: locationData.labels,
+                    datasets: [{
+                        label: 'Nombre d\'ateliers',
+                        data: locationData.counts,
+                        backgroundColor: colors.primary
+                    }, {
+                        label: 'Participants inscrits',
+                        data: locationData.registered,
+                        backgroundColor: colors.secondary
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        datalabels: {
+                            display: function(context) {
+                                return context.dataset.data[context.dataIndex] > 0;
+                            },
+                            backgroundColor: colors.primary,
+                            borderRadius: 3,
+                            color: 'white',
+                            font: {
+                                weight: 'bold',
+                                size: 10
+                            },
+                            padding: 3,
+                            formatter: function(value) {
+                                return Math.round(value);
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Statistiques par commune
+        const communeCtx = document.getElementById('communeStats');
+        if (communeCtx) {
+            console.log('Initialisation du graphique des communes');
+            const communeData = {
+                labels: [{% for comm in workshops_by_commune %}'{{ comm.location__city|default:"" }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                classWelcomeCounts: [{% for comm in workshops_by_commune %}{{ comm.class_welcome_count|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                standardCounts: [{% for comm in workshops_by_commune %}{{ comm.standard_count|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                classWelcomeRegistered: [{% for comm in workshops_by_commune %}{{ comm.class_welcome_registered|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                standardRegistered: [{% for comm in workshops_by_commune %}{{ comm.standard_registered|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}]
+            };
+
+            console.log('Données des communes:', communeData);
+
+            new Chart(communeCtx, {
+                type: 'bar',
+                data: {
+                    labels: communeData.labels,
+                    datasets: [{
+                        label: 'Accueils de classe',
+                        data: communeData.classWelcomeCounts,
+                        backgroundColor: colors.warning,
+                        borderColor: colors.warning,
+                        borderWidth: 1
+                    }, {
+                        label: 'Ateliers classiques',
+                        data: communeData.standardCounts,
+                        backgroundColor: colors.primary,
+                        borderColor: colors.primary,
+                        borderWidth: 1
+                    }, {
+                        label: 'Participants - Accueils de classe',
+                        data: communeData.classWelcomeRegistered,
+                        backgroundColor: colors.danger,
+                        borderColor: colors.danger,
+                        borderWidth: 1
+                    }, {
+                        label: 'Participants - Ateliers classiques',
+                        data: communeData.standardRegistered,
+                        backgroundColor: colors.success,
+                        borderColor: colors.success,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        datalabels: {
+                            display: function(context) {
+                                return context.dataset.data[context.dataIndex] > 0;
+                            },
+                            backgroundColor: function(context) {
+                                return context.dataset.backgroundColor;
+                            },
+                            borderRadius: 3,
+                            color: 'white',
+                            font: {
+                                weight: 'bold',
+                                size: 9
+                            },
+                            padding: 2,
+                            formatter: function(value) {
+                                return Math.round(value);
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Évolution mensuelle
+        const monthlyCtx = document.getElementById('monthlyStats');
+        if (monthlyCtx) {
+            console.log('Initialisation du graphique mensuel');
+            const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 
+                              'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+            const monthlyData = JSON.parse(document.getElementById('workshops-by-month').textContent);
+            console.log('Données mensuelles:', monthlyData);
+
+            new Chart(monthlyCtx, {
+                type: 'line',
+                data: {
+                    labels: monthNames,
+                    datasets: [
+                        {
+                            label: 'Nombre d\'ateliers',
+                            data: monthlyData.map(m => m.count),
+                            backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                            borderColor: colors.primary,
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Nombre d\'inscrits',
+                            data: monthlyData.map(m => m.total_registered),
+                            backgroundColor: 'rgba(6, 182, 212, 0.2)',
+                            borderColor: colors.info,
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Nombre de présents',
+                            data: monthlyData.map(m => m.total_attendees),
+                            backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                            borderColor: colors.success,
+                            borderWidth: 2,
+                            tension: 0.4,
+                            borderDash: [5, 5],
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        datalabels: {
+                            display: function(context) {
+                                return context.dataset.data[context.dataIndex] > 0;
+                            },
+                            backgroundColor: colors.primary,
+                            borderRadius: 3,
+                            color: 'white',
+                            font: {
+                                weight: 'bold',
+                                size: 10
+                            },
+                            padding: 3,
+                            formatter: function(value) {
+                                return Math.round(value);
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Fonctionnalités du tableau par commune
+        let currentSortColumn = -1;
+        let currentSortDirection = 'asc';
+
+        // Fonction de tri du tableau
+        window.sortTable = function(columnIndex) {
+            const table = document.getElementById('communeTable');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            // Déterminer la direction de tri
+            if (currentSortColumn === columnIndex) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortDirection = 'asc';
+                currentSortColumn = columnIndex;
+            }
+            
+            // Trier les lignes
+            rows.sort((a, b) => {
+                let aValue, bValue;
+                
+                if (columnIndex === 0) {
+                    // Tri alphabétique pour les communes
+                    aValue = a.cells[columnIndex].textContent.trim();
+                    bValue = b.cells[columnIndex].textContent.trim();
+                } else {
+                    // Tri numérique pour les autres colonnes
+                    aValue = parseInt(a.cells[columnIndex].textContent.trim()) || 0;
+                    bValue = parseInt(b.cells[columnIndex].textContent.trim()) || 0;
+                }
+                
+                if (aValue < bValue) return currentSortDirection === 'asc' ? -1 : 1;
+                if (aValue > bValue) return currentSortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+            
+            // Réorganiser les lignes dans le DOM
+            rows.forEach(row => tbody.appendChild(row));
+            
+            // Mettre à jour les icônes de tri
+            updateSortIcons(columnIndex);
+        };
+
+        // Fonction pour mettre à jour les icônes de tri
+        function updateSortIcons(activeColumn) {
+            const headers = document.querySelectorAll('#communeTable th');
+            headers.forEach((header, index) => {
+                const icon = header.querySelector('i');
+                if (index === activeColumn) {
+                    icon.className = currentSortDirection === 'asc' ? 'bx bx-sort-up text-indigo-600' : 'bx bx-sort-down text-indigo-600';
+                } else {
+                    icon.className = 'bx bx-sort text-gray-400';
+                }
+            });
+        }
+
+        // Fonction de filtrage
+        function filterTable() {
+            const communeFilter = document.getElementById('filterCommune').value.toLowerCase();
+            const minAteliers = parseInt(document.getElementById('filterMinAteliers').value) || 0;
+            const minParticipants = parseInt(document.getElementById('filterMinParticipants').value) || 0;
+            
+            const table = document.getElementById('communeTable');
+            const rows = table.querySelectorAll('tbody tr');
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                const commune = row.cells[0].textContent.toLowerCase();
+                const totalAteliers = parseInt(row.cells[1].textContent) || 0;
+                const totalParticipants = parseInt(row.cells[4].textContent) || 0;
+                
+                const communeMatch = commune.includes(communeFilter);
+                const ateliersMatch = totalAteliers >= minAteliers;
+                const participantsMatch = totalParticipants >= minParticipants;
+                
+                if (communeMatch && ateliersMatch && participantsMatch) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Mettre à jour le compteur
+            document.getElementById('visibleRows').textContent = visibleCount;
+        }
+
+        // Événements pour les filtres
+        document.getElementById('filterCommune').addEventListener('input', filterTable);
+        document.getElementById('filterMinAteliers').addEventListener('input', filterTable);
+        document.getElementById('filterMinParticipants').addEventListener('input', filterTable);
+
+        // Bouton de réinitialisation des filtres
+        document.getElementById('resetFilters').addEventListener('click', function() {
+            document.getElementById('filterCommune').value = '';
+            document.getElementById('filterMinAteliers').value = '';
+            document.getElementById('filterMinParticipants').value = '';
+            filterTable();
+        });
+
+        // Initialiser le filtrage
+        filterTable();
+
+        // Statistiques de participation
+        const participationCtx = document.getElementById('participationStats');
+        if (participationCtx) {
+            console.log('Initialisation du graphique des statistiques de participation');
+            
+            new Chart(participationCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Moyenne d\'inscrits', 'Moyenne de présents'],
+                    datasets: [{
+                        label: 'Participants',
+                        data: [{{ avg_registered|floatformat:1 }}, {{ avg_attendees|floatformat:1 }}],
+                        backgroundColor: [colors.info, colors.success],
+                        borderColor: [colors.info, colors.success],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        datalabels: {
+                            color: '#fff',
+                            backgroundColor: function(context) {
+                                return context.dataset.backgroundColor[context.dataIndex];
+                            },
+                            borderRadius: 4,
+                            padding: 4,
+                            font: {
+                                weight: 'bold'
+                            },
+                            formatter: function(value) {
+                                return parseFloat(value).toFixed(1);
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Statistiques de participation 2
+        const participationCtx2 = document.getElementById('participationStats2');
+        if (participationCtx2) {
+            console.log('Initialisation du graphique des statistiques de participation 2');
+            
+            const moyenne = parseFloat("{{ participation_stats.moyenne|stringformat:'.1f' }}".replace(',', '.'));
+            const maximum = parseInt("{{ participation_stats.maximum|default:0 }}");
+            const minimum = parseInt("{{ participation_stats.minimum|default:0 }}");
+            
+            console.log('Données:', { minimum, moyenne, maximum });
+
+            new Chart(participationCtx2, {
+                type: 'bar',
+                data: {
+                    labels: ['Minimum', 'Moyenne', 'Maximum'],
+                    datasets: [{
+                        label: 'Nombre de participants',
+                        data: [minimum, moyenne, maximum],
+                        backgroundColor: [colors.warning, colors.info, colors.success]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        datalabels: {
+                            color: '#000',
+                            anchor: 'end',
+                            align: 'top',
+                            formatter: function(value) {
+                                return value > 0 ? value : '';
+                            },
+                            font: {
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

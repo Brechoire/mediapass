@@ -1,0 +1,45 @@
+{% extends "base_kakemono.html" %}
+{% load static %}
+
+{% block kakemono_content %}
+<div class="container">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'kakemono:list' %}">Kakémonos</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'kakemono:detail' pk=kakemono.pk %}">{{ kakemono.title }}</a></li>
+            <li class="breadcrumb-item active">Supprimer</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle text-warning fa-3x mb-3"></i>
+                    <h2 class="card-title mb-4">Confirmer la suppression</h2>
+                    
+                    <p class="lead mb-4">
+                        Êtes-vous sûr de vouloir supprimer le kakémono "{{ kakemono.title }}" ?
+                    </p>
+                    
+                    <p class="text-muted mb-4">
+                        Cette action est irréversible.
+                    </p>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Confirmer la suppression
+                            </button>
+                            <a href="{% url 'kakemono:detail' pk=kakemono.pk %}" class="btn btn-outline-secondary">
+                                Annuler
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

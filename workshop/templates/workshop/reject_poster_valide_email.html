@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rappel : Affiche requise pour l'atelier {{ workshop.name }}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #374151;
+            margin: 0;
+            padding: 0;
+            background-color: #f9fafb;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: #ffffff;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .content {
+            padding: 32px 24px;
+        }
+
+        .content h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0 0 16px 0;
+        }
+
+        .workshop-info {
+            background-color: #fef2f2;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #ef4444;
+        }
+
+        .workshop-info h3 {
+            margin: 0 0 12px 0;
+            color: #1f2937;
+            font-size: 18px;
+        }
+
+        .workshop-details {
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .rejection-message {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+        }
+
+        .rejection-message h3 {
+            margin: 0 0 8px 0;
+            color: #dc2626;
+            font-size: 18px;
+        }
+
+        .rejection-reason {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 12px;
+            font-style: italic;
+            color: #6b7280;
+        }
+
+        .footer {
+            background-color: #f9fafb;
+            padding: 24px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .footer p {
+            margin: 0;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .highlight {
+            color: #ef4444;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>😔 Mediapass</h1>
+        </div>
+
+        <div class="content">
+            <h1>Une affiche "{{ workshop.name }}" a été refusée.</h1>
+
+            <p>Bonjour,</p>
+
+            <div class="workshop-info">
+                <h3>📅 Détails de l'atelier</h3>
+                <div class="workshop-details">
+                    <p><strong>Nom :</strong> {{ workshop.name }}</p>
+                    <p><strong>Lieu :</strong> {{ workshop.location.name }}</p>
+                    <p><strong>Date :</strong> 
+                        {% if workshop.date_end != null %}
+                            du {{ workshop.date }} au {{ workshop.date_end }}
+                        {% else %}
+                            le {{ workshop.date }}
+                        {% endif %}
+                    </p>
+                    <p><strong>Horaires :</strong> {{ workshop.start_time }} - {{ workshop.end_time }}</p>
+                </div>
+            </div>
+
+            <div class="rejection-message">
+                <h3>❌ Affiche refusée</h3>
+                <p>L'affiche de l'atelier <span class="highlight">"{{ workshop.name }}"</span> a été refusée.</p>
+                
+                <div class="rejection-reason">
+                    <strong>Description du refus :</strong><br>
+                    {{ workshop.description_poster_valide }}
+                </div>
+            </div>
+
+            <p>Arf :(</p>
+
+            <p>L'équipe Mediapass</p>
+        </div>
+
+        <div class="footer">
+            <p>Ceci est un email automatique. Merci de ne pas y répondre.</p>
+        </div>
+    </div>
+</body>
+</html>

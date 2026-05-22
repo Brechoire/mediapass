@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="row">
+    <div class="card">
+        <h1 class="card-header">Sauvegarde</h1>
+        <div class="card-body">
+            {% if user.is_superuser %}
+                <!-- Section Avertissement -->
+                <div class="alert alert-info mb-4">
+                    <h4 class="alert-heading">⚠️ Important</h4>
+                    <p>La sauvegarde régulière de vos données est essentielle pour :</p>
+                    <ul class="list-unstyled ms-3">
+                        <li><i class="fas fa-check me-2"></i>Protéger vos données contre la perte accidentelle</li>
+                        <li><i class="fas fa-check me-2"></i>Conserver un historique de vos fichiers</li>
+                        <li><i class="fas fa-check me-2"></i>Faciliter la récupération en cas de problème technique</li>
+                    </ul>
+                </div>
+
+                <!-- Section Base de données -->
+                <div class="mb-4">
+                    <h2 class="h4 mb-3"><i class="fas fa-server me-2"></i>Base de données</h2>
+                    <p class="text-muted mb-3">Sauvegarde complète de toutes vos données système, paramètres et configurations.</p>
+                    <a href="{% url 'backup_database' %}" class="btn btn-primary">
+                        <i class="fas fa-download me-2"></i>Sauvegarder la base de données
+                    </a>
+                </div>
+
+                <!-- Section Fichiers médias -->
+                <div class="mb-4">
+                    <h2 class="h4 mb-3"><i class="fas fa-photo-video me-2"></i>Fichiers médias</h2>
+                    <p class="text-muted mb-3">Sauvegarde de vos images, vidéos, documents et autres fichiers multimédia.</p>
+                    <a href="{% url 'backup_media_folders' %}" class="btn btn-primary">
+                        <i class="fas fa-download me-2"></i>Sauvegarder les dossiers médias
+                    </a>
+                </div>
+
+                <!-- Section Recommandations -->
+                <div class="mt-4 bg-light p-3 rounded">
+                    <h3 class="h5 mb-3"><i class="fas fa-lightbulb me-2"></i>Recommandations :</h3>
+                    <ul class="list-unstyled ms-3">
+                        <li class="mb-2"><i class="fas fa-clock me-2"></i>Effectuez des sauvegardes au moins une fois par semaine</li>
+                        <li class="mb-2"><i class="fas fa-copy me-2"></i>Conservez plusieurs versions de vos sauvegardes</li>
+                        <li class="mb-2"><i class="fas fa-check-circle me-2"></i>Vérifiez régulièrement l'intégrité de vos sauvegardes</li>
+                        <li class="mb-2"><i class="fas fa-hdd me-2"></i>Stockez une copie de sauvegarde sur un support externe</li>
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+        
+    </div>
+</div>
+
+{% endblock %}

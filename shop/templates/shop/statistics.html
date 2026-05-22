@@ -1,0 +1,150 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Statistiques | {{ block.super }}{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0"><i class="bx bx-bar-chart-alt-2 text-2xl text-white"></i></div>
+                    <h1 class="text-3xl sm:text-4xl font-bold text-white">Statistiques {{ selected_year }}</h1>
+                </div>
+                <p class="text-white/70 text-sm">Vue d'ensemble des réservations</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-white/60">Année :</label>
+                <select onchange="window.location.href='?year='+this.value"
+                    class="px-4 py-2 border border-white/20 rounded-xl bg-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/30">
+                    {% for year in available_years %}
+                    <option value="{{ year }}" {% if year == selected_year %}selected{% endif %} class="text-[#1e293b]">{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6">
+            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Réservations totales</p>
+            <p class="text-4xl font-bold text-[#4a6fa5] mt-2">{{ total_reservations }}</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6">
+            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Moyenne mensuelle</p>
+            <p class="text-4xl font-bold text-[#4a6fa5] mt-2" id="monthlyAverage" data-total="{{ total_reservations }}">
+                {% widthratio total_reservations 12 1 %}
+            </p>
+        </div>
+    </div>
+
+    {% if previous_year_data %}
+    <div class="bg-[#e8eef7] rounded-2xl border border-[#dce3ef] p-6 mb-8">
+        <h3 class="text-sm font-semibold text-[#4a6fa5] mb-4">
+            <i class="bx bx-line-chart mr-1.5"></i> Comparaison {{ previous_year_data.period }}
+        </h3>
+        <div class="flex items-center gap-4 mb-4">
+            <div class="text-center">
+                <p class="text-xs text-[#b0bedb]">{{ selected_year }}</p>
+                <p class="text-2xl font-bold text-[#4a6fa5]">{{ previous_year_data.total_reservations_to_date }}</p>
+            </div>
+            <div class="text-[#b0bedb] text-xl">vs</div>
+            <div class="text-center">
+                <p class="text-xs text-[#b0bedb]">{{ previous_year_data.year }}</p>
+                <p class="text-2xl font-bold text-[#5a6f80]">{{ previous_year_data.total_reservations }}</p>
+            </div>
+            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium
+                {% if previous_year_data.reservations_variation > 0 %}bg-emerald-100 text-emerald-700
+                {% elif previous_year_data.reservations_variation < 0 %}bg-red-100 text-red-700
+                {% else %}bg-gray-100 text-gray-700{% endif %}">
+                {% if previous_year_data.reservations_variation > 0 %}+{% endif %}{{ previous_year_data.reservations_variation|floatformat:1 }}%
+            </span>
+        </div>
+        {% if previous_year_data.structures_comparison %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-[#dce3ef] text-sm">
+                <thead class="bg-white/50"><tr>
+                    <th class="px-4 py-2 text-left text-xs font-semibold text-[#b0bedb]">Structure</th>
+                    <th class="px-4 py-2 text-center text-xs font-semibold text-[#b0bedb]">{{ selected_year }}</th>
+                    <th class="px-4 py-2 text-center text-xs font-semibold text-[#b0bedb]">{{ previous_year_data.year }}</th>
+                    <th class="px-4 py-2 text-center text-xs font-semibold text-[#b0bedb]">Var.</th>
+                </tr></thead>
+                <tbody class="divide-y divide-[#dce3ef]/50">
+                    {% for item in previous_year_data.structures_comparison %}
+                    <tr class="hover:bg-white/50">
+                        <td class="px-4 py-2 text-[#1e293b]">{{ item.structure.name }}</td>
+                        <td class="px-4 py-2 text-center">{{ item.current_year_reservations }}</td>
+                        <td class="px-4 py-2 text-center">{{ item.previous_year_reservations }}</td>
+                        <td class="px-4 py-2 text-center">
+                            <span class="text-xs font-medium {% if item.variation > 0 %}text-emerald-600{% elif item.variation < 0 %}text-red-600{% endif %}">
+                                {% if item.variation > 0 %}+{% endif %}{{ item.variation|floatformat:1 }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-bar-chart mr-1.5 text-[#4a6fa5]"></i> Réservations mensuelles</h5>
+            </div>
+            <div class="p-6">
+                <div class="h-72"><canvas id="myChart"></canvas></div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-buildings mr-1.5 text-[#4a6fa5]"></i> Réservations par structure</h5>
+            </div>
+            <div class="p-6">
+                <div class="h-72"><canvas id="myChartStructure"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    {% if products_stats %}
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-package mr-1.5 text-[#4a6fa5]"></i> Ressources les plus réservées</h5>
+        </div>
+        <div class="divide-y divide-[#dce3ef]">
+            {% for product in products_stats %}
+            <div class="px-6 py-4 flex items-center justify-between hover:bg-[#f8f9fc] transition-colors">
+                <a href="{% url 'product_detail' product.pk %}" class="text-sm font-medium text-[#4a6fa5] hover:text-[#3d5f8f]">{{ product.name }}</a>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">{{ product.reservation_count }} réservation{{ product.reservation_count|pluralize }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const avgEl = document.getElementById('monthlyAverage');
+    if (avgEl) { const t = parseFloat(avgEl.dataset.total); if (t > 0) avgEl.textContent = (t / 12).toFixed(1); }
+
+    const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } };
+    const mn = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
+
+    const c1 = document.getElementById('myChart');
+    if (c1) new Chart(c1, { type: 'bar', data: { labels: mn, datasets: [{ data: [{% for r in reservations_by_month %}{{ r }},{% endfor %}], backgroundColor: '#e8eef7', borderColor: '#4a6fa5', borderWidth: 1, borderRadius: 5 }] }, options: opts });
+
+    const c2 = document.getElementById('myChartStructure');
+    if (c2) new Chart(c2, { type: 'bar', data: { labels: [{% for s in reservations_by_structure %}'{{ s.name }}',{% endfor %}], datasets: [{ data: [{% for s in reservations_by_structure %}{{ s.total_reservations }},{% endfor %}], backgroundColor: '#e8eef7', borderColor: '#4a6fa5', borderWidth: 1, borderRadius: 5 }] }, options: opts });
+});
+</script>
+{% endblock %}

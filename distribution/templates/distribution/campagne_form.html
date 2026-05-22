@@ -1,0 +1,135 @@
+{% extends "base_new.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}
+    {% if campagne %}Modifier {{ campagne.name }} - Distribution{% else %}Nouvelle Campagne - Distribution{% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <i class="bx bx-plus-circle text-2xl text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-white">
+                    {% if campagne %}Modifier {{ campagne.name }}{% else %}Nouvelle Campagne{% endif %}
+                </h1>
+                <p class="text-white/70 text-sm mt-1">Campagne de distribution de flyers</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-info-circle mr-1.5 text-[#4a6fa5]"></i>Informations de la campagne</h2>
+        </div>
+
+        <form method="post" class="p-6">
+            {% csrf_token %}
+
+            <div class="space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                        <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-[#1e293b] mb-2">
+                            {{ form.name.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.name|add_class:"tw-input w-full" }}
+                        {% if form.name.errors %}
+                        <div class="mt-2 text-sm text-red-600">{% for error in form.name.errors %}<p>{{ error }}</p>{% endfor %}</div>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.status.id_for_label }}" class="block text-sm font-medium text-[#1e293b] mb-2">
+                            {{ form.status.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.status|add_class:"tw-input w-full" }}
+                        {% if form.status.errors %}
+                        <div class="mt-2 text-sm text-red-600">{% for error in form.status.errors %}<p>{{ error }}</p>{% endfor %}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-[#1e293b] mb-2">{{ form.description.label }}</label>
+                    {{ form.description|add_class:"tw-input w-full" }}
+                    {% if form.description.errors %}
+                    <div class="mt-2 text-sm text-red-600">{% for error in form.description.errors %}<p>{{ error }}</p>{% endfor %}</div>
+                    {% endif %}
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="{{ form.start_date.id_for_label }}" class="block text-sm font-medium text-[#1e293b] mb-2">
+                            {{ form.start_date.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.start_date|add_class:"tw-input w-full" }}
+                        {% if form.start_date.errors %}
+                        <div class="mt-2 text-sm text-red-600">{% for error in form.start_date.errors %}<p>{{ error }}</p>{% endfor %}</div>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.end_date.id_for_label }}" class="block text-sm font-medium text-[#1e293b] mb-2">
+                            {{ form.end_date.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.end_date|add_class:"tw-input w-full" }}
+                        {% if form.end_date.errors %}
+                        <div class="mt-2 text-sm text-red-600">{% for error in form.end_date.errors %}<p>{{ error }}</p>{% endfor %}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="bg-[#e8eef7] rounded-2xl p-5 border border-[#dce3ef]">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0">
+                            <i class="bx bx-info-circle text-xl text-[#4a6fa5]"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-[#1e293b] mb-2">Bon &#xE0; savoir</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="flex items-center gap-2 text-xs text-[#4a6fa5]">
+                                    <i class="bx bx-calendar"></i>
+                                    <span>D&#xE9;finissez une p&#xE9;riode claire pour votre campagne</span>
+                                </div>
+                                <div class="flex items-center gap-2 text-xs text-[#4a6fa5]">
+                                    <i class="bx bx-target-lock"></i>
+                                    <span>Choisissez le statut initial de votre campagne</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if form.non_field_errors %}
+                <div class="bg-red-50 border border-red-200 rounded-xl p-4">
+                    <div class="flex items-start gap-3">
+                        <i class="bx bx-error-circle text-red-600 text-xl mt-0.5"></i>
+                        <div>
+                            <h3 class="text-sm font-medium text-red-800 mb-1">Erreur de validation</h3>
+                            <div class="text-sm text-red-700">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-[#dce3ef] flex flex-col sm:flex-row gap-4 justify-between">
+                <a href="{% if campagne %}{% url 'distribution:campagne_detail' campagne.pk %}{% else %}{% url 'distribution:campagne_list' %}{% endif %}"
+                   class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#dce3ef] text-[#1e293b] hover:bg-[#f8f9fc] transition-colors text-sm font-medium">
+                    <i class="bx bx-arrow-back"></i> Annuler
+                </a>
+                <button type="submit"
+                   class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#4a6fa5] text-white hover:bg-[#3d5f8f] transition-colors text-sm font-semibold shadow-sm">
+                    <i class="bx bx-save"></i>
+                    {% if campagne %}Modifier{% else %}Cr&#xE9;er{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

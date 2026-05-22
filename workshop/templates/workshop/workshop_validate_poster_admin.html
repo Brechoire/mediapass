@@ -1,0 +1,164 @@
+{% extends 'base_new.html' %}
+{% load static %}
+
+{% block title %}Liste des ateliers{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-indigo-100 rounded-xl">
+                    <i class="bx bx-image text-3xl text-indigo-600"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Liste des affiches en attente de validation</h1>
+                    <p class="text-gray-600 mt-1">Gestion des affiches d'ateliers</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">Ateliers avec affiches</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200" id="list_workshops_with_poster">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mail</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Facebook</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Instagram</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Portail</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">VDN</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for workshop in workshops %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-10 w-10">
+                                        <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                            <i class="bx bx-calendar-event text-indigo-600"></i>
+                                        </div>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900">
+                                            <a href="{% url 'approve_poster_valide' workshop.pk %}" class="text-indigo-600 hover:text-indigo-900">
+                                                {{ workshop.name }}
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ workshop.date_start }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if workshop.mail == True %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                        <i class="bx bx-check text-xs mr-1"></i>
+                                        Oui
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        <i class="bx bx-x text-xs mr-1"></i>
+                                        Non
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if workshop.facebook == True %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                        <i class="bx bx-check text-xs mr-1"></i>
+                                        Oui
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        <i class="bx bx-x text-xs mr-1"></i>
+                                        Non
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if workshop.instagram == True %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                        <i class="bx bx-check text-xs mr-1"></i>
+                                        Oui
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        <i class="bx bx-x text-xs mr-1"></i>
+                                        Non
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if workshop.portail == True %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                        <i class="bx bx-check text-xs mr-1"></i>
+                                        Oui
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        <i class="bx bx-x text-xs mr-1"></i>
+                                        Non
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if workshop.vdn == True %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                        <i class="bx bx-check text-xs mr-1"></i>
+                                        Oui
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        <i class="bx bx-x text-xs mr-1"></i>
+                                        Non
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <a href="{% url 'approve_poster_valide' workshop.pk %}" 
+                                   class="inline-flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+                                    <i class="bx bx-edit-alt"></i>
+                                    Valider
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.datatables.net/v/bs5/dt-2.0.0/datatables.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#list_workshops_with_poster').DataTable({
+            "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Tous"]],
+            "language": {
+                "url": "https://cdn.datatables.net/plug-ins/1.11.5/i18n/French.json"
+            },
+            "responsive": true,
+            "pageLength": 25,
+            "order": [[1, "desc"]],
+            "columnDefs": [
+                { "orderable": false, "targets": [7] }
+            ]
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,284 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Statistiques - Distribution{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <i class="bx bx-bar-chart-alt-2 text-2xl text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-white">Statistiques</h1>
+                <p class="text-white/70 text-sm mt-1">Vue d&#x2019;ensemble des performances de distribution</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Total campagnes</p>
+                    <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ total_campagnes }}</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-[#e8eef7] flex items-center justify-center">
+                    <i class="bx bx-mail-send text-xl text-[#4a6fa5]"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">En cours</p>
+                    <p class="text-3xl font-bold text-[#e67e22] mt-1">{{ campagnes_actives }}</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center">
+                    <i class="bx bx-play-circle text-xl text-[#e67e22]"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Termin&#xE9;es</p>
+                    <p class="text-3xl font-bold text-[#00a86b] mt-1">{{ campagnes_terminees }}</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center">
+                    <i class="bx bx-check-circle text-xl text-[#00a86b]"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieux</p>
+                    <p class="text-3xl font-bold text-[#8e44ad] mt-1">{{ total_lieux }}</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center">
+                    <i class="bx bx-map text-xl text-[#8e44ad]"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm">
+                <div class="px-6 py-4 border-b border-[#dce3ef]">
+                    <div class="flex items-center justify-between">
+                        <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-buildings mr-1.5 text-[#4a6fa5]"></i>Top 5 des communes</h2>
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">Par nombre de lieux</span>
+                    </div>
+                </div>
+                <div class="p-5">
+                    {% if top_communes %}
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-[#dce3ef]">
+                            <thead>
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Commune</th>
+                                    <th class="px-4 py-3 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieux</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">R&#xE9;partition</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-[#dce3ef]">
+                                {% for commune in top_communes %}
+                                <tr class="hover:bg-[#f8f9fc] transition-colors">
+                                    <td class="px-4 py-4">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-lg bg-[#e8eef7] flex items-center justify-center">
+                                                <i class="bx bx-buildings text-sm text-[#4a6fa5]"></i>
+                                            </div>
+                                            <span class="text-sm font-medium text-[#1e293b]">{{ commune.name }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4 text-center">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ commune.lieux_count }}</span>
+                                    </td>
+                                    <td class="px-4 py-4">
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex-1 h-2 bg-[#e8eef7] rounded-full overflow-hidden">
+                                                <div class="h-full rounded-full bg-[#4a6fa5]" style="width: {% widthratio commune.lieux_count total_lieux 100 %}%"></div>
+                                            </div>
+                                            <span class="text-xs font-medium text-[#b0bedb] min-w-[32px] text-right">{% widthratio commune.lieux_count total_lieux 100 %}%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-12">
+                        <div class="w-16 h-16 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4">
+                            <i class="bx bx-buildings text-3xl text-[#4a6fa5]"></i>
+                        </div>
+                        <h3 class="text-sm font-semibold text-[#1e293b]">Aucune commune enregistr&#xE9;e</h3>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm">
+                <div class="px-6 py-4 border-b border-[#dce3ef]">
+                    <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-pie-chart mr-1.5 text-[#00a86b]"></i>R&#xE9;partition</h2>
+                </div>
+                <div class="p-5">
+                    <div class="grid grid-cols-2 gap-3 mb-6">
+                        <div class="text-center p-4 rounded-xl bg-amber-50 border border-amber-200">
+                            <p class="text-2xl font-bold text-[#e67e22]">{{ campagnes_actives }}</p>
+                            <p class="text-xs font-medium text-[#e67e22] mt-1">En cours</p>
+                        </div>
+                        <div class="text-center p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                            <p class="text-2xl font-bold text-[#00a86b]">{{ campagnes_terminees }}</p>
+                            <p class="text-xs font-medium text-[#00a86b] mt-1">Termin&#xE9;es</p>
+                        </div>
+                        <div class="text-center p-4 rounded-xl bg-gray-50 border border-gray-200">
+                            <p class="text-2xl font-bold text-gray-600">{{ total_campagnes|add:"-"|add:campagnes_actives|add:"-"|add:campagnes_terminees }}</p>
+                            <p class="text-xs font-medium text-gray-500 mt-1">Brouillons</p>
+                        </div>
+                        <div class="text-center p-4 rounded-xl bg-purple-50 border border-purple-200">
+                            <p class="text-2xl font-bold text-[#8e44ad]">{{ total_lieux }}</p>
+                            <p class="text-xs font-medium text-[#8e44ad] mt-1">Lieux total</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#f8f9fc] rounded-xl p-4 border border-[#dce3ef]">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Progression globale</span>
+                            <span class="text-xs font-semibold text-[#1e293b]">
+                                {% if total_campagnes > 0 %}{% widthratio campagnes_terminees total_campagnes 100 %}%{% else %}0{% endif %} termin&#xE9;es
+                            </span>
+                        </div>
+                        <div class="w-full h-2.5 bg-[#e8eef7] rounded-full overflow-hidden flex">
+                            <div class="h-full bg-[#e67e22] transition-all" style="width: {% if total_campagnes > 0 %}{% widthratio campagnes_actives total_campagnes 100 %}{% else %}0{% endif %}%"></div>
+                            <div class="h-full bg-[#00a86b] transition-all" style="width: {% if total_campagnes > 0 %}{% widthratio campagnes_terminees total_campagnes 100 %}{% else %}0{% endif %}%"></div>
+                        </div>
+                        <div class="flex gap-4 mt-2">
+                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-[#e67e22]"></span> En cours</span>
+                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-[#00a86b]"></span> Termin&#xE9;es</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef] flex items-center justify-between">
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-history mr-1.5 text-[#4a6fa5]"></i>Campagnes r&#xE9;centes</h2>
+            <a href="{% url 'distribution:campagne_list' %}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#e8eef7] text-[#4a6fa5] text-xs font-semibold hover:bg-[#dce3ef] transition-colors">
+                Voir toutes <i class="bx bx-chevron-right"></i>
+            </a>
+        </div>
+
+        <div class="p-5">
+            {% if campagnes_recentes %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-[#dce3ef]">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Campagne</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Statut</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Progression</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden md:table-cell">P&#xE9;riode</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden lg:table-cell">Cr&#xE9;&#xE9;e par</th>
+                            <th class="px-4 py-3 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#dce3ef]">
+                        {% for campagne in campagnes_recentes %}
+                        <tr class="hover:bg-[#f8f9fc] transition-colors">
+                            <td class="px-4 py-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-lg bg-[#e8eef7] flex items-center justify-center shrink-0">
+                                        <i class="bx bx-mail-send text-sm text-[#4a6fa5]"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-[#1e293b]">{{ campagne.name }}</div>
+                                        {% if campagne.description %}
+                                        <div class="text-xs text-[#b0bedb] mt-0.5">{{ campagne.description|truncatechars:50 }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-4 text-center">
+                                {% if campagne.status == 'active' %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> En cours
+                                </span>
+                                {% elif campagne.status == 'completed' %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Termin&#xE9;e
+                                </span>
+                                {% elif campagne.status == 'draft' %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-50 text-gray-600 border border-gray-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> Brouillon
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Annul&#xE9;e
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-4 min-w-[130px]">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-1 h-2 bg-[#e8eef7] rounded-full overflow-hidden">
+                                        <div class="h-full rounded-full transition-all duration-500
+                                            {% if campagne.progression >= 100 %}bg-emerald-500
+                                            {% elif campagne.progression >= 50 %}bg-[#4a6fa5]
+                                            {% elif campagne.progression > 0 %}bg-amber-500
+                                            {% else %}bg-gray-300{% endif %}"
+                                            style="width: {{ campagne.progression }}%"></div>
+                                    </div>
+                                    <span class="text-xs font-semibold text-[#b0bedb] min-w-[50px] text-right">{{ campagne.lieux_distribues }}/{{ campagne.total_lieux }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-4 text-sm text-[#b0bedb] hidden md:table-cell">
+                                {{ campagne.start_date|date:"d/m/Y" }} &#x2192; {{ campagne.end_date|date:"d/m/Y" }}
+                            </td>
+                            <td class="px-4 py-4 hidden lg:table-cell">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded-full bg-[#e8eef7] flex items-center justify-center">
+                                        <i class="bx bx-user text-xs text-[#4a6fa5]"></i>
+                                    </div>
+                                    <span class="text-sm text-[#1e293b]">{{ campagne.created_by.get_full_name|default:campagne.created_by.username }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-4 text-right">
+                                <a href="{% url 'distribution:campagne_detail' campagne.pk %}"
+                                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#e8eef7] text-[#4a6fa5] text-xs font-semibold hover:bg-[#dce3ef] transition-colors">
+                                    D&#xE9;tail <i class="bx bx-chevron-right"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-16">
+                <div class="w-20 h-20 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4">
+                    <i class="bx bx-mail-send text-4xl text-[#4a6fa5]"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-[#4a6fa5] mb-2">Aucune campagne cr&#xE9;&#xE9;e</h3>
+                <p class="text-[#b0bedb] text-sm mb-6">Commencez par cr&#xE9;er votre premi&#xE8;re campagne.</p>
+                <a href="{% url 'distribution:campagne_create' %}"
+                   class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4a6fa5] text-white font-medium text-sm hover:bg-[#3d5f8f] transition-all shadow-sm">
+                    <i class="bx bx-plus"></i> Cr&#xE9;er une campagne
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

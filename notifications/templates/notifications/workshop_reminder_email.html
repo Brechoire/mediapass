@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rappel d'atelier</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f7f8fa;font-family:Inter,system-ui,-apple-system,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f8fa;">
+        <tr><td style="padding:40px 20px;">
+            <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:16px;border:1px solid #dce3ef;overflow:hidden;">
+                <tr>
+                    <td style="background:linear-gradient(135deg,#4a6fa5,#2f4d75);padding:32px 40px;text-align:center;">
+                        <h1 style="color:#ffffff;font-size:22px;margin:0;font-weight:700;">Rappel d'atelier</h1>
+                        <p style="color:rgba(255,255,255,0.8);font-size:14px;margin:8px 0 0 0;">Votre atelier a lieu demain</p>
+                    </td>
+                </tr>
+                <tr><td style="padding:32px 40px;">
+                    <h2 style="color:#1e293b;font-size:18px;margin:0 0 4px 0;font-weight:600;">{{ workshop.title }}</h2>
+                    <p style="color:#7a8fa0;font-size:13px;margin:0 0 24px 0;">{{ workshop.description|truncatewords:30 }}</p>
+
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fc;border-radius:12px;border:1px solid #dce3ef;margin-bottom:24px;">
+                        <tr><td style="padding:20px;">
+                            <table width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td width="50%" style="padding:6px 12px;vertical-align:top;">
+                                        <p style="margin:0;font-size:11px;color:#b0bedb;text-transform:uppercase;font-weight:600;letter-spacing:0.5px;">Date</p>
+                                        <p style="margin:4px 0 0 0;font-size:14px;color:#1e293b;font-weight:500;">
+                                            {{ workshop.start_date|date:"l d F Y" }}
+                                            {% if not workshop.is_single_day %}
+                                            — {{ workshop.end_date|date:"d F Y" }}
+                                            {% endif %}
+                                        </p>
+                                    </td>
+                                    <td width="50%" style="padding:6px 12px;vertical-align:top;">
+                                        <p style="margin:0;font-size:11px;color:#b0bedb;text-transform:uppercase;font-weight:600;letter-spacing:0.5px;">Horaire</p>
+                                        <p style="margin:4px 0 0 0;font-size:14px;color:#1e293b;font-weight:500;">
+                                            {{ workshop.start_time|time:"H:i" }} — {{ workshop.end_time|time:"H:i" }}
+                                        </p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td width="50%" style="padding:6px 12px;vertical-align:top;">
+                                        <p style="margin:0;font-size:11px;color:#b0bedb;text-transform:uppercase;font-weight:600;letter-spacing:0.5px;">Lieu</p>
+                                        <p style="margin:4px 0 0 0;font-size:14px;color:#1e293b;font-weight:500;">
+                                            {{ workshop.location.name|default:"Non défini" }}
+                                        </p>
+                                    </td>
+                                    <td width="50%" style="padding:6px 12px;vertical-align:top;">
+                                        <p style="margin:0;font-size:11px;color:#b0bedb;text-transform:uppercase;font-weight:600;letter-spacing:0.5px;">Public</p>
+                                        <p style="margin:4px 0 0 0;font-size:14px;color:#1e293b;font-weight:500;">
+                                            {{ workshop.age_range_display }}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td></tr>
+                    </table>
+
+                    {% if participants %}
+                    <h3 style="color:#1e293b;font-size:15px;margin:0 0 12px 0;font-weight:600;">Participants inscrits ({{ participant_count }})</h3>
+                    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                        {% for p in participants %}
+                        <tr>
+                            <td style="padding:8px 12px;border-bottom:1px solid #dce3ef;">
+                                <table width="100%">
+                                    <tr>
+                                        <td style="font-size:13px;color:#1e293b;font-weight:500;">{{ p.first_name }} {{ p.last_name }}</td>
+                                        <td style="font-size:12px;color:#7a8fa0;text-align:right;">{{ p.age_display }}</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                    <p style="color:#7a8fa0;font-size:12px;margin:12px 0 0 0;">
+                        Capacité : {{ workshop.current_participants_count }}/{{ workshop.max_participants }} participants
+                        {% if workshop.waiting_list_count > 0 %}
+                        · {{ workshop.waiting_list_count }} en liste d'attente
+                        {% endif %}
+                    </p>
+                    {% endif %}
+
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;">
+                        <tr>
+                            <td align="center">
+                                <a href="{% url 'library_workshops:workshop_detail' workshop.id %}"
+                                   style="display:inline-block;padding:12px 32px;background:#4a6fa5;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;border-radius:12px;">
+                                    Voir l'atelier
+                                </a>
+                            </td>
+                        </tr>
+                    </table>
+                </td></tr>
+                <tr>
+                    <td style="padding:20px 40px;background:#f8f9fc;border-top:1px solid #dce3ef;text-align:center;">
+                        <p style="color:#b0bedb;font-size:11px;margin:0;">Médi@'pass · Communauté de Communes Sud-Avesnois</p>
+                    </td>
+                </tr>
+            </table>
+        </td></tr>
+    </table>
+</body>
+</html>

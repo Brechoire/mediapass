@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rappel : Réservation se terminant demain - Mediapass</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #333; min-height: 100vh;">
+    <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden;">
+        <!-- En-tête -->
+        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px 20px; text-align: center; color: white;">
+            <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 24px;">⏰</span>
+            </div>
+            <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.5px;">Rappel de Réservation</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0; font-size: 16px;">La réservation se termine demain</p>
+        </div>
+
+        <!-- Contenu principal -->
+        <div style="padding: 30px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
+                    <span style="font-size: 20px; color: white;">🔔</span>
+                </div>
+                <h2 style="color: #2c3e50; margin: 0 0 10px; font-size: 22px; font-weight: 600;">Rappel : Réservation se terminant demain</h2>
+                <p style="color: #6c757d; margin: 0; font-size: 16px;">Une réservation arrive à son terme le {{ reservation.end_date|date:"d/m/Y" }}</p>
+            </div>
+
+            <!-- Détails de la réservation -->
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 25px; border-radius: 12px; margin-bottom: 25px; border-left: 4px solid #f59e0b;">
+                <h3 style="color: #2c3e50; font-size: 18px; margin: 0 0 20px; font-weight: 600; display: flex; align-items: center;">
+                    <span style="margin-right: 8px;">📋</span>
+                    Détails de la réservation
+                </h3>
+                
+                <div style="display: grid; gap: 15px;">
+                    <div style="display: flex; align-items: center; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <div style="width: 40px; height: 40px; background: #e3f2fd; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                            <span style="font-size: 16px;">📦</span>
+                        </div>
+                        <div>
+                            <div style="color: #6c757d; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Produit</div>
+                            <div style="color: #2c3e50; font-weight: 600; font-size: 16px;">{{ product.name }}</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <div style="width: 40px; height: 40px; background: #f3e5f5; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                            <span style="font-size: 16px;">🏢</span>
+                        </div>
+                        <div>
+                            <div style="color: #6c757d; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Structure</div>
+                            <div style="color: #2c3e50; font-weight: 600; font-size: 16px;">{{ structure.name }}</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <div style="width: 40px; height: 40px; background: #e8f5e8; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                            <span style="font-size: 16px;">📍</span>
+                        </div>
+                        <div>
+                            <div style="color: #6c757d; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Lieu</div>
+                            <div style="color: #2c3e50; font-weight: 600; font-size: 16px;">
+                                {{ structure.address }}, {{ structure.zip_code }} {{ structure.city }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <div style="width: 40px; height: 40px; background: #e8f5e8; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                            <span style="font-size: 16px;">📅</span>
+                        </div>
+                        <div>
+                            <div style="color: #6c757d; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Période</div>
+                            <div style="color: #2c3e50; font-weight: 600; font-size: 16px;">
+                                Du {{ reservation.start_date|date:"d/m/Y à H:i" }}<br>
+                                Au {{ reservation.end_date|date:"d/m/Y à H:i" }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if reservation.deposit_time or reservation.pickup_time %}
+                    <div style="display: flex; align-items: center; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <div style="width: 40px; height: 40px; background: #fff3e0; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                            <span style="font-size: 16px;">⏰</span>
+                        </div>
+                        <div>
+                            <div style="color: #6c757d; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Horaires</div>
+                            <div style="color: #2c3e50; font-weight: 600; font-size: 16px;">
+                                {% if reservation.deposit_time %}
+                                    Dépôt : {{ reservation.deposit_time|time:"H:i" }}
+                                {% endif %}
+                                {% if reservation.deposit_time and reservation.pickup_time %} - {% endif %}
+                                {% if reservation.pickup_time %}
+                                    Récupération : {{ reservation.pickup_time|time:"H:i" }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div style="display: flex; align-items: center; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <div style="width: 40px; height: 40px; background: #e1f5fe; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                            <span style="font-size: 16px;">🔢</span>
+                        </div>
+                        <div>
+                            <div style="color: #6c757d; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Quantité</div>
+                            <div style="color: #2c3e50; font-weight: 600; font-size: 16px;">{{ reservation.quantity }}</div>
+                        </div>
+                    </div>
+
+                    {% if reservation.description %}
+                    <div style="padding: 12px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <div style="color: #6c757d; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center;">
+                            <span style="margin-right: 8px;">📝</span>
+                            Description
+                        </div>
+                        <div style="color: #2c3e50; font-size: 14px; line-height: 1.5; background: #f8f9fa; padding: 12px; border-radius: 6px; border-left: 3px solid #f59e0b;">{{ reservation.description }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Message d'alerte -->
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
+                <p style="color: #92400e; margin: 0; font-size: 14px; font-weight: 500; display: flex; align-items: center;">
+                    <span style="margin-right: 8px; font-size: 18px;">⚠️</span>
+                    Cette réservation se termine demain ({{ reservation.end_date|date:"d/m/Y" }}). Pensez à organiser la récupération du matériel.
+                </p>
+            </div>
+
+            <!-- Bouton d'action -->
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="https://mediapass.ccsudavesnois.fr{% url 'reservation_details' reservation.pk %}" 
+                   style="display: inline-block; padding: 16px 32px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; text-decoration: none; border-radius: 50px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); transition: all 0.3s ease;">
+                    <span style="margin-right: 8px;">👁️</span>
+                    Voir les détails de la réservation
+                </a>
+            </div>
+        </div>
+
+        <!-- Pied de page -->
+        <div style="background: #f8f9fa; padding: 25px; text-align: center; border-top: 1px solid #e9ecef;">
+            <div style="margin-bottom: 15px;">
+                <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
+                    <span style="font-size: 16px; color: white;">📧</span>
+                </div>
+                <p style="color: #6c757d; font-size: 14px; margin: 0; font-weight: 500;">
+                    Ceci est un message automatique, merci de ne pas y répondre.
+                </p>
+            </div>
+            <div style="border-top: 1px solid #dee2e6; padding-top: 15px;">
+                <p style="color: #6c757d; font-size: 12px; margin: 0;">
+                    &copy; {% now "Y" %} Mediapass - Tous droits réservés
+                </p>
+                <p style="color: #adb5bd; font-size: 11px; margin: 5px 0 0;">
+                    Plateforme de gestion des réservations
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+
+
+
+
+

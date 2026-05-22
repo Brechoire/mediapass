@@ -1,0 +1,655 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | Médi@'pass{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <a href="{% url 'library_workshops:index' %}" class="inline-flex items-center gap-1 text-white/60 hover:text-white text-sm transition-colors mb-3">
+                    <i class="bx bx-arrow-back"></i> Retour à la liste
+                </a>
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="bx bx-plus-circle text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl sm:text-4xl font-bold text-white">{{ title|default:"Créer un nouvel atelier" }}</h1>
+                        <p class="text-white/70 text-sm">Remplissez les informations de l'atelier</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for message in messages %}
+        <div class="flex items-start gap-2 rounded-2xl p-4 text-sm transition-all duration-300
+            {% if message.tags == 'success' %}bg-emerald-50 border border-emerald-200 text-emerald-700{% endif %}
+            {% if message.tags == 'error' %}bg-red-50 border border-red-200 text-red-700{% endif %}
+            {% if message.tags == 'warning' %}bg-amber-50 border border-amber-200 text-amber-700{% endif %}
+            {% if message.tags == 'info' %}bg-blue-50 border border-blue-200 text-blue-700{% endif %}">
+            <i class="bx bx-check-circle mt-0.5 shrink-0
+                {% if message.tags == 'success' %}text-emerald-500{% endif %}
+                {% if message.tags == 'error' %}text-red-500{% endif %}
+                {% if message.tags == 'warning' %}text-amber-500{% endif %}
+                {% if message.tags == 'info' %}text-blue-500{% endif %}"></i>
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="mx-6 mt-6 bg-red-50 border border-red-200 rounded-2xl p-4 text-red-700 text-sm space-y-1">
+                <div class="flex items-start gap-2 font-medium mb-1">
+                    <i class="bx bx-error-circle mt-0.5 shrink-0"></i>
+                    <span>Le formulaire contient des erreurs</span>
+                </div>
+                {% for error in form.non_field_errors %}
+                <div class="flex items-start gap-2 ml-6">
+                    <span>{{ error }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="p-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-[#f8f9fc] rounded-xl p-5 border border-[#dce3ef]">
+                            <h3 class="text-sm font-semibold text-[#1e293b] mb-4 flex items-center gap-2">
+                                <i class="bx bx-info-circle text-[#4a6fa5]"></i>
+                                Informations de base
+                            </h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="{{ form.title.id_for_label }}" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
+                                        <i class="bx bx-text mr-1"></i> {{ form.title.label }}
+                                    </label>
+                                    <input type="text"
+                                           id="{{ form.title.id_for_label }}"
+                                           name="{{ form.title.name }}"
+                                           value="{{ form.title.value|default:'' }}"
+                                           class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all {% if form.title.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}"
+                                           placeholder="Titre de l'atelier">
+                                    {% if form.title.errors %}
+                                    <p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.title.errors|join:", " }}</p>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
+                                        <i class="bx bx-message-detail mr-1"></i> {{ form.description.label }}
+                                    </label>
+                                    <textarea id="{{ form.description.id_for_label }}"
+                                              name="{{ form.description.name }}"
+                                              rows="4"
+                                              class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all resize-y min-h-[100px] {% if form.description.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}"
+                                              placeholder="Description détaillée de l'atelier">{{ form.description.value|default:'' }}</textarea>
+                                    {% if form.description.errors %}
+                                    <p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.description.errors|join:", " }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#f8f9fc] rounded-xl p-5 border border-[#dce3ef]">
+                            <h3 class="text-sm font-semibold text-[#1e293b] mb-4 flex items-center gap-2">
+                                <i class="bx bx-calendar text-[#4a6fa5]"></i>
+                                Dates et horaires
+                            </h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="inline-flex items-center gap-2.5 cursor-pointer">
+                                        <input type="checkbox"
+                                               id="{{ form.is_single_day.id_for_label }}"
+                                               name="{{ form.is_single_day.name }}"
+                                               {% if form.is_single_day.value %}checked{% endif %}
+                                               class="w-4 h-4 rounded border-gray-300 text-[#4a6fa5] focus:ring-[#4a6fa5]">
+                                        <span class="text-sm font-medium text-[#1e293b]">{{ form.is_single_day.label }}</span>
+                                    </label>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="{{ form.start_date.id_for_label }}" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
+                                            <i class="bx bx-calendar-plus mr-1"></i> {{ form.start_date.label }}
+                                        </label>
+                                        <input type="date"
+                                               id="{{ form.start_date.id_for_label }}"
+                                               name="{{ form.start_date.name }}"
+                                               value="{{ form.start_date.value|default:'' }}"
+                                               class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all {% if form.start_date.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}">
+                                        {% if form.start_date.errors %}
+                                        <p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.start_date.errors|join:", " }}</p>
+                                        {% endif %}
+                                    </div>
+                                    <div id="end-date-field">
+                                        <label for="{{ form.end_date.id_for_label }}" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
+                                            <i class="bx bx-calendar-check mr-1"></i> {{ form.end_date.label }}
+                                        </label>
+                                        <input type="date"
+                                               id="{{ form.end_date.id_for_label }}"
+                                               name="{{ form.end_date.name }}"
+                                               value="{{ form.end_date.value|default:'' }}"
+                                               class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all {% if form.end_date.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}">
+                                        {% if form.end_date.errors %}
+                                        <p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.end_date.errors|join:", " }}</p>
+                                        {% endif %}
+                                        {% if form.end_date.help_text %}
+                                        <p class="text-[#b0bedb] text-xs mt-1">{{ form.end_date.help_text }}</p>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <label for="{{ form.start_time.id_for_label }}" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
+                                            <i class="bx bx-time mr-1"></i> {{ form.start_time.label }}
+                                        </label>
+                                        <input type="time"
+                                               id="{{ form.start_time.id_for_label }}"
+                                               name="{{ form.start_time.name }}"
+                                               value="{{ form.start_time.value|default:'' }}"
+                                               class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all {% if form.start_time.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}">
+                                        {% if form.start_time.errors %}
+                                        <p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.start_time.errors|join:", " }}</p>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <label for="{{ form.end_time.id_for_label }}" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
+                                            <i class="bx bx-time-five mr-1"></i> {{ form.end_time.label }}
+                                        </label>
+                                        <input type="time"
+                                               id="{{ form.end_time.id_for_label }}"
+                                               name="{{ form.end_time.name }}"
+                                               value="{{ form.end_time.value|default:'' }}"
+                                               class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all {% if form.end_time.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}">
+                                        {% if form.end_time.errors %}
+                                        <p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.end_time.errors|join:", " }}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#f8f9fc] rounded-xl p-5 border border-[#dce3ef]">
+                            <h3 class="text-sm font-semibold text-[#1e293b] mb-4 flex items-center gap-2">
+                                <i class="bx bx-map-pin text-[#4a6fa5]"></i>
+                                Lieu et capacité
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="md:col-span-2">
+                                    <label for="{{ form.location.id_for_label }}" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
+                                        <i class="bx bx-building mr-1"></i> {{ form.location.label }}
+                                    </label>
+                                    <div class="flex gap-2">
+                                        <div class="flex-1 relative">
+                                            <select id="{{ form.location.id_for_label }}"
+                                                    name="{{ form.location.name }}"
+                                                    class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20fill%3D%22none%22%20stroke%3D%22%23b0bedb%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_0.75rem_center] bg-[length:1.25rem] {% if form.location.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}">
+                                                <option value="" {% if not form.location.value %}selected{% endif %} disabled>Sélectionnez un lieu...</option>
+                                                {% for loc in form.location.field.queryset %}
+                                                <option value="{{ loc.pk }}" {% if form.location.value|stringformat:"s" == loc.pk|stringformat:"s" %}selected{% endif %}>{{ loc.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <button type="button"
+                                                hx-get="{% url 'library_workshops:create_location_modal' %}"
+                                                hx-target="#location-modal-container"
+                                                hx-swap="innerHTML"
+                                                class="inline-flex items-center justify-center px-3 py-2.5 rounded-xl border border-[#dce3ef] text-[#4a6fa5] hover:bg-[#e8eef7] hover:border-[#4a6fa5] transition-all shrink-0 cursor-pointer"
+                                                title="Ajouter un nouveau lieu">
+                                            <i class="bx bx-plus text-lg"></i>
+                                        </button>
+                                    </div>
+                                    {% if form.location.errors %}
+                                    <p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.location.errors|join:", " }}</p>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <label for="{{ form.max_participants.id_for_label }}" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
+                                        <i class="bx bx-group mr-1"></i> {{ form.max_participants.label }}
+                                    </label>
+                                    <input type="number"
+                                           id="{{ form.max_participants.id_for_label }}"
+                                           name="{{ form.max_participants.name }}"
+                                           value="{{ form.max_participants.value|default:'' }}"
+                                           min="1"
+                                           class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all {% if form.max_participants.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}"
+                                           placeholder="20">
+                                    {% if form.max_participants.errors %}
+                                    <p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.max_participants.errors|join:", " }}</p>
+                                    {% endif %}
+                                    {% if form.max_participants.help_text %}
+                                    <p class="text-[#b0bedb] text-xs mt-1">{{ form.max_participants.help_text }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#f8f9fc] rounded-xl p-5 border border-[#dce3ef]">
+                            <h3 class="text-sm font-semibold text-[#1e293b] mb-4 flex items-center gap-2">
+                                <i class="bx bx-user text-[#4a6fa5]"></i>
+                                Public cible
+                            </h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="inline-flex items-center gap-2.5 cursor-pointer">
+                                        <input type="checkbox"
+                                               id="{{ form.is_all_ages.id_for_label }}"
+                                               name="{{ form.is_all_ages.name }}"
+                                               {% if form.is_all_ages.value %}checked{% endif %}
+                                               class="w-4 h-4 rounded border-gray-300 text-[#4a6fa5] focus:ring-[#4a6fa5]">
+                                        <span class="text-sm font-medium text-[#1e293b]">{{ form.is_all_ages.label }}</span>
+                                    </label>
+                                    {% if form.is_all_ages.help_text %}
+                                    <p class="text-[#b0bedb] text-xs mt-1 ml-6">{{ form.is_all_ages.help_text }}</p>
+                                    {% endif %}
+                                </div>
+
+                                <div id="age-presets">
+                                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-2">Tranches d'âge communes</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button type="button" class="age-preset inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer" data-min="3" data-max="6"
+                                            style="color:#d46a78;border-color:#f0c4cc;background:white;">
+                                            3-6 ans
+                                        </button>
+                                        <button type="button" class="age-preset inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer" data-min="7" data-max="12"
+                                            style="color:#4a6fa5;border-color:#c8d6e8;background:white;">
+                                            7-12 ans
+                                        </button>
+                                        <button type="button" class="age-preset inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer" data-min="13" data-max="17"
+                                            style="color:#3daae0;border-color:#c0e3f5;background:white;">
+                                            13-17 ans
+                                        </button>
+                                        <button type="button" class="age-preset inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer" data-min="18" data-max="25"
+                                            style="color:#7c3aed;border-color:#d4c4f5;background:white;">
+                                            18-25 ans
+                                        </button>
+                                        <button type="button" class="age-preset inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer" data-min="26" data-max="64"
+                                            style="color:#d97706;border-color:#f5d9b0;background:white;">
+                                            26-64 ans
+                                        </button>
+                                        <button type="button" class="age-preset inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer" data-min="60" data-max="100"
+                                            style="color:#4a6fa5;border-color:#c8d6e8;background:white;">
+                                            60+ ans
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="age-slider-container">
+                                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-2">Sélection personnalisée</p>
+                                    <div class="age-slider-wrapper">
+                                        <div class="age-slider">
+                                            <div class="age-slider-track"></div>
+                                            <input type="range" class="age-slider-input age-slider-min" min="0" max="100" value="0" step="1">
+                                            <input type="range" class="age-slider-input age-slider-max" min="0" max="100" value="100" step="1">
+                                        </div>
+                                        <div class="age-slider-values">
+                                            <span class="age-min-value">0</span>
+                                            <span class="age-max-value">100</span>
+                                        </div>
+                                    </div>
+                                    <p class="text-[#b0bedb] text-xs mt-1">Glissez les poignées pour définir la tranche d'âge</p>
+                                </div>
+
+                                <input type="hidden" id="{{ form.min_age.id_for_label }}" name="{{ form.min_age.name }}" value="{{ form.min_age.value|default:'' }}">
+                                <input type="hidden" id="{{ form.max_age.id_for_label }}" name="{{ form.max_age.name }}" value="{{ form.max_age.value|default:'' }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="bg-[#f8f9fc] rounded-xl p-5 border border-[#dce3ef]">
+                            <h3 class="text-sm font-semibold text-[#1e293b] mb-4 flex items-center gap-2">
+                                <i class="bx bx-image text-[#4a6fa5]"></i>
+                                Affiche
+                            </h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="{{ form.poster.id_for_label }}" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
+                                        {{ form.poster.label }}
+                                    </label>
+                                    <input type="file"
+                                           id="{{ form.poster.id_for_label }}"
+                                           name="{{ form.poster.name }}"
+                                           accept="image/*"
+                                           class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#e8eef7] file:text-[#4a6fa5] hover:file:bg-[#dce3ef] transition-all {% if form.poster.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}">
+                                    {% if form.poster.errors %}
+                                    <p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.poster.errors|join:", " }}</p>
+                                    {% endif %}
+                                    {% if form.poster.help_text %}
+                                    <p class="text-[#b0bedb] text-xs mt-1">{{ form.poster.help_text }}</p>
+                                    {% endif %}
+                                </div>
+                                {% if form.instance.poster %}
+                                <div class="text-center">
+                                    <img src="{{ form.instance.poster.url }}"
+                                         alt="Aperçu de l'affiche"
+                                         class="mx-auto rounded-xl max-h-40 shadow-sm">
+                                    <p class="text-[#b0bedb] text-xs mt-2">Affiche actuelle</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="bg-[#f8f9fc] rounded-xl p-5 border border-[#dce3ef]">
+                            <h3 class="text-sm font-semibold text-[#1e293b] mb-4 flex items-center gap-2">
+                                <i class="bx bx-cog text-[#4a6fa5]"></i>
+                                Options
+                            </h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="inline-flex items-center gap-2.5 cursor-pointer">
+                                        <input type="checkbox"
+                                               id="{{ form.newsletter.id_for_label }}"
+                                               name="{{ form.newsletter.name }}"
+                                               {% if form.newsletter.value %}checked{% endif %}
+                                               class="w-4 h-4 rounded border-gray-300 text-[#4a6fa5] focus:ring-[#4a6fa5]">
+                                        <span class="text-sm font-medium text-[#1e293b]">{{ form.newsletter.label }}</span>
+                                    </label>
+                                    {% if form.newsletter.help_text %}
+                                    <p class="text-[#b0bedb] text-xs mt-1 ml-6">{{ form.newsletter.help_text }}</p>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <label class="inline-flex items-center gap-2.5 cursor-pointer">
+                                        <input type="checkbox"
+                                               id="{{ form.is_class_welcome.id_for_label }}"
+                                               name="{{ form.is_class_welcome.name }}"
+                                               {% if form.is_class_welcome.value %}checked{% endif %}
+                                               class="w-4 h-4 rounded border-gray-300 text-[#4a6fa5] focus:ring-[#4a6fa5]">
+                                        <span class="text-sm font-medium text-[#1e293b]">{{ form.is_class_welcome.label }}</span>
+                                    </label>
+                                    {% if form.is_class_welcome.help_text %}
+                                    <p class="text-[#b0bedb] text-xs mt-1 ml-6">{{ form.is_class_welcome.help_text }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-t border-[#dce3ef] bg-[#f8f9fc]">
+                <div class="flex flex-col sm:flex-row gap-3 justify-between items-center">
+                    <a href="{% url 'library_workshops:index' %}"
+                       class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#5a6f80] hover:bg-white hover:border-[#b0bedb] transition-all">
+                        <i class="bx bx-x"></i>
+                        Annuler
+                    </a>
+                    <div class="flex gap-3">
+                        <button type="submit" name="save_draft"
+                                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[#4a6fa5] text-sm font-medium text-[#4a6fa5] hover:bg-[#e8eef7] transition-all">
+                            <i class="bx bx-save"></i>
+                            Enregistrer en brouillon
+                        </button>
+                        <button type="submit" name="save_publish"
+                                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-all shadow-sm">
+                            <i class="bx bx-check"></i>
+                            Publier l'atelier
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}
+
+{% block javascripts %}
+<!-- Container pour le modal HTMX -->
+<div id="location-modal-container"></div>
+
+<style>
+.age-slider-wrapper {
+    position: relative;
+    padding: 20px 0;
+}
+
+.age-slider {
+    position: relative;
+    width: 100%;
+    height: 40px;
+}
+
+.age-slider-track {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    z-index: 1;
+}
+
+.age-slider-input {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    height: 6px;
+    background: transparent;
+    pointer-events: none;
+    -webkit-appearance: none;
+    appearance: none;
+    z-index: 3;
+}
+
+.age-slider-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #4a6fa5;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    cursor: pointer;
+    pointer-events: auto;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
+}
+
+.age-slider-input::-webkit-slider-thumb:hover {
+    background: #3d5f8f;
+    transform: scale(1.1);
+}
+
+.age-slider-input::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #4a6fa5;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    cursor: pointer;
+    pointer-events: auto;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.age-slider-input::-moz-range-thumb:hover {
+    background: #3d5f8f;
+    transform: scale(1.1);
+}
+
+.age-slider-input::-webkit-slider-track {
+    background: transparent;
+}
+
+.age-slider-input::-moz-range-track {
+    background: transparent;
+}
+
+.age-slider-values {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-weight: 600;
+    color: #4a6fa5;
+}
+
+.age-min-value, .age-max-value {
+    background: #e8eef7;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.age-slider-input:focus {
+    outline: none;
+}
+
+.age-slider-input:focus::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.25);
+}
+
+.age-slider-input:focus::-moz-range-thumb {
+    box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.25);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const isSingleDayCheckbox = document.getElementById('{{ form.is_single_day.id_for_label }}');
+    const endDateField = document.getElementById('end-date-field');
+    const endDateInput = document.getElementById('{{ form.end_date.id_for_label }}');
+
+    function toggleEndDate() {
+        if (isSingleDayCheckbox && endDateField) {
+            if (isSingleDayCheckbox.checked) {
+                endDateField.style.display = 'none';
+                if (endDateInput) endDateInput.value = '';
+            } else {
+                endDateField.style.display = 'block';
+            }
+        }
+    }
+    if (isSingleDayCheckbox) {
+        toggleEndDate();
+        isSingleDayCheckbox.addEventListener('change', toggleEndDate);
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const isAllAgesCheckbox = document.getElementById('{{ form.is_all_ages.id_for_label }}');
+    const agePresets = document.getElementById('age-presets');
+    const ageSliderContainer = document.getElementById('age-slider-container');
+    const minAgeInput = document.getElementById('{{ form.min_age.id_for_label }}');
+    const maxAgeInput = document.getElementById('{{ form.max_age.id_for_label }}');
+    const agePresetButtons = document.querySelectorAll('.age-preset');
+
+    const sliderMin = document.querySelector('.age-slider-min');
+    const sliderMax = document.querySelector('.age-slider-max');
+    const minValue = document.querySelector('.age-min-value');
+    const maxValue = document.querySelector('.age-max-value');
+    const track = document.querySelector('.age-slider-track');
+
+    if (!sliderMin || !sliderMax) return;
+
+    let minAge = parseInt(sliderMin.value) || 0;
+    let maxAge = parseInt(sliderMax.value) || 100;
+
+    function toggleAgeFields() {
+        if (isAllAgesCheckbox && agePresets && ageSliderContainer) {
+            if (isAllAgesCheckbox.checked) {
+                agePresets.style.display = 'none';
+                ageSliderContainer.style.display = 'none';
+                if (minAgeInput) minAgeInput.value = '';
+                if (maxAgeInput) maxAgeInput.value = '';
+            } else {
+                agePresets.style.display = 'block';
+                ageSliderContainer.style.display = 'block';
+            }
+        }
+    }
+
+    function updateSliderTrack() {
+        if (!track) return;
+        const minPercent = (minAge / 100) * 100;
+        const maxPercent = (maxAge / 100) * 100;
+        track.style.background = `linear-gradient(to right, #e5e7eb 0%, #e5e7eb ${minPercent}%, #4a6fa5 ${minPercent}%, #4a6fa5 ${maxPercent}%, #e5e7eb ${maxPercent}%, #e5e7eb 100%)`;
+    }
+
+    function updateValues() {
+        if (minValue) minValue.textContent = minAge + ' ans';
+        if (maxValue) maxValue.textContent = maxAge + ' ans';
+        if (minAgeInput) minAgeInput.value = minAge;
+        if (maxAgeInput) maxAgeInput.value = maxAge;
+        updateSliderTrack();
+    }
+
+    function setSliderValues(min, max) {
+        minAge = min;
+        maxAge = max;
+        sliderMin.value = min;
+        sliderMax.value = max;
+        updateValues();
+    }
+
+    if (isAllAgesCheckbox) {
+        toggleAgeFields();
+    }
+    updateValues();
+
+    if (isAllAgesCheckbox) {
+        isAllAgesCheckbox.addEventListener('change', toggleAgeFields);
+    }
+
+    sliderMin.addEventListener('input', function() {
+        const newMin = parseInt(this.value);
+        if (newMin <= maxAge) {
+            minAge = newMin;
+            updateValues();
+        } else {
+            this.value = maxAge;
+        }
+    });
+
+    sliderMax.addEventListener('input', function() {
+        const newMax = parseInt(this.value);
+        if (newMax >= minAge) {
+            maxAge = newMax;
+            updateValues();
+        } else {
+            this.value = minAge;
+        }
+    });
+
+    agePresetButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const presetMinAge = parseInt(this.getAttribute('data-min'));
+            const presetMaxAge = parseInt(this.getAttribute('data-max'));
+
+            if (isAllAgesCheckbox) {
+                isAllAgesCheckbox.checked = false;
+                toggleAgeFields();
+            }
+
+            setSliderValues(presetMinAge, presetMaxAge);
+
+            agePresetButtons.forEach(btn => {
+                btn.style.removeProperty('background');
+                btn.style.color = '';
+                btn.style.borderColor = '';
+            });
+
+            const computedStyle = window.getComputedStyle(this);
+            this.style.background = '#4a6fa5';
+            this.style.color = 'white';
+            this.style.borderColor = '#4a6fa5';
+        });
+    });
+
+    if (minAgeInput && minAgeInput.value && maxAgeInput && maxAgeInput.value) {
+        setSliderValues(parseInt(minAgeInput.value), parseInt(maxAgeInput.value));
+    }
+});
+</script>
+{% endblock %}

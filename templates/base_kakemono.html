@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réservation de Kakémonos</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    
+    {% block extra_css %}{% endblock %}
+
+    <style>
+        :root {
+            --notion-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, 'Apple Color Emoji', Arial, sans-serif, 'Segoe UI Emoji', 'Segoe UI Symbol';
+            --notion-bg: #ffffff;
+            --notion-text: #37352f;
+            --notion-gray: #9b9a97;
+            --notion-brown: #64473a;
+            --notion-orange: #d9730d;
+            --notion-yellow: #dfab01;
+            --notion-green: #0f7b6c;
+            --notion-blue: #0b6e99;
+            --notion-purple: #6940a5;
+            --notion-pink: #ad1a72;
+            --notion-red: #e03e3e;
+            --notion-sidebar: #fbfbfa;
+            --notion-hover: rgba(55, 53, 47, 0.08);
+            --notion-selection: rgba(35, 131, 226, 0.28);
+        }
+
+        /* Base styles */
+        body {
+            font-family: var(--notion-font);
+            color: var(--notion-text);
+            background-color: var(--notion-bg);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Navigation */
+        .navbar {
+            background-color: var(--notion-bg);
+            border-bottom: 1px solid rgba(55, 53, 47, 0.09);
+            padding: 0.75rem 0;
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            color: var(--notion-text);
+        }
+
+        .nav-link {
+            color: var(--notion-text) !important;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+            font-size: 0.95rem;
+        }
+
+        .nav-link:hover {
+            opacity: 1;
+            background: var(--notion-hover);
+            border-radius: 0.375rem;
+        }
+
+        /* Buttons */
+        .btn {
+            font-weight: 500;
+            border-radius: 0.375rem;
+            transition: background 0.1s ease-in;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background-color: var(--notion-text);
+            border: 1px solid var(--notion-text);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: rgba(55, 53, 47, 0.85);
+            border-color: rgba(55, 53, 47, 0.85);
+        }
+
+        .btn-outline-primary {
+            color: var(--notion-text);
+            border: 1px solid rgba(55, 53, 47, 0.16);
+            background: white;
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--notion-hover);
+            color: var(--notion-text);
+            border-color: rgba(55, 53, 47, 0.16);
+        }
+
+        /* Cards */
+        .card {
+            border: 1px solid rgba(55, 53, 47, 0.09);
+            border-radius: 0.375rem;
+            transition: background 0.1s ease-in;
+        }
+
+        .card:hover {
+            background: var(--notion-hover);
+        }
+
+        /* Form controls */
+        .form-control, .form-select {
+            border: 1px solid rgba(55, 53, 47, 0.16);
+            border-radius: 0.375rem;
+            color: var(--notion-text);
+            font-size: 0.95rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--notion-text);
+            box-shadow: none;
+        }
+
+        /* Messages */
+        .message-error {
+            background: rgba(235, 87, 87, 0.1);
+            color: var(--notion-red);
+            border: 1px solid rgba(235, 87, 87, 0.2);
+            border-radius: 0.375rem;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+        }
+
+        .message-success {
+            background: rgba(68, 187, 164, 0.1);
+            color: var(--notion-green);
+            border: 1px solid rgba(68, 187, 164, 0.2);
+            border-radius: 0.375rem;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+        }
+
+        .message-warning {
+            background: rgba(233, 168, 0, 0.1);
+            color: var(--notion-yellow);
+            border: 1px solid rgba(233, 168, 0, 0.2);
+            border-radius: 0.375rem;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+        }
+
+        .message-info {
+            background: rgba(35, 131, 226, 0.1);
+            color: var(--notion-blue);
+            border: 1px solid rgba(35, 131, 226, 0.2);
+            border-radius: 0.375rem;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+        }
+
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 600;
+            color: var(--notion-text);
+            margin-bottom: 0.5em;
+        }
+
+        .text-muted {
+            color: var(--notion-gray) !important;
+        }
+
+        /* Links */
+        a {
+            color: var(--notion-blue);
+            text-decoration: none;
+        }
+
+        a:hover {
+            color: var(--notion-blue);
+            text-decoration: underline;
+        }
+
+        /* Footer */
+        .footer {
+            background-color: var(--notion-bg);
+            border-top: 1px solid rgba(55, 53, 47, 0.09);
+            padding: 2rem 0;
+            color: var(--notion-gray);
+            font-size: 0.95rem;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--notion-bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(55, 53, 47, 0.16);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(55, 53, 47, 0.24);
+        }
+
+        /* Styles pour la navbar mobile */
+        .navbar-toggler {
+            border: none;
+            padding: 0.5rem;
+            color: var(--notion-text);
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+
+        .navbar-toggler:hover {
+            opacity: 1;
+            background: var(--notion-hover);
+            border-radius: 0.375rem;
+        }
+
+        .navbar-toggler:focus {
+            box-shadow: none;
+        }
+
+        @media (max-width: 991.98px) {
+            .navbar-collapse {
+                margin-top: 1rem;
+                padding: 1rem;
+                background: var(--notion-bg);
+                border-radius: 0.5rem;
+                box-shadow: rgba(15, 15, 15, 0.05) 0px 0px 0px 1px, 
+                            rgba(15, 15, 15, 0.1) 0px 3px 6px;
+            }
+
+            .navbar-nav {
+                padding: 0.5rem 0;
+            }
+
+            .nav-item {
+                margin: 0.25rem 0;
+            }
+
+            .nav-link {
+                padding: 0.75rem 1rem !important;
+                border-radius: 0.375rem;
+            }
+
+            .dropdown-menu {
+                border: none;
+                background: transparent;
+                padding: 0;
+                margin: 0;
+            }
+
+            .dropdown-item {
+                padding: 0.75rem 1rem;
+                color: var(--notion-text) !important;
+            }
+
+            .dropdown-divider {
+                margin: 0.5rem 0;
+                border-color: rgba(55, 53, 47, 0.09);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'kakemono:list' %}">
+                <i class="fas fa-image me-2"></i>Kakémonos
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link px-3" href="{% url 'kakemono:list' %}">
+                            <i class="fas fa-th me-2"></i>Liste
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-3" href="{% url 'kakemono:reservation-create' %}">
+                            <i class="fas fa-calendar-plus me-2"></i>Réserver
+                        </a>
+                    </li>
+                    {% if user.is_staff %}
+                    <li class="nav-item">
+                        <a class="nav-link px-3" href="{% url 'kakemono:create' %}">
+                            <i class="fas fa-plus me-2"></i>Ajouter un Kakémono
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle px-3" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user me-2"></i>{{ user.get_full_name|default:user.username }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="{% url 'kakemono:reservation-list' %}">
+                                    <i class="fas fa-list me-2"></i>Mes réservations
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'logout' %}">
+                                    <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link px-3" href="{% url 'login' %}">
+                            <i class="fas fa-sign-in-alt me-2"></i>Connexion
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="container mt-3">
+        {% for message in messages %}
+        <div class="message-{{ message.tags }} mb-3">
+            <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+            <strong>{{ message }}</strong>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Contenu principal -->
+    <main class="py-4">
+        {% block kakemono_content %}
+        {% endblock %}
+    </main>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

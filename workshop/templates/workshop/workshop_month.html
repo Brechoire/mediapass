@@ -1,0 +1,163 @@
+{% extends 'base_new.html' %}
+{% load static %}
+
+{% block title %}Ateliers du mois{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-indigo-100 rounded-xl">
+                    <i class="bx bx-calendar text-3xl text-indigo-600"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Ateliers du mois</h1>
+                    <p class="text-gray-600 mt-1">{{ month }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grille des ateliers -->
+        {% if workshops %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+                {% for workshop in workshops %}
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                    <!-- Image de l'atelier -->
+                    <div class="relative">
+                        {% if workshop.image %}
+                            <img src="{{ workshop.image.url }}" 
+                                 alt="{{ workshop.name }}" 
+                                 class="w-full h-48 object-cover">
+                        {% else %}
+                            <div class="w-full h-48 bg-gray-100 flex items-center justify-center">
+                                <div class="text-center">
+                                    <i class="bx bx-image text-4xl text-gray-400 mb-2"></i>
+                                    <p class="text-sm text-gray-500">Aucune image</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Badge horaire -->
+                        {% if workshop.start_time %}
+                            <div class="absolute top-3 right-3">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-600 text-white text-xs font-medium rounded-full">
+                                    <i class="bx bx-time"></i>
+                                    {{ workshop.start_time|time:"H:i" }}
+                                </span>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Contenu de la carte -->
+                    <div class="p-4">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-3 line-clamp-2">
+                            {{ workshop.name }}
+                        </h3>
+                        
+                        <div class="space-y-2">
+                            <!-- Date -->
+                            <div class="flex items-center text-sm text-gray-600">
+                                <i class="bx bx-calendar text-gray-400 mr-2"></i>
+                                <span>{{ workshop.date|date:"l d F Y" }}</span>
+                            </div>
+                            
+                            <!-- Horaires -->
+                            {% if workshop.start_time and workshop.end_time %}
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <i class="bx bx-time text-gray-400 mr-2"></i>
+                                    <span>{{ workshop.start_time }} - {{ workshop.end_time }}</span>
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Lieu -->
+                            <div class="flex items-center text-sm text-gray-600">
+                                <i class="bx bx-map text-gray-400 mr-2"></i>
+                                <span>{{ workshop.location.name }}</span>
+                            </div>
+                            
+                            <!-- Participants -->
+                            <div class="flex items-center text-sm text-gray-600">
+                                <i class="bx bx-group text-gray-400 mr-2"></i>
+                                <span>{{ workshop.number_registered|default:0 }} / {{ workshop.number_attendees|default:0 }} participants</span>
+                            </div>
+                        </div>
+
+                        <!-- Options -->
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            {% if workshop.poster_required %}
+                                <span class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                                    <i class="bx bx-image"></i>
+                                    Affiche requise
+                                </span>
+                            {% endif %}
+                            {% if workshop.class_welcome %}
+                                <span class="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-800 text-xs font-medium rounded-full">
+                                    <i class="bx bx-school"></i>
+                                    Accueil classe
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if is_paginated %}
+                <div class="flex items-center justify-center">
+                    <nav class="flex items-center space-x-1">
+                        <!-- Bouton précédent -->
+                        {% if page_obj.has_previous %}
+                            <a href="?page={{ page_obj.previous_page_number }}" 
+                               class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700">
+                                <i class="bx bx-chevron-left"></i>
+                                Précédent
+                            </a>
+                        {% endif %}
+
+                        <!-- Numéros de pages -->
+                        {% for page_num in paginator.page_range %}
+                            {% if page_obj.number == page_num %}
+                                <span class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-indigo-600 rounded-lg">
+                                    {{ page_num }}
+                                </span>
+                            {% else %}
+                                <a href="?page={{ page_num }}" 
+                                   class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700">
+                                    {{ page_num }}
+                                </a>
+                            {% endif %}
+                        {% endfor %}
+
+                        <!-- Bouton suivant -->
+                        {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}" 
+                               class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700">
+                                Suivant
+                                <i class="bx bx-chevron-right"></i>
+                            </a>
+                        {% endif %}
+                    </nav>
+                </div>
+            {% endif %}
+        {% else %}
+            <!-- Message si aucun atelier -->
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                <div class="p-12 text-center">
+                    <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-4">
+                        <i class="bx bx-calendar text-3xl text-gray-400"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Aucun atelier ce mois-ci</h3>
+                    <p class="text-gray-600 mb-6">Il n'y a pas d'ateliers programmés pour {{ month }}.</p>
+                    <a href="{% url 'workshop_create' %}" class="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                        <i class="bx bx-plus"></i>
+                        Ajouter un atelier
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

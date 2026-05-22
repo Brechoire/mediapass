@@ -1,0 +1,273 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Gestion des Distributions - MediaPass{% endblock %}
+
+{% block content %}
+<!-- Hero section with gradient -->
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="bx bx-mail-send text-2xl text-white"></i>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-white">Distribution</h1>
+                </div>
+                <p class="text-white/70 text-sm">G&#xE9;rez vos campagnes de distribution de flyers</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <a href="{% url 'distribution:campagne_create' %}"
+                   class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#2f4d75] text-sm font-semibold hover:bg-white/90 transition-all shadow-sm">
+                    <i class="bx bx-plus-circle"></i> Nouvelle campagne
+                </a>
+                <a href="{% url 'distribution:commune_create' %}"
+                   class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-sm font-medium hover:bg-white/20 transition-all">
+                    <i class="bx bx-plus"></i> Nouvelle commune
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats cards - pulled up over hero -->
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Campagnes</p>
+                    <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ total_campagnes }}</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-[#e8eef7] flex items-center justify-center">
+                    <i class="bx bx-mail-send text-xl text-[#4a6fa5]"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Actives</p>
+                    <p class="text-3xl font-bold text-[#e67e22] mt-1">{{ campagnes_actives }}</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center">
+                    <i class="bx bx-time text-xl text-[#e67e22]"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieux</p>
+                    <p class="text-3xl font-bold text-[#00a86b] mt-1">{{ total_lieux }}</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center">
+                    <i class="bx bx-map text-xl text-[#00a86b]"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Communes</p>
+                    <p class="text-3xl font-bold text-[#8e44ad] mt-1">{{ total_communes }}</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center">
+                    <i class="bx bx-buildings text-xl text-[#8e44ad]"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick actions -->
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-zap mr-1.5 text-[#4a6fa5]"></i>Actions rapides</h2>
+        </div>
+        <div class="p-5">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <a href="{% url 'distribution:campagne_create' %}"
+                   class="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-[#4a6fa5] to-[#3d5f8f] text-white hover:from-[#3d5f8f] hover:to-[#2f4d75] transition-all shadow-sm">
+                    <i class="bx bx-plus-circle text-2xl"></i>
+                    <span class="text-xs font-semibold text-center">Nouvelle campagne</span>
+                </a>
+                <a href="{% url 'distribution:campagne_list' %}"
+                   class="flex flex-col items-center gap-2 p-4 rounded-xl bg-[#f8f9fc] border border-[#dce3ef] text-[#1e293b] hover:bg-[#e8eef7] transition-all">
+                    <i class="bx bx-list-ul text-2xl text-[#4a6fa5]"></i>
+                    <span class="text-xs font-semibold text-center">Campagnes</span>
+                </a>
+                <a href="{% url 'distribution:commune_list' %}"
+                   class="flex flex-col items-center gap-2 p-4 rounded-xl bg-[#f8f9fc] border border-[#dce3ef] text-[#1e293b] hover:bg-[#e8eef7] transition-all">
+                    <i class="bx bx-buildings text-2xl text-[#00a86b]"></i>
+                    <span class="text-xs font-semibold text-center">Communes</span>
+                </a>
+                <a href="{% url 'distribution:commune_create' %}"
+                   class="flex flex-col items-center gap-2 p-4 rounded-xl bg-[#f8f9fc] border border-[#dce3ef] text-[#1e293b] hover:bg-[#e8eef7] transition-all">
+                    <i class="bx bx-plus text-2xl text-[#00a86b]"></i>
+                    <span class="text-xs font-semibold text-center">Nouvelle commune</span>
+                </a>
+                <a href="{% url 'distribution:statistics' %}"
+                   class="flex flex-col items-center gap-2 p-4 rounded-xl bg-[#f8f9fc] border border-[#dce3ef] text-[#1e293b] hover:bg-[#e8eef7] transition-all">
+                    <i class="bx bx-bar-chart-alt-2 text-2xl text-[#e67e22]"></i>
+                    <span class="text-xs font-semibold text-center">Statistiques</span>
+                </a>
+                <a href="{% url 'distribution:commune_list' %}"
+                   class="flex flex-col items-center gap-2 p-4 rounded-xl bg-[#f8f9fc] border border-[#dce3ef] text-[#1e293b] hover:bg-[#e8eef7] transition-all">
+                    <i class="bx bx-map text-2xl text-[#8e44ad]"></i>
+                    <span class="text-xs font-semibold text-center">Lieux</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- How it works -->
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-info-circle mr-1.5 text-[#4a6fa5]"></i>Comment &#xE7;a marche ?</h2>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="flex gap-4">
+                    <div class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center shrink-0">
+                        <span class="text-[#4a6fa5] font-bold text-sm">1</span>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-[#1e293b]">Cr&#xE9;ez les lieux</h3>
+                        <p class="text-xs text-[#b0bedb] mt-1">Ajoutez des communes et des lieux de distribution</p>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <div class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center shrink-0">
+                        <span class="text-[#4a6fa5] font-bold text-sm">2</span>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-[#1e293b]">Lancez une campagne</h3>
+                        <p class="text-xs text-[#b0bedb] mt-1">Tous les lieux actifs sont automatiquement inclus</p>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <div class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center shrink-0">
+                        <span class="text-[#4a6fa5] font-bold text-sm">3</span>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-[#1e293b]">Suivez la progression</h3>
+                        <p class="text-xs text-[#b0bedb] mt-1">Cochez au fur et &#xE0; mesure des distributions</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent campaigns -->
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef] flex items-center justify-between">
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-history mr-1.5 text-[#4a6fa5]"></i>Campagnes r&#xE9;centes</h2>
+            <a href="{% url 'distribution:campagne_list' %}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#e8eef7] text-[#4a6fa5] text-xs font-semibold hover:bg-[#dce3ef] transition-colors">
+                Voir toutes <i class="bx bx-chevron-right"></i>
+            </a>
+        </div>
+
+        <div class="p-5">
+            {% if campagnes %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-[#dce3ef]">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Campagne</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Statut</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Progression</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden md:table-cell">P&#xE9;riode</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden lg:table-cell">Cr&#xE9;&#xE9;e par</th>
+                            <th class="px-4 py-3 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#dce3ef]">
+                        {% for campagne in campagnes %}
+                        <tr class="hover:bg-[#f8f9fc] transition-colors">
+                            <td class="px-4 py-4">
+                                <div class="text-sm font-medium text-[#1e293b]">{{ campagne.name }}</div>
+                                {% if campagne.description %}
+                                <div class="text-xs text-[#b0bedb] mt-0.5">{{ campagne.description|truncatechars:50 }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-4">
+                                {% if campagne.status == 'active' %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> En cours
+                                </span>
+                                {% elif campagne.status == 'completed' %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Termin&#xE9;e
+                                </span>
+                                {% elif campagne.status == 'draft' %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-50 text-gray-600 border border-gray-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> Brouillon
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Annul&#xE9;e
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-4 min-w-[130px]">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-1 h-2 bg-[#e8eef7] rounded-full overflow-hidden">
+                                        <div class="h-full rounded-full transition-all duration-500
+                                            {% if campagne.progression >= 100 %}bg-emerald-500
+                                            {% elif campagne.progression >= 50 %}bg-[#4a6fa5]
+                                            {% elif campagne.progression > 0 %}bg-amber-500
+                                            {% else %}bg-gray-300{% endif %}"
+                                            style="width: {{ campagne.progression }}%"></div>
+                                    </div>
+                                    <span class="text-xs font-semibold text-[#b0bedb] min-w-[50px] text-right">{{ campagne.lieux_distribues }}/{{ campagne.total_lieux }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-4 text-sm text-[#b0bedb] hidden md:table-cell">
+                                {{ campagne.start_date|date:"d/m/Y" }}<span class="mx-1">&#x2192;</span>{{ campagne.end_date|date:"d/m/Y" }}
+                            </td>
+                            <td class="px-4 py-4 text-sm text-[#1e293b] hidden lg:table-cell">
+                                {{ campagne.created_by.get_full_name|default:campagne.created_by.username }}
+                            </td>
+                            <td class="px-4 py-4 text-right">
+                                <a href="{% url 'distribution:campagne_detail' campagne.pk %}"
+                                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#e8eef7] text-[#4a6fa5] text-xs font-semibold hover:bg-[#dce3ef] transition-colors">
+                                    D&#xE9;tail <i class="bx bx-chevron-right"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-16">
+                <div class="w-20 h-20 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4">
+                    <i class="bx bx-mail-send text-4xl text-[#4a6fa5]"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-[#4a6fa5] mb-2">Aucune campagne de distribution</h3>
+                <p class="text-[#b0bedb] text-sm mb-6">
+                    Cr&#xE9;ez des communes et des lieux, puis lancez votre premi&#xE8;re campagne.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    <a href="{% url 'distribution:commune_create' %}"
+                       class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-medium text-sm hover:bg-emerald-700 transition-all shadow-sm">
+                        <i class="bx bx-plus"></i> Cr&#xE9;er une commune
+                    </a>
+                    <a href="{% url 'distribution:commune_list' %}"
+                       class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-emerald-600 text-emerald-600 font-medium text-sm hover:bg-emerald-50 transition-colors">
+                        <i class="bx bx-buildings"></i> G&#xE9;rer les communes
+                    </a>
+                    <a href="{% url 'distribution:campagne_create' %}"
+                       class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4a6fa5] text-white font-medium text-sm hover:bg-[#3d5f8f] transition-all shadow-sm">
+                        <i class="bx bx-plus-circle"></i> Cr&#xE9;er une campagne
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

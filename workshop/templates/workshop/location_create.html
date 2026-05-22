@@ -1,0 +1,122 @@
+{% extends 'base_new.html' %}
+{% load static %}
+
+{% block title %}Ajout d'un lieu{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {% if structure.is_registered == 0 %}
+            <!-- Structure Validation -->
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+                <div class="flex items-center gap-3">
+                    <i class="bx bx-info-circle text-yellow-600 text-xl"></i>
+                    <div>
+                        <h3 class="text-lg font-semibold text-yellow-800">Validation de structure requise</h3>
+                        <p class="text-yellow-700">Vous devez d'abord valider cette structure avant de pouvoir ajouter des lieux.</p>
+                    </div>
+                </div>
+                <form method="post" action="{% url 'structure_validate' pk=structure.id %}" class="mt-4">
+                    {% csrf_token %}
+                    <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white font-medium rounded-lg hover:bg-yellow-700 transition-colors">
+                        <i class="bx bx-check"></i>
+                        Valider la structure
+                    </button>
+                </form>
+            </div>
+        {% else %}
+            <!-- Main Form -->
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center gap-3">
+                    <div class="p-2 bg-indigo-100 rounded-lg">
+                        <i class="bx bx-map text-xl text-indigo-600"></i>
+                    </div>
+                    <h1 class="text-xl font-semibold text-gray-900">
+                        {% if form.instance.pk %}Modifier{% else %}Ajouter{% endif %} un lieu
+                    </h1>
+                </div>
+
+                <div class="p-6">
+                    <form method="post" class="space-y-6">
+                        {% csrf_token %}
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Nom du lieu -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2" for="{{ form.name.id_for_label }}">
+                                    {{ form.name.label }}
+                                </label>
+                                <input type="text" name="{{ form.name.name }}" id="{{ form.name.id_for_label }}" 
+                                       value="{{ form.name.value|default:'' }}" 
+                                       class="tw-input w-full text-sm" 
+                                       placeholder="Entrez le nom du lieu">
+                                {% if form.name.errors %}
+                                    {% for error in form.name.errors %}
+                                        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+
+                            <!-- Adresse -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2" for="{{ form.address.id_for_label }}">
+                                    {{ form.address.label }}
+                                </label>
+                                <input type="text" name="{{ form.address.name }}" id="{{ form.address.id_for_label }}" 
+                                       value="{{ form.address.value|default:'' }}" 
+                                       class="tw-input w-full text-sm" 
+                                       placeholder="Entrez l'adresse">
+                                {% if form.address.errors %}
+                                    {% for error in form.address.errors %}
+                                        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+
+                            <!-- Code postal -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2" for="{{ form.zip_code.id_for_label }}">
+                                    {{ form.zip_code.label }}
+                                </label>
+                                <input type="text" name="{{ form.zip_code.name }}" id="{{ form.zip_code.id_for_label }}" 
+                                       value="{{ form.zip_code.value|default:'' }}" 
+                                       class="tw-input w-full text-sm" 
+                                       placeholder="Entrez le code postal">
+                                {% if form.zip_code.errors %}
+                                    {% for error in form.zip_code.errors %}
+                                        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+
+                            <!-- Ville -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2" for="{{ form.city.id_for_label }}">
+                                    {{ form.city.label }}
+                                </label>
+                                <input type="text" name="{{ form.city.name }}" id="{{ form.city.id_for_label }}" 
+                                       value="{{ form.city.value|default:'' }}" 
+                                       class="tw-input w-full text-sm" 
+                                       placeholder="Entrez la ville">
+                                {% if form.city.errors %}
+                                    {% for error in form.city.errors %}
+                                        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="flex justify-end">
+                            <button type="submit" class="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+                                <i class="bx bx-save"></i>
+                                {% if form.instance.pk %}Modifier{% else %}Ajouter{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

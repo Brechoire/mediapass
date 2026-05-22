@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Une affiche attend d'être validée pour l'atelier {{ workshop.name }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #000000;
+            margin: 0;
+            padding: 20px;
+            background-color: #ffffff;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+
+        .content {
+            padding: 20px 0;
+        }
+
+        .content h1 {
+            font-size: 20px;
+            font-weight: bold;
+            color: #000000;
+            margin: 0 0 20px 0;
+        }
+
+        .content p {
+            color: #000000;
+            margin: 10px 0;
+        }
+
+        .workshop-info {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #cccccc;
+        }
+
+        .workshop-info h3 {
+            margin: 0 0 10px 0;
+            color: #000000;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .workshop-details {
+            color: #000000;
+            font-size: 14px;
+        }
+
+        .workshop-details p {
+            margin: 5px 0;
+        }
+
+        .poster-link {
+            display: block;
+            margin: 20px 0;
+            color: #0000ff;
+            text-decoration: underline;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background-color: #000000;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 10px 20px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #cccccc;
+            font-size: 12px;
+            color: #000000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="content">
+            <h1>Une affiche attend d'être validée pour l'atelier "{{ workshop.name }}"</h1>
+
+            <p>Bonjour,</p>
+
+            <div class="workshop-info">
+                <h3>Détails de l'atelier</h3>
+                <div class="workshop-details">
+                    <p><strong>Nom :</strong> {{ workshop.name }}</p>
+                    <p><strong>Lieu :</strong> {{ workshop.location.name }}</p>
+                    <p><strong>Date :</strong> 
+                        {% if workshop.date_end != null %}
+                            du {{ workshop.date }} au {{ workshop.date_end }}
+                        {% else %}
+                            le {{ workshop.date }}
+                        {% endif %}
+                    </p>
+                    <p><strong>Horaires :</strong> {{ workshop.start_time }} - {{ workshop.end_time }}</p>
+                </div>
+            </div>
+
+            {% if workshop.image %}
+            <p><strong>Lien vers l'affiche :</strong></p>
+            <a href="https://{{ domain }}{{ workshop.image.url }}" class="poster-link">Voir l'affiche</a>
+            {% endif %}
+
+            <p>L'atelier "{{ workshop.name }}" aurait besoin d'une validation pour l'affiche.</p>
+
+            <p>Merci de prendre quelques minutes pour valider cette affiche.</p>
+
+            <div>
+                <a href="https://{{ domain }}{% url 'approve_poster_valide' workshop.pk %}" class="cta-button">Valider l'affiche</a>
+            </div>
+
+            <p>Merci d'avance !</p>
+
+            <p>L'équipe Mediapass</p>
+        </div>
+
+        <div class="footer">
+            <p>Ceci est un email automatique. Merci de ne pas y répondre.</p>
+        </div>
+    </div>
+</body>
+</html>

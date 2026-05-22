@@ -1,0 +1,127 @@
+{% extends "base_kakemono.html" %}
+{% load static %}
+
+{% block kakemono_content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'kakemono:reservation-list' %}" class="text-decoration-none">
+                    <i class="fas fa-calendar me-1"></i>Réservations
+                </a>
+            </li>
+            <li class="breadcrumb-item active">Détails de la réservation</li>
+        </ol>
+    </nav>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h4 class="card-title fw-bold mb-4">
+                        <i class="fas fa-info-circle me-2"></i>Informations de réservation
+                    </h4>
+
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <h5 class="fw-medium mb-3">Kakémonos réservés</h5>
+                            <ul class="list-unstyled">
+                                {% for kakemono in reservation.kakemonos.all %}
+                                <li class="mb-2">
+                                    <a href="{% url 'kakemono:detail' pk=kakemono.pk %}" 
+                                       class="text-decoration-none d-flex align-items-center">
+                                        {% if kakemono.image %}
+                                        <img src="{{ kakemono.image.url }}" 
+                                             alt="{{ kakemono.title }}" 
+                                             class="me-2 rounded"
+                                             style="width: 40px; height: 40px; object-fit: cover;">
+                                        {% else %}
+                                        <div class="bg-light rounded me-2 d-flex align-items-center justify-content-center"
+                                             style="width: 40px; height: 40px;">
+                                            <i class="fas fa-image text-muted"></i>
+                                        </div>
+                                        {% endif %}
+                                        <span>{{ kakemono.title }}</span>
+                                    </a>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h5 class="fw-medium mb-3">Période de réservation</h5>
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-calendar-alt fa-fw text-primary me-2"></i>
+                                <div>
+                                    <div>Du {{ reservation.start_date|date:"d/m/Y" }}</div>
+                                    <div>Au {{ reservation.end_date|date:"d/m/Y" }}</div>
+                                </div>
+                            </div>
+
+                            <h5 class="fw-medium mb-3 mt-4">Statut</h5>
+                            <span class="badge {% if reservation.status == 'confirmed' %}bg-success{% elif reservation.status == 'pending' %}bg-warning{% else %}bg-danger{% endif %} mb-3">
+                                {{ reservation.get_status_display }}
+                            </span>
+
+                            {% if reservation.notes %}
+                            <h5 class="fw-medium mb-3 mt-4">Notes</h5>
+                            <p class="text-muted mb-0">{{ reservation.notes }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h4 class="card-title fw-bold mb-4">
+                        <i class="fas fa-user me-2"></i>Réservé par
+                    </h4>
+
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fas fa-user-circle fa-fw text-primary me-2"></i>
+                        <span>{{ reservation.first_name }} {{ reservation.last_name }}</span>
+                    </div>
+
+                    {% if reservation.user %}
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fas fa-envelope fa-fw text-primary me-2"></i>
+                        <span>{{ reservation.user.email }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if user.is_staff %}
+                    <div class="d-grid gap-2 mt-4">
+                        <a href="{% url 'kakemono:reservation-update' reservation.pk %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-edit me-2"></i>Modifier
+                        </a>
+                        <a href="{% url 'kakemono:reservation-delete' reservation.pk %}" class="btn btn-outline-danger">
+                            <i class="fas fa-trash me-2"></i>Supprimer
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid gap-2 mt-4">
+                        <a href="{% url 'kakemono:reservation-list' %}" class="btn btn-primary">
+                            <i class="fas fa-arrow-left me-2"></i>Retour à la liste
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media (max-width: 768px) {
+        .card-title {
+            font-size: 1.25rem;
+        }
+        h5 {
+            font-size: 1rem;
+        }
+    }
+</style>
+{% endblock %}

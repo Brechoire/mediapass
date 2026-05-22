@@ -1,0 +1,460 @@
+{% load static user_tags %}
+<!DOCTYPE html>
+
+<html
+lang="fr"
+dir="ltr"
+data-theme="theme-default"
+data-assets-path=""
+data-template="vertical-menu-template-free"
+>
+<head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex, nocache">
+    <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
+    />
+    
+    <title>{% block title %}Médi@'pass Réservation{% endblock %}</title>
+    
+    <link rel="icon" type="image/x-icon" href="{% static 'img/favicon/favicon.ico' %}" />
+    
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- PWA Support -->
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <meta name="theme-color" content="#696cff">
+    <link rel="apple-touch-icon" href="{% static 'assets/img/favicon/apple-icon-180x180.png' %}">
+    
+    <link rel="stylesheet" href="{% static 'vendor/fonts/boxicons.css' %}" />
+    <link rel="stylesheet" href="{% static 'vendor/css/core.css' %}" class="template-customizer-core-css" />
+    <link rel="stylesheet" href="{% static 'vendor/css/theme-default.css' %}" class="template-customizer-theme-css" />
+    <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+    <!-- <link rel="stylesheet" href="{% static 'css/demo.css' %}" /> -->
+    <link rel="stylesheet" href="{% static 'css/sidebar.css' %}" />
+    <link rel="stylesheet" href="{% static 'vendor/libs/perfect-scrollbar/perfect-scrollbar.css' %}" />
+    <link rel="stylesheet" href="{% static 'vendor/libs/apex-charts/apex-charts.css' %}" />
+    <!-- TailwindCSS (CDN CSS build) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Styles applicatifs complémentaires -->
+    <link rel="stylesheet" href="{% static 'css/site.css' %}" />
+    {% block stylesheets %}{% endblock %}
+    <script src="{% static 'vendor/js/helpers.js' %}"></script>
+    <script src="{% static 'js/config.js' %}"></script>
+</head>
+
+<body class="min-h-screen bg-gray-50 text-gray-900">
+    
+    <div class="min-h-screen flex">
+        
+        <div class="flex w-full">
+            
+            <!-- Sidebar desktop + off-canvas mobile -->
+            <nav id="layout-menu" class="w-64 bg-white/95 backdrop-blur border-r border-gray-200 fixed inset-y-0 left-0 z-40 -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-out shadow-sm">
+                
+                <div class="h-16 flex items-center justify-between px-4 border-b border-gray-200">
+                    
+                    <a href="{% url 'home' %}" class="flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded">
+                        
+                        <span>
+                            
+                            <img src="{% static 'img/logo/logo.png' %}" alt="Médiapass" class="h-6 md:h-8 lg:h-9 w-auto"/>
+                            
+                        </span>
+                        
+                    </a>
+                    
+                    <!-- Close button mobile -->
+                    <button type="button" id="sidebar-close" class="lg:hidden p-2 rounded hover:bg-gray-100" aria-label="Fermer le menu">
+                        <i class="bx bx-x text-2xl" aria-hidden="true"></i>
+                    </button>
+                </div>
+                
+                <div class="px-3 py-4 overflow-y-auto h-[calc(100vh-4rem)]" aria-label="Navigation principale">
+                
+                <ul class="space-y-2 text-sm">
+                    <li>
+                        <a href="{% url 'home' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-800 hover:text-indigo-700 hover:bg-indigo-50 transition font-medium">
+                            <i class="bx bx-home text-[20px]" aria-hidden="true"></i>
+                            <span>Accueil</span>
+                        </a>
+                    </li>
+                    <li class="px-3 pt-6 pb-1 text-[11px] font-semibold tracking-wider uppercase text-gray-400">Nos ressources</li>
+                    
+                    <li>
+                        {% for category in category_list %}
+                        <a href="{% url 'category_detail' category.pk %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                            <i class="bx bx-collection text-[20px]" aria-hidden="true"></i>
+                            <span>{{ category.name }}</span>
+                        </a>
+                        {% endfor %}
+                    </li>
+                    
+                    {% if user.is_authenticated %}
+                    
+                    <li class="px-3 pt-6 pb-1 text-[11px] font-semibold tracking-wider uppercase text-gray-400">Divers</li>
+                    {% if user|has_group:'mediatheque' %}
+                    <li>
+                        <a href="{% url 'library_workshops:index' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                            <i class="bx bx-chalkboard text-[20px]" aria-hidden="true"></i>
+                            <span>Ateliers</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% if not user|has_group:'mediatheque' %}
+                    <li>
+                        <a href="{% url 'distribution:index' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                            <i class="bx bx-package text-[20px]" aria-hidden="true"></i>
+                            <span>Distribution</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    
+                    {% if user|has_group:'communication' %}
+                    <li>
+                        <a href="{% url 'workshops_with_poster' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                            <i class="bx bx-image text-[20px]" aria-hidden="true"></i>
+                            <span>Demandes d'affiches</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'workshop_list' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                            <i class="bx bx-calendar-star text-[20px]" aria-hidden="true"></i>
+                            <span>Liste des ateliers</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'kakemono:list' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                            <i class="bx bx-collection text-[20px]" aria-hidden="true"></i>
+                            <span>Réservations kakemonos</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% if user.is_superuser %}
+                    
+                    <li>
+                        <a href="{% url 'workshop_month' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                            <i class="bx bx-chalkboard text-[20px]" aria-hidden="true"></i>
+                            <span>Atelier du mois Jérôme</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a href="{% url 'workshop_validate_poster_admin' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                            <i class="bx bx-check-square text-[20px]" aria-hidden="true"></i>
+                            <span>Validations affiches</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <div class="px-3 pt-6 pb-1 text-[11px] font-semibold tracking-wider uppercase text-gray-400">Produits</div>
+                        
+                        <ul class="space-y-1">
+                            <li>
+                                <a href="{% url 'product_list' %}" class="block px-6 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">Liste des produits</a>
+                            </li>
+                            <li>
+                                <a href="{% url 'product_create' %}" class="block px-6 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">Ajouter un produit</a>
+                            </li>
+                            
+                        </ul>
+                    </li>
+                    
+                    <li>
+                        <div class="px-3 pt-6 pb-1 text-[11px] font-semibold tracking-wider uppercase text-gray-400">Structures</div>
+                        
+                        <ul class="space-y-1">
+                            <li>
+                                <a href="{% url 'structure_list' %}" class="block px-6 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">Liste des structures</a>
+                            </li>
+                            <li>
+                                <a href="{% url 'structure_create' %}" class="block px-6 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">Ajouter une structure</a>
+                            </li>
+                            
+                        </ul>
+                    </li>
+                    
+                    <li>
+                        <div class="px-3 pt-6 pb-1 text-[11px] font-semibold tracking-wider uppercase text-gray-400">Catégories</div>
+                        
+                        <ul class="space-y-1">
+                            <li>
+                                <a href="{% url 'category_list' %}" class="block px-6 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">Liste des catégories</a>
+                            </li>
+                            <li>
+                                <a href="{% url 'category_create' %}" class="block px-6 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">Ajouter une catégorie</a>
+                            </li>
+                            
+                        </ul>
+                    </li>
+                    
+                    <li>
+                        <a href="{% url 'reservation_list' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                            <i class="bx bx-bookmark text-[20px]" aria-hidden="true"></i>
+                            <span>Réservations</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a href="{% url 'statistics' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                            <i class="bx bx-stats text-[20px]" aria-hidden="true"></i>
+                            <span>Stats Réservations</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'analytics:dashboard' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                            <i class="bx bx-stats text-[20px]" aria-hidden="true"></i>
+                            <span>Stats Visiteurs</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'notifications:email_admin' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                            <i class="bx bx-envelope text-[20px]" aria-hidden="true"></i>
+                            <span>Gestion emails</span>
+                        </a>
+                    </li>
+                    
+                    <li class="px-3 pt-6 pb-1 text-[11px] font-semibold tracking-wider uppercase text-gray-400">Ateliers</li>
+                    
+                    <li>
+                        <a href="{% url 'workshop_list' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition"><i class="bx bx-calendar-star text-[20px]" aria-hidden="true"></i><span>Liste des ateliers</span></a>
+                    </li>
+                    <li>
+                        <a href="{% url 'workshop_create' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition"><i class="bx bx-plus-circle text-[20px]" aria-hidden="true"></i><span>Ajouter un atelier</span></a>
+                    </li>
+                    <li>
+                        <a href="{% url 'workshop_validate_poster_admin' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition"><i class="bx bx-check-square text-[20px]" aria-hidden="true"></i><span>Validation affiches</span></a>
+                    </li>
+                    <li>
+                        <a href="{% url 'location_list' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition"><i class="bx bx-map text-[20px]" aria-hidden="true"></i><span>Liste lieux</span></a>
+                    </li>
+                    <li>
+                        <a href="{% url 'workshop_stats' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition"><i class="bx bx-stats text-[20px]" aria-hidden="true"></i><span>Stats ateliers</span></a>
+                    </li>
+                    
+                    {% endif %}
+                    
+                    {% else %}
+                    <li class="px-3 pt-6 pb-1 text-[11px] font-semibold tracking-wider uppercase text-gray-400">Divers</li>
+                    <li>
+                        <a href="{% url 'login' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition"><i class="bx bx-lock-open-alt text-[20px]" aria-hidden="true"></i><span>Connexion</span></a>
+                    </li>
+                    {% endif %}
+                    
+                </ul>
+            </nav>
+            
+            <div class="flex-1 flex flex-col min-w-0 lg:ml-72">
+                
+                <nav id="layout-navbar" class="h-16 bg-white border-b border-gray-200 px-4 flex items-center justify-between sticky top-0 z-30">
+                <div class="lg:hidden">
+                    <button type="button" id="sidebar-open" aria-label="Ouvrir le menu" class="p-2 rounded focus-visible:ring-2 focus-visible:ring-blue-500">
+                        <i class="bx bx-menu text-2xl" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <div id="navbar-collapse" class="flex-1 flex items-center justify-between gap-4">
+                    <!-- Search -->
+                    <form method="get" action="{% url 'search' %}">
+                        <div class="w-full max-w-md">
+                            <div class="relative">
+                                <i class="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+                                <input type="text" name="q" placeholder="Recherche..." aria-label="Recherche" class="tw-input w-full pl-10 pr-3" />
+                            </div>
+                        </div>
+                    </form>
+                    <!-- /Search -->
+                    
+                    {% if user.is_authenticated %}
+                    <ul class="flex items-center gap-4 ml-auto">
+                        <!-- Place this tag where you want the button to render. -->
+                        
+                        <!-- User -->
+                        <li class="relative">
+                            <button type="button" data-bs-toggle="dropdown" class="flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-blue-500 rounded">
+                                <img src="{% static 'img/logo/logo.png' %}" alt="Avatar" class="h-8 w-8 rounded-full object-cover" />
+                                <span class="text-sm text-gray-700">{{ user.username }}</span>
+                            </button>
+                            <div class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow border border-gray-200 p-2 z-50">
+                                <div class="px-2 py-2">
+                                    <div class="text-sm text-gray-700">
+                                        <span class="font-medium">{{ user.username }}</span>
+                                        <div class="text-gray-500 text-xs">
+                                            {% if user|has_group:'mediatheque' %}
+                                            Médiathèque
+                                            {% elif user|has_group:'communication' %}
+                                            Communication
+                                            {% elif user.groups.all %}
+                                            {{ user.groups.all.0.name }}
+                                            {% else %}
+                                            Admin
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="my-1 h-px bg-gray-100"></div>
+                                {% if user.is_superuser %}
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#backupModal" class="flex items-center gap-2 px-2 py-2 rounded hover:bg-gray-50 text-sm text-gray-700">
+                                    <i class="bx bx-download" aria-hidden="true"></i>
+                                    <span>Sauvegardes</span>
+                                </a>
+                                <a href="{% url 'reservation_list' %}" class="flex items-center gap-2 px-2 py-2 rounded hover:bg-gray-50 text-sm text-gray-700">
+                                    <i class="bx bx-calendar" aria-hidden="true"></i>
+                                    <span>Réservations</span>
+                                    {% if pending_reservations_count > 0 %}
+                                    <span class="ml-auto inline-flex items-center justify-center rounded-full bg-red-600 text-white text-xs px-2 py-0.5">{{ pending_reservations_count }}</span>
+                                    {% endif %}
+                                </a>
+                                <div class="my-1 h-px bg-gray-100"></div>
+                                
+                                {% endif %}
+                                
+                                <a href="{% url 'logout' %}" class="flex items-center gap-2 px-2 py-2 rounded hover:bg-gray-50 text-sm text-gray-700">
+                                    <i class="bx bx-power-off" aria-hidden="true"></i>
+                                    <span>Déconnexion</span>
+                                </a>
+                            </div>
+                        </li>
+                        <!--/ User -->
+                    </ul>
+                    {% endif %}
+                    
+                </div>
+            </nav>
+            
+            <div class="px-4 sm:px-6 lg:px-8 py-6">
+                
+                {% if user.is_authenticated %}
+                {% if pending_count != 0 %}
+                <div role="alert">
+                    <span><i></i></span>
+                    <div>
+                        <h6>Alert!!</h6>
+                        <span><a href="{% url 'structure_list' %}">Vous avez actuellement {{ pending_count }} inscription(s) de structure(s) en attente de validation.  </a></span>
+                    </div>
+                    
+                    
+                </div>
+                {% endif %}
+                {% endif %}
+                
+                {% if messages %}
+                {% for message in messages %}
+                <div{% if message.tags %} role="alert" {% endif %}>
+                {{ message }}
+                <button type="button" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+            
+            {% endif %}
+            
+            <div>
+                
+                {% block content %}
+                {% endblock %}
+                
+            </div>
+            
+        </div>
+        
+        <footer class="border-t border-gray-200 bg-white">
+            
+            <div class="px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between text-sm text-gray-600">
+                
+                <div>
+                    
+                    <span id="copyright-year"></span>
+                    <script>
+                        document.getElementById("copyright-year").textContent = "Copyright " + new Date().getFullYear();
+                    </script>
+                    
+                </div>
+                
+                <div><a href="{% url 'legalinformation' %}" class="text-gray-600 hover:text-blue-700">Mentions légales</a></div>
+                
+            </div>
+            
+        </footer>
+        
+        <div></div>
+        
+    </div>
+    
+</div>
+
+</div>
+
+<!-- Modal Sauvegardes -->
+{% if user.is_superuser %}
+<div class="modal fade" id="backupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sauvegardes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <a href="{% url 'backup_database' %}" class="btn btn-primary d-flex align-items-center mb-3">
+                            <i class="bx bx-data me-2"></i>
+                            Sauvegarder la base de données
+                        </a>
+                        <a href="{% url 'backup_media' %}" class="btn btn-info d-flex align-items-center mb-3">
+                            <i class="bx bx-images me-2"></i>
+                            Sauvegarder les médias
+                        </a>
+                        <a href="{% url 'backup_all' %}" class="btn btn-success d-flex align-items-center">
+                            <i class="bx bx-download me-2"></i>
+                            Sauvegarde complète
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div></div>
+
+<div class="fixed bottom-4 right-4 z-20">
+    <a href="https://ccsa.reseaubibli.fr/" target="_blank" class="inline-flex items-center px-3 py-2 rounded-md bg-blue-600 text-white shadow hover:bg-blue-700">Site Médiapass</a>
+</div>
+
+<script src="{% static 'vendor/libs/jquery/jquery.js' %}"></script>
+<script src="{% static 'vendor/libs/popper/popper.js' %}"></script>
+<script src="{% static 'vendor/js/bootstrap.js' %}"></script>
+<script src="{% static 'vendor/libs/perfect-scrollbar/perfect-scrollbar.js' %}"></script>
+<script src="{% static 'vendor/js/menu.js' %}"></script>
+<script src="{% static 'js/main.js' %}"></script>
+<script src="{% static 'js/sidebar.js' %}"></script>
+<script src="{% static 'vendor/libs/apex-charts/apexcharts.js' %}"></script>
+<script src="{% static 'js/dashboards-analytics.js' %}"></script>
+<script async defer src="https://buttons.github.io/buttons.js"></script>
+<!-- PWA Registration - Temporairement désactivé -->
+<!--
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('{% static "sw.js" %}')
+            .then(registration => {
+                console.log('ServiceWorker registration successful');
+            })
+            .catch(err => {
+                console.log('ServiceWorker registration failed: ', err);
+            });
+        });
+    }
+</script>
+-->
+{% block javascripts %}
+{% endblock %}
+</body>
+</html>

@@ -1,0 +1,87 @@
+{% extends "base_new.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}Nouvelle Commune - Distribution{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <i class="bx bx-plus-circle text-2xl text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-white">Nouvelle Commune</h1>
+                <p class="text-white/70 text-sm mt-1">Ajoutez une commune &#xE0; votre r&#xE9;seau de distribution</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-info-circle mr-1.5 text-[#4a6fa5]"></i>Informations de la commune</h2>
+        </div>
+
+        <form method="post" class="p-6">
+            {% csrf_token %}
+
+            <div class="space-y-6">
+                <div>
+                    <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-[#1e293b] mb-2">
+                        {{ form.name.label }} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.name|add_class:"tw-input w-full" }}
+                    {% if form.name.errors %}
+                    <div class="mt-2 text-sm text-red-600">{% for error in form.name.errors %}<p>{{ error }}</p>{% endfor %}</div>
+                    {% endif %}
+                </div>
+
+                <div class="bg-[#e8eef7] rounded-2xl p-5 border border-[#dce3ef]">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0">
+                            <i class="bx bx-info-circle text-xl text-[#4a6fa5]"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-[#1e293b] mb-1">Informations</h3>
+                            <p class="text-xs text-[#b0bedb]">Une fois la commune cr&#xE9;&#xE9;e, vous pourrez ajouter des lieux de distribution sp&#xE9;cifiques.</p>
+                            <div class="mt-3 p-3 bg-white rounded-xl border border-[#dce3ef]">
+                                <p class="text-xs font-medium text-[#4a6fa5]">
+                                    <i class="bx bx-lightbulb mr-1"></i>
+                                    Conseil : Choisissez un nom clair et distinctif pour votre commune.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if form.non_field_errors %}
+                <div class="bg-red-50 border border-red-200 rounded-xl p-4">
+                    <div class="flex items-start gap-3">
+                        <i class="bx bx-error-circle text-red-600 text-xl mt-0.5"></i>
+                        <div>
+                            <h3 class="text-sm font-medium text-red-800 mb-1">Erreur de validation</h3>
+                            <div class="text-sm text-red-700">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-[#dce3ef] flex flex-col sm:flex-row gap-4 justify-between">
+                <a href="{% url 'distribution:commune_list' %}"
+                   class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#dce3ef] text-[#1e293b] hover:bg-[#f8f9fc] transition-colors text-sm font-medium">
+                    <i class="bx bx-arrow-back"></i> Annuler
+                </a>
+                <button type="submit"
+                   class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#00a86b] text-white hover:bg-[#00915a] transition-colors text-sm font-semibold shadow-sm">
+                    <i class="bx bx-save"></i> Cr&#xE9;er la commune
+                </button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

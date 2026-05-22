@@ -1,0 +1,265 @@
+{% extends "base_new.html" %}
+{% load workshop_extras %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <a href="{% url 'library_workshops:index' %}" class="inline-flex items-center gap-1 text-white/60 hover:text-white text-sm transition-colors mb-3">
+                    <i class="bx bx-arrow-back"></i> Retour aux ateliers
+                </a>
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="bx bx-archive text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl sm:text-4xl font-bold text-white">{{ title }}</h1>
+                        <p class="text-white/70 text-sm">Historique complet des ateliers par année</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'library_workshops:statistics' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    <i class="bx bx-bar-chart-alt-2"></i>
+                    Statistiques
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-calendar-star mr-1.5 text-[#4a6fa5]"></i> Sélectionner une année</h5>
+        </div>
+        <div class="p-6">
+            <div class="flex flex-wrap gap-2">
+                {% for year in years %}
+                <a href="?year={{ year }}"
+                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all
+                          {% if year == selected_year %}
+                              bg-[#4a6fa5] text-white shadow-sm
+                          {% else %}
+                              bg-[#f8f9fc] text-[#5a6f80] hover:bg-[#e8eef7] border border-[#dce3ef]
+                          {% endif %}">
+                    {{ year }}
+                    {% if year_stats|get_item:year %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                                 {% if year == selected_year %}bg-white/20 text-white{% else %}bg-[#dce3ef] text-[#5a6f80]{% endif %}">
+                        {{ year_stats|get_item:year|get_item:'total_workshops' }}
+                    </span>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    {% if selected_year and year_stats|get_item:selected_year %}
+    {% with stats=year_stats|get_item:selected_year %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Ateliers {{ selected_year }}</p>
+                    <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ stats.total_workshops }}</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center">
+                    <i class="bx bx-calendar-star text-2xl text-[#4a6fa5]"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Participants</p>
+                    <p class="text-3xl font-bold text-emerald-600 mt-1">{{ stats.total_participants }}</p>
+                    <p class="text-xs text-[#7a8fa0] mt-1">Capacité totale : {{ stats.total_capacity }}</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                    <i class="bx bx-group text-2xl text-emerald-600"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Taux de Remplissage</p>
+                    <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ stats.avg_fill_rate }}%</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center">
+                    <i class="bx bx-pie-chart-alt text-2xl text-[#4a6fa5]"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Moyenne/Atelier</p>
+                    <p class="text-3xl font-bold text-amber-600 mt-1">{{ stats.avg_participants_per_workshop }}</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
+                    <i class="bx bx-user-check text-2xl text-amber-600"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endwith %}
+    {% endif %}
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-list-ul mr-1.5 text-[#4a6fa5]"></i> Ateliers de {{ selected_year }}</h5>
+        </div>
+        <div class="p-6">
+            {% if workshops_by_year|get_item:selected_year %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-[#dce3ef]">
+                    <thead class="bg-[#f8f9fc]">
+                        <tr>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Atelier</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieu</th>
+                            <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Participants</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Taux</th>
+                            <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Statut</th>
+                            <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#dce3ef]">
+                        {% for workshop in workshops_by_year|get_item:selected_year %}
+                        <tr class="hover:bg-[#f8f9fc] transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-[#1e293b]">{{ workshop.title }}</div>
+                                <div class="text-xs text-[#b0bedb]">{{ workshop.age_range_display }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-[#1e293b]">{{ workshop.start_date|date:"d/m/Y" }}</div>
+                                <div class="text-xs text-[#b0bedb]">{{ workshop.start_time|time:"H:i" }} — {{ workshop.end_time|time:"H:i" }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80]">{{ workshop.location.name|default:"Non défini" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                                    {{ workshop.participant_count }}/{{ workshop.max_participants }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap min-w-[120px]">
+                                <div class="flex items-center gap-2">
+                                    <div class="flex-1 bg-[#e8eef7] rounded-full h-2">
+                                        <div class="h-2 rounded-full {% if workshop.fill_rate >= 80 %}bg-emerald-500{% elif workshop.fill_rate >= 50 %}bg-amber-500{% else %}bg-red-500{% endif %}"
+                                             style="width: {{ workshop.fill_rate }}%"></div>
+                                    </div>
+                                    <span class="text-xs font-medium text-[#5a6f80]">{{ workshop.fill_rate|floatformat:0 }}%</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                {% if workshop.is_past %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#f8f9fc] text-[#7a8fa0] border border-[#dce3ef]">
+                                    <i class="bx bx-check-circle"></i>
+                                    Terminé
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                    <i class="bx bx-time"></i>
+                                    À venir
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <div class="flex gap-1 justify-center">
+                                    <a href="{% url 'library_workshops:workshop_detail' workshop.id %}"
+                                       class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"
+                                       title="Voir les détails">
+                                        <i class="bx bx-show"></i>
+                                    </a>
+                                    <a href="{% url 'library_workshops:workshop_participants' workshop.id %}"
+                                       class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"
+                                       title="Gérer les participants">
+                                        <i class="bx bx-group"></i>
+                                    </a>
+                                    <a href="{% url 'library_workshops:edit_workshop' workshop.id %}"
+                                       class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors"
+                                       title="Modifier">
+                                        <i class="bx bx-edit-alt"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-16">
+                <div class="w-16 h-16 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4">
+                    <i class="bx bx-archive text-3xl text-[#4a6fa5]"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-[#1e293b] mb-2">Aucun atelier en {{ selected_year }}</h3>
+                <p class="text-sm text-[#7a8fa0]">Aucun atelier n'a été organisé cette année.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-bar-chart-alt-2 mr-1.5 text-[#4a6fa5]"></i> Résumé par année</h5>
+        </div>
+        <div class="p-6">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-[#dce3ef]">
+                    <thead class="bg-[#f8f9fc]">
+                        <tr>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Année</th>
+                            <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Ateliers</th>
+                            <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Participants</th>
+                            <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Capacité</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Taux moyen</th>
+                            <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#dce3ef]">
+                        {% for year in years %}
+                        {% with stats=year_stats|get_item:year %}
+                        <tr class="{% if year == selected_year %}bg-[#e8eef7]{% endif %} hover:bg-[#f8f9fc] transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-[#1e293b]">{{ year }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">{{ stats.total_workshops }}</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">{{ stats.total_participants }}</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-[#5a6f80]">{{ stats.total_capacity }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap min-w-[140px]">
+                                <div class="flex items-center gap-2">
+                                    <div class="flex-1 bg-[#e8eef7] rounded-full h-2">
+                                        <div class="h-2 rounded-full {% if stats.avg_fill_rate >= 80 %}bg-emerald-500{% elif stats.avg_fill_rate >= 50 %}bg-amber-500{% else %}bg-red-500{% endif %}"
+                                             style="width: {{ stats.avg_fill_rate }}%"></div>
+                                    </div>
+                                    <span class="text-xs font-medium text-[#5a6f80]">{{ stats.avg_fill_rate }}%</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <a href="?year={{ year }}"
+                                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#4a6fa5] border border-[#dce3ef] hover:bg-[#e8eef7] transition-all">
+                                    <i class="bx bx-list-ul"></i>
+                                    Voir
+                                </a>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

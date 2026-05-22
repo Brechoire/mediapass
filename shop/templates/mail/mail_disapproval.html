@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réservation Désapprouvée - Mediapass</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f4; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <!-- En-tête -->
+        <div style="text-align: center; padding: 20px 0; border-bottom: 2px solid #e74c3c;">
+            <h1 style="color: #e74c3c; margin: 0; font-size: 24px;">Réservation Désapprouvée</h1>
+        </div>
+
+        <!-- Contenu principal -->
+        <div style="padding: 20px 0;">
+            <p style="font-size: 16px; line-height: 1.5; color: #2c3e50; margin-bottom: 20px;">
+                Nous vous informons que votre réservation a été désapprouvée.
+            </p>
+
+            <!-- Détails de la réservation -->
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+                <h2 style="color: #2c3e50; font-size: 18px; margin-top: 0; margin-bottom: 15px;">Détails de la réservation :</h2>
+                
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: #34495e;">Produit :</strong>
+                    <span style="color: #2c3e50;">{{ reservation.product.name }}</span>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: #34495e;">Structure :</strong>
+                    <span style="color: #2c3e50;">{{ reservation.structure.name }}</span>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: #34495e;">Dates :</strong>
+                    <span style="color: #2c3e50;">Du {{ reservation.start_date|date:"d/m/Y" }} au {{ reservation.end_date|date:"d/m/Y" }}</span>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: #34495e;">Horaires :</strong>
+                    <span style="color: #2c3e50;">
+                        Dépôt : {{ reservation.deposit_time|time:"H:i" }} - 
+                        Récupération : {{ reservation.pickup_time|time:"H:i" }}
+                    </span>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: #34495e;">Quantité :</strong>
+                    <span style="color: #2c3e50;">{{ reservation.quantity }}</span>
+                </div>
+
+                {% if reservation.description %}
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: #34495e;">Description :</strong>
+                    <p style="color: #2c3e50; margin: 5px 0;">{{ reservation.description }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Raison de désapprobation -->
+            <div style="background-color: #fdf2f2; padding: 20px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #e74c3c;">
+                <h3 style="color: #e74c3c; font-size: 16px; margin-top: 0; margin-bottom: 15px;">Raison de désapprobation :</h3>
+                
+                {% if reason == 'error' %}
+                    <p style="color: #2c3e50; margin: 0;"><strong>Erreur dans la demande</strong></p>
+                {% elif reason == 'conflict' %}
+                    <p style="color: #2c3e50; margin: 0;"><strong>Réservation en attente soumise avant celle-ci</strong></p>
+                {% elif reason == 'unavailable' %}
+                    <p style="color: #2c3e50; margin: 0;"><strong>Produit non disponible</strong></p>
+                {% elif reason == 'other' %}
+                    <p style="color: #2c3e50; margin: 0;"><strong>Autre raison</strong></p>
+                {% endif %}
+
+                {% if comment %}
+                <div style="margin-top: 15px;">
+                    <strong style="color: #34495e;">Commentaire :</strong>
+                    <p style="color: #2c3e50; margin: 5px 0;">{{ comment }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Message d'information -->
+            <div style="background-color: #e8f4fd; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                <p style="color: #2c3e50; margin: 0; font-size: 14px;">
+                    <strong>Note :</strong> Si vous pensez qu'il s'agit d'une erreur, n'hésitez pas à nous contacter pour plus d'informations.
+                </p>
+            </div>
+        </div>
+
+        <!-- Pied de page -->
+        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #f0f0f0;">
+            <p style="color: #7f8c8d; font-size: 14px; margin: 0;">
+                Ceci est un message automatique, merci de ne pas y répondre.
+            </p>
+            <p style="color: #7f8c8d; font-size: 14px; margin: 10px 0 0 0;">
+                &copy; {% now "Y" %} Mediapass - Tous droits réservés
+            </p>
+        </div>
+    </div>
+</body>
+</html>

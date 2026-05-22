@@ -1,0 +1,43 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Accès Refusé - Distribution{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex items-center justify-center min-h-[60vh]">
+        <div class="max-w-md w-full">
+            <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                <div class="p-8 text-center">
+                    <!-- Icône -->
+                    <div class="mb-6 flex justify-center">
+                        <div class="w-24 h-24 rounded-full bg-red-100 flex items-center justify-center">
+                            <i class="bx bx-lock text-red-600" style="font-size: 4rem;"></i>
+                        </div>
+                    </div>
+
+                    <!-- Titre -->
+                    <h2 class="text-2xl font-bold text-gray-900 mb-3">Accès Refusé</h2>
+
+                    <!-- Messages -->
+                    <div class="space-y-3 mb-6">
+                        <p class="text-gray-600">
+                            Vous n'avez pas les permissions nécessaires pour accéder à la gestion des distributions.
+                        </p>
+                        <p class="text-gray-600">
+                            Contactez un administrateur si vous pensez qu'il s'agit d'une erreur.
+                        </p>
+                    </div>
+
+                    <!-- Bouton de retour -->
+                    <a href="{% url 'home' %}" 
+                       class="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-medium">
+                        <i class="bx bx-home"></i>
+                        Retour à l'accueil
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,234 @@
+{% extends "base_kakemono.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block kakemono_content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <h1 class="card-title h3 mb-4">
+                        <i class="fas fa-{% if action == 'Créer' %}plus{% else %}edit{% endif %} me-2"></i>
+                        {{ action }} un kakémono
+                    </h1>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <!-- Titre -->
+                        <div class="mb-3">
+                            <label for="{{ form.title.id_for_label }}" class="form-label">{{ form.title.label }}</label>
+                            {% render_field form.title class="form-control" placeholder="Entrez le titre du kakémono" %}
+                            {% if form.title.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.title.errors|join:", " }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">{{ form.description.label }}</label>
+                            {% render_field form.description class="form-control" rows="4" placeholder="Décrivez le kakémono" %}
+                            {% if form.description.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.description.errors|join:", " }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Image Upload Zone -->
+                        <div class="mb-4">
+                            <label class="form-label">{{ form.image.label }}</label>
+                            <div class="image-upload-zone" id="dropZone">
+                                <input type="file" name="{{ form.image.name }}" id="{{ form.image.id_for_label }}" 
+                                       class="d-none" accept="image/*">
+                                
+                                <div id="uploadPrompt" class="text-center p-4 {% if form.instance.image %}d-none{% endif %}">
+                                    <i class="fas fa-cloud-upload-alt fa-3x mb-3 text-primary"></i>
+                                    <div class="mb-2">Glissez une image ici ou</div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('{{ form.image.id_for_label }}').click()">
+                                        Parcourir
+                                    </button>
+                                </div>
+
+                                <div id="imagePreview" class="text-center {% if not form.instance.image %}d-none{% endif %}">
+                                    <img src="{% if form.instance.image %}{{ form.instance.image.url }}{% endif %}" 
+                                         class="preview-image mb-2" alt="Prévisualisation">
+                                    <div class="image-actions">
+                                        <button type="button" class="btn btn-outline-primary btn-sm me-2" 
+                                                onclick="document.getElementById('{{ form.image.id_for_label }}').click()">
+                                            <i class="fas fa-exchange-alt me-1"></i>Changer
+                                        </button>
+                                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeImage()">
+                                            <i class="fas fa-trash me-1"></i>Supprimer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% if form.image.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.image.errors|join:", " }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Boutons -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check me-2"></i>{{ action }}
+                            </button>
+                            <a href="{% url 'kakemono:list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Annuler
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dropZone = document.getElementById('dropZone');
+    const imageInput = document.getElementById('{{ form.image.id_for_label }}');
+    const imagePreview = document.getElementById('imagePreview');
+    const uploadPrompt = document.getElementById('uploadPrompt');
+    const previewImage = imagePreview.querySelector('img');
+
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+    });
+
+    // Highlight drop zone when item is dragged over it
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, unhighlight, false);
+    });
+
+    // Handle dropped files
+    dropZone.addEventListener('drop', handleDrop, false);
+
+    // Handle file input change
+    imageInput.addEventListener('change', handleFiles);
+
+    function preventDefaults (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    function highlight(e) {
+        dropZone.classList.add('drag-over');
+    }
+
+    function unhighlight(e) {
+        dropZone.classList.remove('drag-over');
+    }
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+
+        handleFiles(files);
+    }
+
+    function handleFiles(e) {
+        const files = e.target?.files || e;
+        const file = files[0];
+
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                uploadPrompt.classList.add('d-none');
+                imagePreview.classList.remove('d-none');
+            }
+            reader.readAsDataURL(file);
+            if (e.target?.files) {
+                imageInput.files = e.target.files;
+            } else {
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                imageInput.files = dt.files;
+            }
+        }
+    }
+});
+
+function removeImage() {
+    const imageInput = document.getElementById('{{ form.image.id_for_label }}');
+    const imagePreview = document.getElementById('imagePreview');
+    const uploadPrompt = document.getElementById('uploadPrompt');
+    const previewImage = imagePreview.querySelector('img');
+
+    imageInput.value = '';
+    previewImage.src = '';
+    imagePreview.classList.add('d-none');
+    uploadPrompt.classList.remove('d-none');
+}
+</script>
+
+<style>
+.image-upload-zone {
+    border: 2px dashed #dee2e6;
+    border-radius: 0.5rem;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.image-upload-zone:hover {
+    border-color: #0d6efd;
+    background-color: #f1f4f9;
+}
+
+.image-upload-zone.drag-over {
+    border-color: #0d6efd;
+    background-color: #e9ecef;
+}
+
+.preview-image {
+    max-height: 300px;
+    max-width: 100%;
+    border-radius: 0.5rem;
+    object-fit: contain;
+}
+
+.image-actions {
+    margin-top: 1rem;
+}
+
+.form-control, .form-select {
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border: 1px solid #dee2e6;
+    transition: all 0.2s ease-in-out;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+}
+
+textarea.form-control {
+    min-height: 120px;
+}
+
+@media (max-width: 768px) {
+    .preview-image {
+        max-height: 200px;
+    }
+    .form-control, .form-select {
+        padding: 0.5rem 0.75rem;
+    }
+}
+</style>
+{% endblock %}

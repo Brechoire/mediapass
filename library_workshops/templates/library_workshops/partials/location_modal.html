@@ -1,0 +1,100 @@
+<div id="location-modal" class="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" onclick="closeLocationModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-xl border border-[#dce3ef] w-full max-w-md mx-4 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-[#dce3ef]">
+            <h3 class="text-lg font-bold text-[#1e293b] flex items-center gap-2">
+                <i class="bx bx-plus-circle text-[#4a6fa5]"></i>
+                Nouveau lieu
+            </h3>
+            <button onclick="closeLocationModal()" class="p-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer" aria-label="Fermer">
+                <i class="bx bx-x text-xl text-[#7a8fa0]"></i>
+            </button>
+        </div>
+        <div class="p-6">
+            <form id="quick-location-form"
+                  hx-post="{% url 'library_workshops:create_location' %}"
+                  hx-target="#location-modal"
+                  hx-swap="outerHTML"
+                  _="on htmx:afterRequest if event.detail.xhr.responseJSON.success
+                     then call closeLocationModalAndSelect(event.detail.xhr.responseJSON)"
+                  novalidate>
+                {% csrf_token %}
+                <div class="space-y-4">
+                    <div>
+                        <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
+                            <i class="bx bx-text mr-1"></i> {{ form.name.label }}
+                        </label>
+                        {{ form.name }}
+                        <div id="name-errors" class="text-red-600 text-xs mt-1.5 hidden"></div>
+                    </div>
+                    <div>
+                        <label for="{{ form.icon.id_for_label }}" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
+                            <i class="bx bx-image mr-1"></i> {{ form.icon.label }}
+                        </label>
+                        {{ form.icon }}
+                    </div>
+                    <div>
+                        <label for="{{ form.color.id_for_label }}" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
+                            <i class="bx bx-palette mr-1"></i> {{ form.color.label }}
+                        </label>
+                        {{ form.color }}
+                        <div class="flex gap-2 mt-2" id="color-preview">
+                            {% for value, label in form.color.field.choices %}
+                            <span class="w-6 h-6 rounded-full border border-[#dce3ef]" style="background-color: {{ value }};" title="{{ label }}"></span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 flex gap-3 justify-end">
+                    <button type="button" onclick="closeLocationModal()"
+                            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#5a6f80] hover:bg-white hover:border-[#b0bedb] transition-all">
+                        Annuler
+                    </button>
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-all shadow-sm">
+                        <i class="bx bx-plus"></i>
+                        Créer le lieu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+    function closeLocationModal() {
+        const modal = document.getElementById('location-modal');
+        if (modal) modal.remove();
+    }
+    function closeLocationModalAndSelect(data) {
+        const modal = document.getElementById('location-modal');
+        if (modal) modal.remove();
+        const select = document.getElementById('{{ form.location.id_for_label }}');
+        if (select && data.option_html) {
+            select.insertAdjacentHTML('beforeend', data.option_html);
+            select.value = data.location_id;
+            select.dispatchEvent(new Event('change'));
+        }
+    }
+    document.addEventListener('htmx:beforeRequest', function(evt) {
+        if (evt.detail.target && evt.detail.target.id === 'location-modal') {
+            document.getElementById('name-errors').classList.add('hidden');
+        }
+    });
+    document.addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.target && evt.detail.target.id === 'location-modal') {
+            const xhr = evt.detail.xhr;
+            if (xhr) {
+                try {
+                    const resp = JSON.parse(xhr.responseText);
+                    if (resp.error) {
+                        const nameErrors = document.getElementById('name-errors');
+                        if (nameErrors) {
+                            nameErrors.textContent = resp.error;
+                            nameErrors.classList.remove('hidden');
+                        }
+                    }
+                } catch(e) {}
+            }
+        }
+    });
+</script>

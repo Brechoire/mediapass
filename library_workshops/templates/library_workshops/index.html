@@ -1,0 +1,192 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Gestion des ateliers{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="bx bx-chalkboard text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl sm:text-4xl font-bold text-white">Gestion des ateliers</h1>
+                        <p class="text-white/70 text-sm">Liste des ateliers de la médiathèque</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <a href="{% url 'library_workshops:create_workshop' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    <i class="bx bx-plus"></i>
+                    Ajouter un atelier
+                </a>
+                <a href="{% url 'library_workshops:statistics' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    <i class="bx bx-bar-chart-alt-2"></i>
+                    Statistiques
+                </a>
+                <a href="{% url 'library_workshops:workshop_calendar' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    <i class="bx bx-calendar"></i>
+                    Calendrier
+                </a>
+                <a href="{% url 'library_workshops:archives' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    <i class="bx bx-archive"></i>
+                    Archives
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for message in messages %}
+        <div class="flex items-start gap-2 rounded-2xl p-4 text-sm transition-all duration-300
+            {% if message.tags == 'success' %}bg-emerald-50 border border-emerald-200 text-emerald-700{% endif %}
+            {% if message.tags == 'error' %}bg-red-50 border border-red-200 text-red-700{% endif %}
+            {% if message.tags == 'warning' %}bg-amber-50 border border-amber-200 text-amber-700{% endif %}
+            {% if message.tags == 'info' %}bg-blue-50 border border-blue-200 text-blue-700{% endif %}">
+            <i class="bx bx-check-circle mt-0.5 shrink-0
+                {% if message.tags == 'success' %}text-emerald-500{% endif %}
+                {% if message.tags == 'error' %}text-red-500{% endif %}
+                {% if message.tags == 'warning' %}text-amber-500{% endif %}
+                {% if message.tags == 'info' %}text-blue-500{% endif %}"></i>
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if workshops %}
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h5 class="font-semibold text-[#1e293b] flex items-center gap-2">
+                <i class="bx bx-calendar-star text-[#4a6fa5]"></i>
+                Ateliers à venir
+            </h5>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {% for workshop in workshops %}
+                <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+                    {% if workshop.poster %}
+                    <div class="h-36 bg-[#f8f9fc] overflow-hidden">
+                        <img src="{{ workshop.poster.url }}" alt="{{ workshop.title }}" class="w-full h-full object-cover" />
+                    </div>
+                    {% else %}
+                    <div class="h-36 bg-gradient-to-br from-[#e8eef7] to-[#dce3ef] flex items-center justify-center">
+                        <i class="bx bx-image-alt text-5xl text-[#b0bedb]"></i>
+                    </div>
+                    {% endif %}
+                    <div class="p-5">
+                        <div class="flex items-start justify-between gap-2 mb-3">
+                            <h3 class="text-base font-semibold text-[#1e293b] leading-tight">{{ workshop.title }}</h3>
+                            <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5] whitespace-nowrap">
+                                {{ workshop.age_range_display }}
+                            </span>
+                        </div>
+
+                        <div class="space-y-2 mb-4">
+                            <div class="flex items-center text-sm text-[#5a6f80]">
+                                <i class="bx bx-calendar text-[#4a6fa5] mr-2 shrink-0"></i>
+                                {% if workshop.is_single_day %}
+                                    <span>{{ workshop.start_date|date:"d/m/Y" }}</span>
+                                {% else %}
+                                    <span>{{ workshop.start_date|date:"d/m/Y" }} - {{ workshop.end_date|date:"d/m/Y" }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="flex items-center text-sm text-[#5a6f80]">
+                                <i class="bx bx-time text-emerald-600 mr-2 shrink-0"></i>
+                                <span>{{ workshop.start_time|time:"H:i" }} - {{ workshop.end_time|time:"H:i" }}</span>
+                            </div>
+                            <div class="flex items-center text-sm text-[#5a6f80]">
+                                <i class="bx bx-map-pin text-amber-600 mr-2 shrink-0"></i>
+                                <span>{{ workshop.location.name|default:"Non défini" }}</span>
+                            </div>
+                        </div>
+
+                        {% if workshop.description %}
+                        <p class="text-sm text-[#7a8fa0] mb-4 line-clamp-2">{{ workshop.description|truncatewords:20 }}</p>
+                        {% endif %}
+
+                        <div class="flex items-center justify-between pt-4 border-t border-[#dce3ef]">
+                            <div>
+                                {% with confirmed=workshop.confirmed_count|default:workshop.current_participants_count %}
+                                {% with available=workshop.max_participants|add:"0" %}
+                                {% with is_full=confirmed|stringformat:"s" %}
+                                {% if confirmed >= workshop.max_participants %}
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+                                        <i class="bx bx-x-circle"></i>
+                                        Complet
+                                    </span>
+                                {% elif workshop.available_spots <= 3 %}
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                        <i class="bx bx-time"></i>
+                                        {{ workshop.available_spots }} places
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        <i class="bx bx-check-circle"></i>
+                                        {{ confirmed }}/{{ workshop.max_participants }}
+                                    </span>
+                                {% endif %}
+                                {% endwith %}{% endwith %}{% endwith %}
+                            </div>
+                            <div class="flex gap-0.5">
+                                <a href="{% url 'library_workshops:workshop_detail' workshop.id %}"
+                                   class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"
+                                   title="Voir les détails">
+                                    <i class="bx bx-show"></i>
+                                </a>
+                                <a href="{% url 'library_workshops:add_participant' workshop.id %}"
+                                   class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors {% if workshop.is_full %}opacity-50 cursor-not-allowed{% endif %}"
+                                   title="Ajouter un participant">
+                                    <i class="bx bx-plus"></i>
+                                </a>
+                                <a href="{% url 'library_workshops:workshop_participants' workshop.id %}"
+                                   class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors"
+                                   title="Gérer les participants">
+                                    <i class="bx bx-list-ul"></i>
+                                </a>
+                                <a href="{% url 'library_workshops:edit_workshop' workshop.id %}"
+                                   class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"
+                                   title="Modifier l'atelier">
+                                    <i class="bx bx-edit-alt"></i>
+                                </a>
+                                <form method="post" action="{% url 'library_workshops:duplicate_workshop' workshop.id %}" class="inline" onsubmit="return confirm('Dupliquer cet atelier ?');">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#7a8fa0] hover:bg-[#f8f9fc] transition-colors cursor-pointer"
+                                            title="Dupliquer l'atelier">
+                                        <i class="bx bx-copy"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+        <div class="text-center py-16 px-4">
+            <div class="w-16 h-16 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4">
+                <i class="bx bx-calendar-x text-3xl text-[#4a6fa5]"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-[#1e293b] mb-2">Aucun atelier à venir</h3>
+            <p class="text-[#7a8fa0] text-sm mb-6 max-w-sm mx-auto">Aucun atelier n'est programmé pour le moment. Créez votre premier atelier dès maintenant.</p>
+            <a href="{% url 'library_workshops:create_workshop' %}" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#4a6fa5] text-white font-medium text-sm hover:bg-[#3d5f8f] transition-colors shadow-sm">
+                <i class="bx bx-plus"></i>
+                Créer un atelier
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

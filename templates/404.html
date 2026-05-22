@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Page non trouvée | {{ block.super }}{% endblock %}
+
+{% block stylesheets %}
+<style>
+    .error-page {
+        min-height: calc(100vh - 150px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+
+    .error-container {
+        max-width: 600px;
+        text-align: center;
+        padding: 2rem;
+        background: #fff;
+        border-radius: 1rem;
+        box-shadow: 0 2px 6px rgba(67, 89, 113, 0.12);
+    }
+
+    .error-code {
+        font-size: 6rem;
+        font-weight: 700;
+        color: #696cff;
+        line-height: 1.2;
+        margin-bottom: 0.5rem;
+        text-shadow: 2px 2px 4px rgba(105, 108, 255, 0.2);
+    }
+
+    .error-title {
+        font-size: 1.5rem;
+        color: #566a7f;
+        margin-bottom: 1.5rem;
+    }
+
+    .error-message {
+        color: #697a8d;
+        margin-bottom: 2rem;
+        font-size: 1.1rem;
+    }
+
+    .error-image {
+        max-width: 300px;
+        margin: 2rem auto;
+        animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes float {
+        0% {
+            transform: translateY(0px);
+        }
+        50% {
+            transform: translateY(-20px);
+        }
+        100% {
+            transform: translateY(0px);
+        }
+    }
+
+    .error-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+    }
+
+    .btn-home {
+        padding: 0.75rem 1.5rem;
+        background: #696cff;
+        color: #fff;
+        border-radius: 0.5rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+
+    .btn-home:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(105, 108, 255, 0.4);
+        color: #fff;
+    }
+
+    .btn-back {
+        padding: 0.75rem 1.5rem;
+        background: #f0f2f4;
+        color: #697a8d;
+        border-radius: 0.5rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+
+    .btn-back:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(67, 89, 113, 0.1);
+        color: #566a7f;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <div class="error-container">
+        <div class="error-code">404</div>
+        <h2 class="error-title">Page non trouvée</h2>
+        <p class="error-message">
+            Oups ! Il semble que la page que vous recherchez n'existe pas ou a été déplacée.
+        </p>
+        <img src="{% static 'assets/img/illustrations/404.svg' %}" alt="404 Illustration" class="error-image">
+        <div class="error-actions">
+            <a href="{% url 'home' %}" class="btn-home">
+                <i class="bx bx-home"></i>
+                Retour à l'accueil
+            </a>
+            <a href="javascript:history.back()" class="btn-back">
+                <i class="bx bx-arrow-back"></i>
+                Page précédente
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

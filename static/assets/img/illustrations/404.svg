@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="500" height="500" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background circle -->
+    <circle cx="250" cy="250" r="240" fill="#F5F5FF" />
+    
+    <!-- 404 text -->
+    <path d="M140 180h40v-60h30v60h40v30h-40v60h-30v-60h-40v-30z" fill="#696CFF"/>
+    <circle cx="250" cy="250" r="40" fill="#696CFF"/>
+    <path d="M320 180h40v-60h30v60h40v30h-40v60h-30v-60h-40v-30z" fill="#696CFF"/>
+    
+    <!-- Decorative elements -->
+    <circle cx="100" cy="100" r="10" fill="#E7E7FF"/>
+    <circle cx="400" cy="100" r="10" fill="#E7E7FF"/>
+    <circle cx="100" cy="400" r="10" fill="#E7E7FF"/>
+    <circle cx="400" cy="400" r="10" fill="#E7E7FF"/>
+    
+    <!-- Abstract shapes -->
+    <path d="M50 250c0-110.457 89.543-200 200-200" stroke="#E7E7FF" stroke-width="4" stroke-dasharray="10 10"/>
+    <path d="M450 250c0 110.457-89.543 200-200 200" stroke="#E7E7FF" stroke-width="4" stroke-dasharray="10 10"/>
+</svg>

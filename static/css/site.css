@@ -1,0 +1,77 @@
+/* Couche d'utilitaires complémentaires à Tailwind pour la migration progressive */
+
+/* Respecter l'accessibilité: focus visibles sur éléments interactifs */
+:focus-visible {
+	outline: 2px solid #3b82f6; /* blue-500 */
+	outline-offset: 2px;
+}
+
+/* Container max largeur pour le contenu principal */
+.app-container {
+	max-width: 1280px;
+	margin-left: auto;
+	margin-right: auto;
+	padding-left: 1rem;
+	padding-right: 1rem;
+}
+
+/* Contraindre la taille du logo global si des styles externes le surdimensionnent */
+img[alt="Médiapass"] {
+	max-height: 36px;
+	height: auto;
+	width: auto;
+}
+
+/* Transition douce pour les liens et boutons */
+a, button {
+	transition: color .15s ease, background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+/* Champs de formulaire uniformisés (style Docstring-like) */
+.tw-input {
+	appearance: none;
+	background-color: #fff;
+	border: 1px solid #e5e7eb; /* gray-200 */
+	border-radius: 0.5rem; /* rounded-lg */
+	padding: 0.5rem 0.75rem; /* py-2 px-3 */
+	line-height: 1.5rem; /* 24px */
+	color: #111827; /* gray-900 */
+}
+.tw-input:focus {
+	outline: none;
+	border-color: #6366f1; /* indigo-500 */
+	box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+/* Variante avec icône à gauche */
+.tw-input-icon {
+	padding-left: 2.75rem !important; /* espace pour l'icône */
+}
+
+/* Dropdown: corriger z-index et overflow */
+.dropdown-open {
+	z-index: 60;
+}
+
+/* Badges d'état (produit disponible/réservé) */
+.badge-availability {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	padding: 0.125rem 0.5rem;
+	border-radius: 9999px;
+	font-size: 0.75rem;
+	line-height: 1rem;
+}
+.badge-availability.available {
+	background-color: #e0f2fe; /* sky-100 */
+	color: #0369a1; /* sky-700 */
+	border: 1px solid #bae6fd;
+}
+.badge-availability.reserved {
+	background-color: #fee2e2; /* red-100 */
+	color: #991b1b; /* red-800 */
+	border: 1px solid #fecaca;
+}
+
+

@@ -1,0 +1,132 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Détails : {{ workshop.name }}{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <a href="{% url 'workshop_list' %}" class="inline-flex items-center gap-1 text-white/60 hover:text-white text-sm transition-colors mb-3">
+                    <i class="bx bx-arrow-back"></i> Retour à la liste
+                </a>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="bx bx-calendar-event text-2xl text-white"></i>
+                    </div>
+                    <h1 class="text-3xl sm:text-4xl font-bold text-white">{{ workshop.name }}</h1>
+                </div>
+                <p class="text-white/70 text-sm">Détails de l'atelier</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="{% url 'workshop_update' workshop.pk %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    <i class="bx bx-edit-alt"></i> Modifier
+                </a>
+                <a href="{% url 'workshop_delete' workshop.pk %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-400/20 border border-red-400/30 text-red-200 text-sm hover:bg-red-400/30 transition-colors"
+                   onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet atelier ?');">
+                    <i class="bx bx-trash"></i> Supprimer
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            {% if workshop.image %}
+            <img src="{{ workshop.image.url }}" alt="{{ workshop.name }}" class="w-full h-80 object-cover" />
+            {% else %}
+            <div class="w-full h-80 bg-[#f8f9fc] flex items-center justify-center">
+                <div class="text-center text-[#b0bedb]">
+                    <i class="bx bx-image text-6xl mb-3"></i>
+                    <p class="text-sm">Aucune image disponible</p>
+                </div>
+            </div>
+            {% endif %}
+            {% if workshop.image %}
+            <div class="p-4">
+                <a href="{{ workshop.image.url }}" target="_blank"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-colors">
+                    <i class="bx bx-image"></i> Voir l'affiche
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="space-y-4">
+            <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-[#dce3ef]">
+                    <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-info-circle mr-1.5 text-[#4a6fa5]"></i> Informations</h5>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="flex items-start gap-4">
+                        <div class="w-8 h-8 rounded-xl bg-[#e8eef7] flex items-center justify-center shrink-0"><i class="bx bx-map text-[#4a6fa5] text-sm"></i></div>
+                        <div>
+                            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieu</p>
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 mt-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">
+                                <i class="bx bx-map text-xs"></i> {{ workshop.location.name }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="w-8 h-8 rounded-xl bg-[#e8eef7] flex items-center justify-center shrink-0"><i class="bx bx-location-plus text-[#4a6fa5] text-sm"></i></div>
+                        <div>
+                            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Adresse</p>
+                            <p class="text-sm text-[#5a6f80] mt-1">{{ workshop.location.address }}, {{ workshop.location.zip_code }} {{ workshop.location.city }}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0"><i class="bx bx-calendar text-emerald-600 text-sm"></i></div>
+                        <div>
+                            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Date</p>
+                            <p class="text-sm text-[#5a6f80] mt-1">
+                                {{ workshop.date|date:"d/m/Y" }}
+                                {% if workshop.date_end %} — {{ workshop.date_end|date:"d/m/Y" }}{% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="w-8 h-8 rounded-xl bg-sky-100 flex items-center justify-center shrink-0"><i class="bx bx-time text-sky-600 text-sm"></i></div>
+                        <div>
+                            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Horaires</p>
+                            <p class="text-sm text-[#5a6f80] mt-1">{{ workshop.start_time|time:"H:i" }} — {{ workshop.end_time|time:"H:i" }}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center shrink-0"><i class="bx bx-group text-purple-600 text-sm"></i></div>
+                        <div>
+                            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Participants</p>
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 mt-1 rounded-full text-xs font-medium {% if workshop.number_attendees and workshop.number_registered and workshop.number_attendees >= workshop.number_registered %}bg-emerald-100 text-emerald-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+                                {{ workshop.number_registered|default:"0" }} inscrit{% if workshop.number_registered != 1 %}s{% endif %}
+                                / {{ workshop.number_attendees|default:"0" }} présent{% if workshop.number_attendees != 1 %}s{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-[#dce3ef]">
+                    <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-cog mr-1.5 text-[#4a6fa5]"></i> Options</h5>
+                </div>
+                <div class="p-6">
+                    <div class="flex flex-wrap gap-2">
+                        {% if workshop.poster_required %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-700"><i class="bx bx-image text-xs"></i> Affiche requise</span>
+                        {% endif %}
+                        {% if workshop.class_welcome %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700"><i class="bx bx-school text-xs"></i> Accueil de classe</span>
+                        {% endif %}
+                        {% if not workshop.poster_required and not workshop.class_welcome %}
+                        <span class="text-sm text-[#b0bedb]">Aucune option spéciale</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

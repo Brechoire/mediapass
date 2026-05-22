@@ -1,0 +1,190 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Détails de la réservation : {{ reservation.product }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- En-tête -->
+    <div class="mb-8">
+        <nav class="flex mb-4" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li class="inline-flex items-center">
+                    <a href="{% url 'home' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-indigo-600">
+                        <i class="bx bx-home mr-2"></i>
+                        Accueil
+                    </a>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <i class="bx bx-chevron-right text-gray-400 mx-1"></i>
+                        <a href="{% url 'reservation_list' %}" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Réservations</a>
+                    </div>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <i class="bx bx-chevron-right text-gray-400 mx-1"></i>
+                        <span class="text-sm font-medium text-gray-500">Détails</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+        
+        <div class="bg-white border border-gray-200 rounded-xl shadow-lg p-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div class="flex items-center gap-4 mb-4 md:mb-0">
+                    <div class="p-3 bg-indigo-100 rounded-xl">
+                        <i class="bx bx-shopping-bag text-2xl text-indigo-600"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900 mb-1">Réservation : {{ reservation.product }}</h1>
+                        <p class="text-gray-600">Créée le {{ reservation.created_at|date:"d/m/Y" }}</p>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <a href="{% url 'reservation_list' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
+                        <i class="bx bx-arrow-back"></i>
+                        Retour
+                    </a>
+                    {% if not reservation.is_approved %}
+                    <form method="post" action="{% url 'approve_reservation' reservation.id %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                            <i class="bx bx-check"></i>
+                            Approuver
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenu principal -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Informations de la réservation -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                    <i class="bx bx-info-circle text-indigo-600"></i>
+                    Informations de la réservation
+                </h2>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                        <span class="text-sm font-medium text-gray-700">Produit</span>
+                        <a href="{% url 'product_detail' reservation.product.pk %}" class="text-sm text-indigo-600 hover:text-indigo-700 font-medium hover:underline">
+                            {{ reservation.product }}
+                        </a>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                        <span class="text-sm font-medium text-gray-700">Date de début</span>
+                        <span class="text-sm text-gray-900">{{ reservation.start_date|date:"d/m/Y" }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                        <span class="text-sm font-medium text-gray-700">Date de fin</span>
+                        <span class="text-sm text-gray-900">{{ reservation.end_date|date:"d/m/Y" }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                        <span class="text-sm font-medium text-gray-700">Structure</span>
+                        <a href="{% url 'structure_detail' reservation.structure.pk %}" class="text-sm text-indigo-600 hover:text-indigo-700 font-medium hover:underline">
+                            {{ reservation.structure }}
+                        </a>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                        <span class="text-sm font-medium text-gray-700">Quantité</span>
+                        <span class="text-sm text-gray-900">{{ reservation.quantity }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3">
+                        <span class="text-sm font-medium text-gray-700">Statut</span>
+                        {% if reservation.is_approved %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                <div class="w-2 h-2 bg-emerald-400 rounded-full mr-1.5"></div>
+                                Approuvée
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                <div class="w-2 h-2 bg-amber-400 rounded-full mr-1.5"></div>
+                                En attente
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Informations du produit -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                    <i class="bx bx-package text-emerald-600"></i>
+                    Informations du produit
+                </h2>
+            </div>
+            <div class="p-6">
+                <div class="text-center mb-6">
+                    <img class="mx-auto rounded-lg shadow-sm" 
+                         style="max-height: 200px; max-width: 200px;" 
+                         src="{{ reservation.product.image.url }}" 
+                         alt="{{ reservation.product.name }}" />
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                        <span class="text-sm font-medium text-gray-700">Nom</span>
+                        <span class="text-sm text-gray-900 font-medium">{{ reservation.product.name }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                        <span class="text-sm font-medium text-gray-700">Catégorie</span>
+                        <span class="text-sm text-gray-900">{{ reservation.product.category.name }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                        <span class="text-sm font-medium text-gray-700">Valeur d'assurance</span>
+                        <span class="text-sm text-gray-900 font-semibold">{{ reservation.product.price }} €</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3">
+                        <span class="text-sm font-medium text-gray-700">Stock disponible</span>
+                        <span class="text-sm text-gray-900">{{ reservation.product.quantity }}</span>
+                    </div>
+                </div>
+                
+                {% if reservation.product.description %}
+                <div class="mt-6 pt-4 border-t border-gray-200">
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Description</h3>
+                    <p class="text-sm text-gray-600 leading-relaxed">{{ reservation.product.description|truncatechars:150 }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes et commentaires -->
+    {% if reservation.notes %}
+    <div class="mt-8">
+        <div class="bg-white border border-gray-200 rounded-xl shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                    <i class="bx bx-note text-amber-600"></i>
+                    Notes et commentaires
+                </h2>
+            </div>
+            <div class="p-6">
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <p class="text-sm text-amber-800 leading-relaxed">{{ reservation.notes }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,422 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div>
+                <a href="{% url 'library_workshops:index' %}" class="inline-flex items-center gap-1 text-white/60 hover:text-white text-sm transition-colors mb-3">
+                    <i class="bx bx-arrow-back"></i> Retour aux ateliers
+                </a>
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="bx bx-bar-chart-alt-2 text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl sm:text-4xl font-bold text-white">{{ title }}</h1>
+                        <p class="text-white/70 text-sm">Période : {{ start_date|date:"d/m/Y" }} — {{ end_date|date:"d/m/Y" }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <a href="?period=1_week" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {% if period == '1_week' %}bg-white text-[#4a6fa5]{% else %}bg-white/10 text-white/80 hover:bg-white/20{% endif %}">
+                    1 semaine
+                </a>
+                <a href="?period=1_month" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {% if period == '1_month' %}bg-white text-[#4a6fa5]{% else %}bg-white/10 text-white/80 hover:bg-white/20{% endif %}">
+                    1 mois
+                </a>
+                <a href="?period=3_months" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {% if period == '3_months' %}bg-white text-[#4a6fa5]{% else %}bg-white/10 text-white/80 hover:bg-white/20{% endif %}">
+                    3 mois
+                </a>
+                <a href="?period=6_months" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {% if period == '6_months' %}bg-white text-[#4a6fa5]{% else %}bg-white/10 text-white/80 hover:bg-white/20{% endif %}">
+                    6 mois
+                </a>
+                <a href="?period=12_months" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {% if period == '12_months' %}bg-white text-[#4a6fa5]{% else %}bg-white/10 text-white/80 hover:bg-white/20{% endif %}">
+                    12 mois
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Total Ateliers</p>
+                    <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ total_workshops }}</p>
+                    <p class="text-xs text-[#7a8fa0] mt-1">{{ past_workshops }} passés, {{ upcoming_workshops }} à venir</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center">
+                    <i class="bx bx-calendar-star text-2xl text-[#4a6fa5]"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Total Participants</p>
+                    <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ total_participants }}</p>
+                    <p class="text-xs text-[#7a8fa0] mt-1">{{ confirmed_participants }} confirmés</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                    <i class="bx bx-group text-2xl text-emerald-600"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Taux de Remplissage</p>
+                    <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ avg_fill_rate|floatformat:1|default:"0,0" }}%</p>
+                    <p class="text-xs text-[#7a8fa0] mt-1">{{ waiting_participants }} en attente</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center">
+                    <i class="bx bx-pie-chart-alt text-2xl text-[#4a6fa5]"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Taux de Surcapacité</p>
+                    <p class="text-3xl font-bold mt-1 {% if overbooking_rate > 10 %}text-red-600{% else %}text-amber-600{% endif %}">
+                        {{ overbooking_rate|floatformat:1|default:"0,0" }}%
+                    </p>
+                    <p class="text-xs text-[#7a8fa0] mt-1">{{ overbooked_workshops }} ateliers</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl {% if overbooking_rate > 10 %}bg-red-100{% else %}bg-amber-100{% endif %} flex items-center justify-center">
+                    <i class="bx bx-error-circle text-2xl {% if overbooking_rate > 10 %}text-red-600{% else %}text-amber-600{% endif %}"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-bar-chart-alt-2 mr-1.5 text-[#4a6fa5]"></i> Évolution annuelle</h5>
+            </div>
+            <div class="p-6">
+                <div class="h-52"><canvas id="yearlyChart"></canvas></div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-trending-up mr-1.5 text-[#4a6fa5]"></i> Évolution mensuelle</h5>
+            </div>
+            <div class="p-6">
+                <div class="h-52"><canvas id="monthlyChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-pie-chart mr-1.5 text-[#4a6fa5]"></i> Répartition par âge</h5>
+            </div>
+            <div class="p-6">
+                <div class="h-56"><canvas id="ageChart"></canvas></div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-user-circle mr-1.5 text-[#4a6fa5]"></i> Détails démographiques</h5>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-2 gap-6 mb-4">
+                    <div class="text-center p-4 bg-[#e8eef7] rounded-xl">
+                        <p class="text-2xl font-bold text-[#4a6fa5]">{{ age_stats.avg_age|default:0|floatformat:1 }}</p>
+                        <p class="text-xs text-[#7a8fa0] mt-1">Âge moyen</p>
+                    </div>
+                    <div class="text-center p-4 bg-emerald-50 rounded-xl">
+                        <p class="text-2xl font-bold text-emerald-600">{{ group_stats.total_groups|default:0 }}</p>
+                        <p class="text-xs text-[#7a8fa0] mt-1">Groupes</p>
+                    </div>
+                </div>
+                <div class="bg-[#f8f9fc] rounded-xl p-4 border border-[#dce3ef]">
+                    <div class="text-sm text-[#5a6f80] flex items-center gap-2">
+                        <i class="bx bx-info-circle text-[#4a6fa5]"></i>
+                        Tranche d'âge : {{ age_stats.min_age|default:0 }} — {{ age_stats.max_age|default:0 }} ans
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-trophy mr-1.5 text-amber-500"></i> Ateliers les plus populaires</h5>
+            </div>
+            <div class="p-6">
+                {% if popular_workshops %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-[#dce3ef]">
+                        <thead class="bg-[#f8f9fc]">
+                            <tr>
+                                <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Atelier</th>
+                                <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Participants</th>
+                                <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Taux</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[#dce3ef]">
+                            {% for workshop in popular_workshops %}
+                            <tr class="hover:bg-[#f8f9fc] transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-[#1e293b]">{{ workshop.title|truncatechars:30 }}</div>
+                                    <div class="text-xs text-[#b0bedb]">{{ workshop.location.name|default:"Non défini" }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80]">{{ workshop.start_date|date:"d/m/Y" }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">{{ workshop.participant_count }}</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-[#1e293b]">{% widthratio workshop.participant_count workshop.max_participants 100 %}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-10">
+                    <i class="bx bx-trophy text-4xl text-[#b0bedb] mb-3"></i>
+                    <p class="text-sm text-[#7a8fa0]">Aucun atelier dans cette période</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-map-pin mr-1.5 text-[#4a6fa5]"></i> Lieux les plus utilisés</h5>
+            </div>
+            <div class="p-6">
+                {% if popular_locations %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-[#dce3ef]">
+                        <thead class="bg-[#f8f9fc]">
+                            <tr>
+                                <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieu</th>
+                                <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Ateliers</th>
+                                <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Participants</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[#dce3ef]">
+                            {% for location in popular_locations %}
+                            <tr class="hover:bg-[#f8f9fc] transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1e293b">{{ location.location__name }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">{{ location.workshop_count }}</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">{{ location.participant_count }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-10">
+                    <i class="bx bx-map-pin text-4xl text-[#b0bedb] mb-3"></i>
+                    <p class="text-sm text-[#7a8fa0]">Aucun lieu dans cette période</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-exclamation-triangle mr-1.5 text-amber-500"></i> Ateliers avec le moins d'inscriptions</h5>
+        </div>
+        <div class="p-6">
+            {% if least_popular_workshops %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-[#dce3ef]">
+                    <thead class="bg-[#f8f9fc]">
+                        <tr>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Atelier</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Participants</th>
+                            <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Capacité</th>
+                            <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Taux</th>
+                            <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#dce3ef]">
+                        {% for workshop in least_popular_workshops %}
+                        <tr class="hover:bg-[#f8f9fc] transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-[#1e293b]">{{ workshop.title|truncatechars:30 }}</div>
+                                <div class="text-xs text-[#b0bedb]">{{ workshop.location.name|default:"Non défini" }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80]">{{ workshop.start_date|date:"d/m/Y" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {% if workshop.participant_count == 0 %}bg-red-50 text-red-700{% else %}bg-amber-50 text-amber-700{% endif %}">{{ workshop.participant_count }}</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-[#5a6f80]">{{ workshop.max_participants }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-[#1e293b]">{% widthratio workshop.participant_count workshop.max_participants 100 %}%</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <a href="{% url 'library_workshops:workshop_detail' workshop.id %}" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors" title="Voir les détails">
+                                    <i class="bx bx-show"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-10">
+                <i class="bx bx-check-circle text-4xl text-emerald-400 mb-3"></i>
+                <p class="text-sm text-[#7a8fa0]">Tous les ateliers ont des inscriptions</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-cog mr-1.5 text-[#4a6fa5]"></i> Actions</h5>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <a href="{% url 'library_workshops:index' %}" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#5a6f80] hover:bg-[#f8f9fc] transition-all">
+                    <i class="bx bx-list-ul"></i>
+                    Voir tous les ateliers
+                </a>
+                <a href="{% url 'library_workshops:create_workshop' %}" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-all shadow-sm">
+                    <i class="bx bx-plus"></i>
+                    Créer un atelier
+                </a>
+                <button onclick="window.print()" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-all shadow-sm cursor-pointer">
+                    <i class="bx bx-printer"></i>
+                    Imprimer
+                </button>
+                <button onclick="exportData()" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#4a6fa5] text-sm font-medium text-[#4a6fa5] hover:bg-[#e8eef7] transition-all cursor-pointer">
+                    <i class="bx bx-download"></i>
+                    Exporter
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+
+{{ monthly_data|json_script:"monthly-data" }}
+{{ yearly_data|json_script:"yearly-data" }}
+{{ age_distribution|json_script:"age-distribution" }}
+
+<style>
+@media print {
+    body { background: white !important; }
+    header, footer, .no-print { display: none !important; }
+    .bg-gradient-to-br { background: #4a6fa5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    canvas { max-height: 200px !important; }
+}
+</style>
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+
+<script>
+function parseFrenchNumber(value) {
+    if (typeof value === 'string') return parseFloat(value.replace(',', '.'));
+    return value;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const monthlyData = JSON.parse(document.getElementById('monthly-data').textContent || '[]');
+    const yearlyData = JSON.parse(document.getElementById('yearly-data').textContent || '[]');
+    const ageDistribution = JSON.parse(document.getElementById('age-distribution').textContent || '{}');
+
+    const chartDefaults = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { boxWidth: 12, padding: 10, font: { size: 11 } } } } };
+
+    const yearlyCtx = document.getElementById('yearlyChart');
+    if (yearlyCtx && Array.isArray(yearlyData) && yearlyData.length > 0) {
+        new Chart(yearlyCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: yearlyData.map(item => item.year),
+                datasets: [
+                    { label: 'Ateliers', data: yearlyData.map(i => i.workshop_count || 0), backgroundColor: '#4a6fa5', borderRadius: 4 },
+                    { label: 'Participants', data: yearlyData.map(i => i.participant_count || 0), backgroundColor: '#10b981', borderRadius: 4 }
+                ]
+            },
+            options: { ...chartDefaults, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        });
+    } else if (yearlyCtx) {
+        yearlyCtx.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-[#b0bedb] text-sm">Aucune donnée annuelle</div>';
+    }
+
+    const monthlyCtx = document.getElementById('monthlyChart');
+    if (monthlyCtx && Array.isArray(monthlyData) && monthlyData.length > 0) {
+        new Chart(monthlyCtx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: monthlyData.map(item => {
+                    const d = new Date(item.month);
+                    return isNaN(d) ? (item.month || '') : d.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+                }),
+                datasets: [
+                    { label: 'Ateliers', data: monthlyData.map(i => i.workshop_count || 0), borderColor: '#4a6fa5', backgroundColor: 'rgba(74,111,165,0.1)', fill: true, tension: 0.4 },
+                    { label: 'Participants', data: monthlyData.map(i => i.participant_count || 0), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.4 }
+                ]
+            },
+            options: { ...chartDefaults, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        });
+    } else if (monthlyCtx) {
+        monthlyCtx.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-[#b0bedb] text-sm">Aucune donnée mensuelle</div>';
+    }
+
+    const ageCtx = document.getElementById('ageChart');
+    if (ageCtx && ageDistribution && typeof ageDistribution === 'object' && Object.keys(ageDistribution).length > 0) {
+        new Chart(ageCtx.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(ageDistribution),
+                datasets: [{
+                    data: Object.values(ageDistribution).map(v => v || 0),
+                    backgroundColor: ['#4a6fa5','#10b981','#f59e0b','#ef4444','#06b6d4','#8b5cf6','#f97316'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: { ...chartDefaults, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } } } }
+        });
+    } else if (ageCtx) {
+        ageCtx.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-[#b0bedb] text-sm">Aucune donnée</div>';
+    }
+});
+
+function exportData() {
+    const data = {
+        period: '{{ period|default:"" }}',
+        start_date: '{{ start_date|date:"d/m/Y"|default:"" }}',
+        end_date: '{{ end_date|date:"d/m/Y"|default:"" }}',
+        statistics: {
+            total_workshops: {{ total_workshops|default:0 }},
+            total_participants: {{ total_participants|default:0 }},
+            avg_fill_rate: parseFrenchNumber('{{ avg_fill_rate|default:0|floatformat:1 }}'),
+            overbooking_rate: parseFrenchNumber('{{ overbooking_rate|default:0|floatformat:1 }}')
+        }
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `statistiques_ateliers_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}

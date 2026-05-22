@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>404</title>
+    <style>
+        @media screen {
+            html, body {
+                min-height: 100%;
+            }
+
+            body {
+                margin: 0;
+                font-size: 16px;
+                font-family: serif;
+                line-height: 1.4;
+            }
+
+            #page-404 {
+                width: 100%;
+                height: 100vh;
+                position: relative;
+                z-index: 10;
+                font-family: "Anton", Verdana, sans-serif;
+                overflow: hidden;
+
+                /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#ffffff+0,eeeeee+100 */
+                background: #ffffff; /* Old browsers */
+                background: -moz-radial-gradient(center, ellipse cover, #ffffff 0%, #eeeeee 100%); /* FF3.6-15 */
+                background: -webkit-radial-gradient(center, ellipse cover, #ffffff 0%,#eeeeee 100%); /* Chrome10-25,Safari5.1-6 */
+                background: radial-gradient(ellipse at center, #ffffff 0%,#eeeeee 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+                filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#eeeeee',GradientType=1 ); /* IE6-9 fallback on horizontal gradient */
+            }
+
+            #page-404 #title {
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                z-index: 15;
+                opacity: 0;
+                transform: scale(1.25, 1.25);
+                transition: opacity 1.25s 1.5s ease-in-out, transform 2.5s 0.5s ease-in-out;
+            }
+
+            .renderer-ready #page-404 #title {
+                opacity: 1;
+                transform: scale(1, 1);
+            }
+
+            #page-404 h2 {
+                line-height: 100vh;
+                margin: 0;
+                text-align: center;
+                font-size: 10vh;
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                text-transform: uppercase;
+                pointer-events: none;
+                margin: 0;
+                font-weight: normal;
+                color: #333;
+            }
+
+            #back-to-home {
+                position: absolute;
+                right: 0;
+                bottom: 2em;
+                left: 0;
+                z-index: 15;
+                text-align: center;
+
+                opacity: 0;
+                transition: opacity 1.25s 2s ease-in-out;
+            }
+
+            .renderer-ready #back-to-home {
+                opacity: 1;
+            }
+
+            #back-to-home a {
+                display: inline-block;
+                padding: 0.35em 0.75em;
+                border: 1px solid #333;
+                text-decoration: none;
+                text-transform: uppercase;
+                color: #333;
+
+                transition: color 0.4s ease-in-out, background 0.4s ease-in-out, border-color 0.4s ease-in-out;
+            }
+
+            #back-to-home a:hover {
+                color: white;
+                border-color: #7f793f;
+                /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#7f793f+0,a8a059+50,7f793f+100 */
+                background: #7f793f; /* Old browsers */
+                background: -moz-linear-gradient(45deg, #7f793f 0%, #a8a059 50%, #7f793f 100%); /* FF3.6-15 */
+                background: -webkit-linear-gradient(45deg, #7f793f 0%,#a8a059 50%,#7f793f 100%); /* Chrome10-25,Safari5.1-6 */
+                background: linear-gradient(45deg, #7f793f 0%,#a8a059 50%,#7f793f 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+                filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#7f793f', endColorstr='#7f793f',GradientType=1 ); /* IE6-9 fallback on horizontal gradient */
+            }
+
+            #canvas {
+                top: 0;
+                bottom: 0;
+                width: 100vw;
+
+                position: fixed;
+                z-index: 10;
+            }
+        }
+
+        @media screen and (orientation: portrait) {
+            #page-404 h2 {
+                font-size: 2vw;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="page-404">
+    <div id="title">
+        <h2>Page not found</h2>
+    </div>
+
+    <div id="back-to-home">
+        <a href="">Back to home</a>
+    </div>
+
+    <div id="canvas"></div>
+</div>
+<script>
+    // inner variables
+    var home, canvas, title;
+    var camera, scene, renderer;
+    var mouse;
+
+    var windowHalfX = window.innerWidth / 2;
+    var windowHalfY = window.innerHeight / 2;
+
+    var raycaster;
+
+    var clock;
+
+    var orbit;
+    var particles = {};
+    var imageParticlesSystem;
+    var planeHelperObject = new Array();
+
+    var particleCanvas;
+
+    var guiParams;
+
+
+    const cameraNearPlane = 0.1;
+    const cameraFarPlane = 1000;
+
+    window.onload = initparticleImage;
+
+    function initparticleImage() {
+
+        // creating canvas and context objects
+        canvas = document.getElementById('canvas');
+        home = document.getElementById('home');
+
+        // preparing scene
+        scene = new THREE.Scene();
+
+        // preparing camera
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, cameraNearPlane, cameraFarPlane);
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+        camera.position.set(0, 0, 700);
+        scene.add(camera);
+
+        mouse = new THREE.Vector2();
+
+        // preparing canvas to get image data
+        var coordinateCanvas = document.createElement( 'canvas' );
+        var ctx = coordinateCanvas.getContext("2d");
+
+        particleCanvas = {};
+
+        particleCanvas.width = 1500;
+        particleCanvas.height = 600;
+
+        coordinateCanvas.width = particleCanvas.width;
+        coordinateCanvas.height = particleCanvas.height;
+
+        // translate context to center of canvas
+        ctx.translate(0, particleCanvas.height);
+
+        // flip context vertically
+        ctx.scale(1, -1);
+
+        // write on canvas
+        ctx.font = "250pt Times New Roman";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText("404", coordinateCanvas.width / 2, coordinateCanvas.height / 2);
+
+
+        // get image data
+        var data = ctx.getImageData(0, 0, coordinateCanvas.width, coordinateCanvas.height);
+        ctx.clearRect(0, 0, coordinateCanvas.width, coordinateCanvas.height);
+
+        // fill our particles coordinate array
+        particles.initPositions = new Array();
+        particles.minPositions = new Array();
+        particles.maxPositions = new Array();
+        particles.noiseValues = new Array();
+        particles.colors = new Array();
+
+        for (var y = 0, y2 = data.height; y < y2; y++) {
+            for (var x = 0, x2 = data.width; x < x2; x++) {
+                // if we got a white pixel from our text, create a particle
+                if (data.data[(x * 4 + y * 4 * data.width)] > 128) {
+
+                    var maxZ = Math.random() * 2000 + (camera.position.z + 10);
+
+                    // before imploding
+                    particles.initPositions.push(x);
+                    particles.initPositions.push(y);
+                    particles.initPositions.push(maxZ);
+
+                    // after imploding
+                    particles.minPositions.push(x);
+                    particles.minPositions.push(y);
+                    particles.minPositions.push(0);
+
+                    // before imploding
+                    particles.maxPositions.push(x);
+                    particles.maxPositions.push(y);
+                    particles.maxPositions.push(maxZ);
+
+                    var color = new THREE.Color(0x7f793f);
+                    particles.colors.push(color.r, color.g, color.b);
+
+                    var noiseX = Math.random() * 20 - 10;
+                    var noiseY = Math.random() * 20 - 10;
+
+                    particles.noiseValues.push(noiseX);
+                    particles.noiseValues.push(noiseY);
+                }
+            }
+        }
+
+
+
+        // plane helper for the raycaster
+        var planeHelperGeometry = new THREE.PlaneGeometry(10000, 10000);
+        var planeHelperMaterial = new THREE.MeshBasicMaterial({
+            color: 0x000000,
+            transparent: true,
+            opacity: 0,
+        });
+
+        var planeHelper = new THREE.Mesh(planeHelperGeometry, planeHelperMaterial);
+
+        planeHelperObject.push(planeHelper);
+        scene.add(planeHelper);
+
+        // preparing our buffer geometry
+        var imageParticlesGeometry = new THREE.BufferGeometry();
+
+        imageParticlesGeometry.addAttribute( 'position', new THREE.Float32BufferAttribute( particles.initPositions, 3 ) );
+        imageParticlesGeometry.addAttribute( 'minPosition', new THREE.Float32BufferAttribute( particles.minPositions, 3 ) );
+        imageParticlesGeometry.addAttribute( 'maxPosition', new THREE.Float32BufferAttribute( particles.maxPositions, 3 ) );
+        imageParticlesGeometry.addAttribute( 'color', new THREE.Float32BufferAttribute( particles.colors, 3 ) );
+        imageParticlesGeometry.addAttribute( 'noiseValue', new THREE.Float32BufferAttribute( particles.noiseValues, 2 ) );
+        imageParticlesGeometry.addAttribute( 'mouseRepulsion', new THREE.Float32BufferAttribute( particles.mouseRepulsion, 1 ) );
+
+        // our uniforms
+        var uniforms = {
+            uDuration: {
+                type: "f",
+                value: 180 // 3 seconds
+            },
+            uElapsedTime: {
+                type: "f",
+                value: 0
+            },
+            uSize: {
+                type: "f",
+                value: 3
+            },
+            uNoise: {
+                type: "f",
+                value: 8
+            },
+            uMousePosition: {
+                type: "v2",
+                value: new THREE.Vector2()
+            },
+            uMouseRadius: {
+                type: "f",
+                value: 100
+            },
+            uMouseStrength: {
+                type: "f",
+                value: 0.75
+            },
+        }
+
+        var imageParticlesMaterial = new THREE.ShaderMaterial({
+            uniforms: uniforms,
+            vertexShader: document.getElementById('particle-image-vs').textContent,
+            fragmentShader: document.getElementById('particle-image-fs').textContent
+        });
+
+        // create the particle system
+        imageParticlesSystem = new THREE.Points(imageParticlesGeometry, imageParticlesMaterial);
+
+        imageParticlesSystem.position.x = -1 * particleCanvas.width / 2;
+        imageParticlesSystem.position.y = -1 * particleCanvas.height / 2;
+
+        // add it to the scene
+        scene.add(imageParticlesSystem);
+
+
+        // preparing new renderer and drawing it
+        renderer = new THREE.WebGLRenderer({ alpha:true, antialias: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio( window.devicePixelRatio );
+
+        canvas.appendChild(renderer.domElement);
+
+        // get the main title HTML element
+        title = document.getElementById("title").getElementsByTagName("h2")[0];
+
+        // change positions by mouse
+        document.addEventListener('mousemove', onMousemove, false);
+
+        // change canvas size on resize
+        window.addEventListener('resize', onResize, false);
+
+        clock = new THREE.Clock();
+        clock.start();
+
+
+        // mouse interaction
+        raycaster = new THREE.Raycaster();
+
+        // ready to go
+        document.body.classList.add("renderer-ready");
+
+        animate();
+    }
+
+
+    function onMousemove(event) {
+        // used in the raycaster
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+        // translate the title
+        var titleTranslation = {
+            x: -(event.clientX - (window.innerWidth / 2)) / 10,
+            y: -(event.clientY - (window.innerHeight / 2)) / 10,
+        };
+
+        title.style.transform = "translate3d(" + titleTranslation.x + "px, " + titleTranslation.y + "px, 0)";
+    }
+
+    function onResize(event) {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+
+    function animate() {
+
+        requestAnimationFrame(animate);
+
+        var mouseX, mouseY;
+
+        raycaster.setFromCamera( mouse, camera );
+        var intersects;
+        intersects = raycaster.intersectObjects( planeHelperObject, true );
+
+        if(intersects.length > 0) {
+
+            var intersection = intersects[0];
+            mouseX = intersection.point.x + particleCanvas.width / 2;
+            mouseY = intersection.point.y + particleCanvas.height / 2;
+        }
+
+
+
+        // animate here
+        if(imageParticlesSystem.material.uniforms) {
+            imageParticlesSystem.material.uniforms.uElapsedTime.value++;
+
+            imageParticlesSystem.material.uniforms.uMousePosition.value.x = mouseX;
+            imageParticlesSystem.material.uniforms.uMousePosition.value.y = mouseY;
+        }
+
+        renderer.render(scene, camera);
+    }
+
+</script>
+
+<script id="particle-image-vs" type="x-shader/x-vertex">
+			uniform float uDuration;
+			uniform float uElapsedTime;
+			uniform float uSize;
+			uniform float uNoise;
+			uniform vec2 uMousePosition;
+			uniform float uMouseRadius;
+			uniform float uMouseStrength;
+
+			// useless ?
+		  varying float pointDisplacement;
+			varying vec3 vColor;
+
+			// we do also have access to attributes defined in buffer geometry : minPosition, maxPosition, color (vec3)
+			attribute vec3 minPosition;
+			attribute vec3 maxPosition;
+			attribute vec3 color;
+			attribute vec2 noiseValue;
+
+			float exponentialInOut( float k ){
+			    // https://github.com/tweenjs/tween.js/blob/master/src/Tween.js
+			    if( k <= 0.0 ){
+			        return 0.0;
+			    }
+			    else if( k >= 1.0 ){
+			        return 1.0;
+			    }
+			    else if( ( k *= 2.0 ) < 1.0 ){
+			        return 0.5 * pow( 1024.0, k - 1.0 );
+			    }
+			    return 0.5 * ( - pow( 2.0, - 10.0 * ( k - 1.0 ) ) + 2.0 );
+			}
+
+      void main() {
+			  	vColor = color;
+
+				// EXPLOSION/IMPLOSION
+				// calculate time value (also vary duration of each particle)
+    			float t = clamp(uElapsedTime / uDuration, 0.0, 1.0);
+
+				// calculate progress
+    			float progress = exponentialInOut( t );
+
+				// calculate new position (simple linear interpolation)
+				vec3 delta = minPosition - maxPosition;
+				vec3 explosingPosition = position + delta * progress;
+
+
+				// ADD MOUSE INTERACTION
+				vec3 interactionPosition = explosingPosition;
+
+
+				float distanceToCenter = clamp(distance(vec2(interactionPosition.x, interactionPosition.y), uMousePosition) / uMouseRadius, 0.0, 1.0);
+
+          float distanceToPoint = distance(vec2(interactionPosition.x, interactionPosition.y), uMousePosition);
+
+				// ATTRACTION
+				//vec3 vectorToPoint = normalize(vec3(uMousePosition, 0.0) - interactionPosition);
+
+				// REPULSION
+				vec3 vectorToPoint = normalize(interactionPosition - vec3(uMousePosition, 0.0));
+
+
+					vectorToPoint.x = vectorToPoint.x / (pow(distanceToCenter, uMouseStrength));
+
+					vectorToPoint.y = vectorToPoint.y / (pow(distanceToCenter, uMouseStrength));
+
+          pointDisplacement = (abs(vectorToPoint.x) + abs(vectorToPoint.y)) / 2.0;
+
+				float xAnim = interactionPosition.x + vectorToPoint.x * uMouseRadius * distanceToCenter;
+
+				float yAnim = interactionPosition.y + vectorToPoint.y * uMouseRadius * distanceToCenter;
+
+				interactionPosition = vec3(xAnim, yAnim, interactionPosition.z);
+
+
+
+
+				// ADD NOISE
+				vec3 noisePosition = interactionPosition;
+
+        float noiseX = interactionPosition.x + cos(noiseValue.x * (uElapsedTime / 100.0)) * progress * uNoise * min((uMouseRadius / 4.0) / distanceToPoint, 1.0);
+        float noiseY = interactionPosition.y + cos(noiseValue.y * (uElapsedTime / 100.0)) * progress * uNoise * min((uMouseRadius / 4.0) / distanceToPoint, 1.0);
+
+        noisePosition = vec3(noiseX, noiseY, interactionPosition.z);
+
+
+				vec4 mvPosition = modelViewMatrix * vec4( noisePosition, 1.0 );
+
+				gl_PointSize = uSize;
+
+		    gl_Position = projectionMatrix * mvPosition;
+		    }
+		</script>
+
+<script id="particle-image-fs" type="x-shader/x-fragment">
+			//uniform vec3 uColor;
+
+			// useless ?
+		    varying float pointDisplacement;
+		  	varying vec3 vColor;
+
+       uniform float uMouseRadius;
+
+		    void main() {
+		        vec4 finalColor = vec4(vColor + min(pointDisplacement / 15.0, 0.3), 1.0);
+
+            //vec4 finalColor = vec4(vColor, 1.0);
+
+		        gl_FragColor = finalColor;
+		    }
+		</script>
+
+</body>
+</html>

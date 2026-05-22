@@ -1,0 +1,523 @@
+{% extends 'base_new.html' %}
+{% load static %}
+
+{% block title %}Détails du lieu - {{ location.name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="p-3 bg-indigo-100 rounded-xl">
+                        <i class="bx bx-map text-3xl text-indigo-600"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">{{ location.name }}</h1>
+                        <p class="text-gray-600 mt-1">Détails du lieu</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <a href="{% url 'location_update' location.pk %}" class="inline-flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="bx bx-edit"></i>
+                        Modifier
+                    </a>
+                    <a href="{% url 'location_list' %}" class="inline-flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="bx bx-arrow-back"></i>
+                        Retour à la liste
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistiques principales -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Total ateliers -->
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Total ateliers</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ workshops|length }}</p>
+                    </div>
+                    <div class="p-3 bg-indigo-100 rounded-lg">
+                        <i class="bx bx-calendar-event text-2xl text-indigo-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total inscrits -->
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Total inscrits</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ total_registered }}</p>
+                    </div>
+                    <div class="p-3 bg-emerald-100 rounded-lg">
+                        <i class="bx bx-user-plus text-2xl text-emerald-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total présents -->
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Total présents</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ total_attendees }}</p>
+                    </div>
+                    <div class="p-3 bg-blue-100 rounded-lg">
+                        <i class="bx bx-user-check text-2xl text-blue-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Taux de présence -->
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Taux de présence</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ attendance_rate }}%</p>
+                    </div>
+                    <div class="p-3 bg-yellow-100 rounded-lg">
+                        <i class="bx bx-line-chart text-2xl text-yellow-600"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Informations principales -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Détails du lieu -->
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <i class="bx bx-info-circle text-indigo-600"></i>
+                            Informations du lieu
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nom du lieu</label>
+                                <p class="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-lg">{{ location.name }}</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Ville</label>
+                                <p class="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-lg">{{ location.city }}</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Code postal</label>
+                                <p class="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-lg">{{ location.zip_code }}</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Adresse complète</label>
+                                <p class="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-lg">{{ location.address }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ateliers associés -->
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <i class="bx bx-calendar-event text-indigo-600"></i>
+                            Ateliers associés
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        {% if workshops %}
+                            <div class="space-y-4">
+                                {% for workshop in workshops %}
+                                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                            <i class="bx bx-calendar text-indigo-600"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-sm font-medium text-gray-900">{{ workshop.name }}</h3>
+                                            <p class="text-xs text-gray-600">
+                                                {{ workshop.date|date:"d/m/Y" }}
+                                                {% if workshop.date_end %} - {{ workshop.date_end|date:"d/m/Y" }}{% endif %}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                            {{ workshop.number_registered }} inscrits
+                                        </span>
+                                        <a href="{% url 'workshop_detail' workshop.pk %}" class="text-indigo-600 hover:text-indigo-900">
+                                            <i class="bx bx-show text-lg"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-8">
+                                <div class="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                    <i class="bx bx-calendar text-2xl text-gray-400"></i>
+                                </div>
+                                <h3 class="text-lg font-medium text-gray-900 mb-2">Aucun atelier</h3>
+                                <p class="text-gray-600">Aucun atelier n'est encore associé à ce lieu.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Graphiques et statistiques avancées -->
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <i class="bx bx-bar-chart-alt-2 text-indigo-600"></i>
+                            Statistiques avancées
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <!-- Évolution mensuelle -->
+                            <div>
+                                <h3 class="text-md font-semibold text-gray-900 mb-4">Évolution mensuelle</h3>
+                                <div class="h-64">
+                                    <canvas id="monthlyChart"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Types d'ateliers -->
+                            <div>
+                                <h3 class="text-md font-semibold text-gray-900 mb-4">Types d'ateliers</h3>
+                                <div class="h-64">
+                                    <canvas id="typesChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Statistiques détaillées -->
+                        <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-medium text-gray-600">Ateliers classiques</span>
+                                    <i class="bx bx-calendar text-gray-400"></i>
+                                </div>
+                                <p class="text-2xl font-bold text-gray-900">{{ classic_count }}</p>
+                            </div>
+
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-medium text-gray-600">Accueils de classe</span>
+                                    <i class="bx bx-group text-gray-400"></i>
+                                </div>
+                                <p class="text-2xl font-bold text-gray-900">{{ class_welcome_count }}</p>
+                            </div>
+
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-medium text-gray-600">Affiches requises</span>
+                                    <i class="bx bx-image text-gray-400"></i>
+                                </div>
+                                <p class="text-2xl font-bold text-gray-900">{{ poster_required_count }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Top ateliers -->
+                        <div class="mt-8">
+                            <h3 class="text-md font-semibold text-gray-900 mb-4">Top 5 des ateliers par nombre d'inscrits</h3>
+                            <div class="space-y-3">
+                                {% for workshop in top_workshops %}
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                                            <span class="text-sm font-semibold text-indigo-600">{{ forloop.counter }}</span>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">{{ workshop.name }}</p>
+                                            <p class="text-xs text-gray-600">{{ workshop.date|date:"d/m/Y" }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                            {{ workshop.number_registered }} inscrits
+                                        </span>
+                                        <a href="{% url 'workshop_detail' workshop.pk %}" class="text-indigo-600 hover:text-indigo-900">
+                                            <i class="bx bx-show"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                <!-- Actions rapides -->
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Actions rapides</h3>
+                    </div>
+                    <div class="p-6 space-y-3">
+                        <a href="{% url 'location_update' location.pk %}" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+                            <i class="bx bx-edit"></i>
+                            Modifier le lieu
+                        </a>
+                        <a href="{% url 'workshop_create' %}?location={{ location.pk }}" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors">
+                            <i class="bx bx-plus"></i>
+                            Créer un atelier
+                        </a>
+                        <a href="{% url 'location_list' %}" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                            <i class="bx bx-list-ul"></i>
+                            Voir tous les lieux
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Statistiques -->
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Statistiques</h3>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">Total ateliers</span>
+                            <span class="text-lg font-semibold text-gray-900">{{ workshops|length }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">Total inscrits</span>
+                            <span class="text-lg font-semibold text-gray-900">
+                                {% widthratio workshops|length 1 0 as total_registered %}
+                                {% for workshop in workshops %}
+                                    {% widthratio workshop.number_registered 1 1 as workshop_registered %}
+                                    {% widthratio total_registered 1 1 as total_registered %}
+                                {% endfor %}
+                                {{ total_registered|default:0 }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">Dernière activité</span>
+                            <span class="text-sm text-gray-900">
+                                {% if workshops %}
+                                    {{ workshops.0.date|date:"d/m/Y" }}
+                                {% else %}
+                                    Aucune
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Évolution par rapport à l'année précédente -->
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Évolution {{ current_year }}</h3>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">Ateliers</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-lg font-semibold text-gray-900">{{ total_workshops }}</span>
+                                {% if variations.workshops != 0 %}
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {% if variations.workshops > 0 %}bg-emerald-100 text-emerald-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                        {% if variations.workshops > 0 %}+{% endif %}{{ variations.workshops|floatformat:1 }}%
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">Inscrits</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-lg font-semibold text-gray-900">{{ total_registered }}</span>
+                                {% if variations.registered != 0 %}
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {% if variations.registered > 0 %}bg-emerald-100 text-emerald-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                        {% if variations.registered > 0 %}+{% endif %}{{ variations.registered|floatformat:1 }}%
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="pt-2 border-t border-gray-200">
+                            <p class="text-xs text-gray-500">
+                                Comparaison avec {{ current_year|add:"-1" }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistiques de communication -->
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Communication</h3>
+                    </div>
+                    <div class="p-6 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i class="bx bxl-instagram text-pink-500"></i>
+                                <span class="text-sm text-gray-600">Instagram</span>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">{{ communication_stats.instagram }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i class="bx bxl-facebook text-blue-600"></i>
+                                <span class="text-sm text-gray-600">Facebook</span>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">{{ communication_stats.facebook }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i class="bx bx-envelope text-gray-600"></i>
+                                <span class="text-sm text-gray-600">Email</span>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">{{ communication_stats.mail }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i class="bx bx-globe text-indigo-600"></i>
+                                <span class="text-sm text-gray-600">Portail</span>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">{{ communication_stats.portail }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i class="bx bx-news text-orange-600"></i>
+                                <span class="text-sm text-gray-600">VDN</span>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">{{ communication_stats.vdn }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informations de contact -->
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Informations de contact</h3>
+                    </div>
+                    <div class="p-6 space-y-3">
+                        <div class="flex items-center gap-3">
+                            <i class="bx bx-map text-gray-400"></i>
+                            <span class="text-sm text-gray-900">{{ location.address }}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <i class="bx bx-map-pin text-gray-400"></i>
+                            <span class="text-sm text-gray-900">{{ location.zip_code }} {{ location.city }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+{{ workshops_data|json_script:"workshops-data" }}
+{{ workshops_by_month|json_script:"workshops-by-month" }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Données pour les graphiques
+    const workshops = JSON.parse(document.getElementById('workshops-data').textContent);
+    const monthlyData = JSON.parse(document.getElementById('workshops-by-month').textContent);
+    
+    // Configuration des couleurs
+    const colors = {
+        primary: '#6366f1',
+        secondary: '#10b981',
+        info: '#06b6d4',
+        warning: '#f59e0b',
+        danger: '#ef4444'
+    };
+
+    // Graphique d'évolution mensuelle
+    const monthlyCtx = document.getElementById('monthlyChart');
+    if (monthlyCtx && monthlyData.length > 0) {
+        const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+        
+        const months = monthlyData.map(item => monthNames[item.month - 1]);
+        const counts = monthlyData.map(item => item.count);
+        const registered = monthlyData.map(item => item.total_registered);
+        const attendees = monthlyData.map(item => item.total_attendees);
+
+        new Chart(monthlyCtx, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [
+                    {
+                        label: 'Nombre d\'ateliers',
+                        data: counts,
+                        borderColor: colors.primary,
+                        backgroundColor: colors.primary + '20',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Inscrits',
+                        data: registered,
+                        borderColor: colors.secondary,
+                        backgroundColor: colors.secondary + '20',
+                        tension: 0.4,
+                        fill: false
+                    },
+                    {
+                        label: 'Présents',
+                        data: attendees,
+                        borderColor: colors.info,
+                        backgroundColor: colors.info + '20',
+                        tension: 0.4,
+                        fill: false,
+                        borderDash: [5, 5]
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    // Graphique des types d'ateliers
+    const typesCtx = document.getElementById('typesChart');
+    if (typesCtx && workshops.length > 0) {
+        const classicCount = {{ classic_count }};
+        const classWelcomeCount = {{ class_welcome_count }};
+        const posterRequiredCount = {{ poster_required_count }};
+
+        new Chart(typesCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Ateliers classiques', 'Accueils de classe', 'Affiches requises'],
+                datasets: [{
+                    data: [classicCount, classWelcomeCount, posterRequiredCount],
+                    backgroundColor: [colors.primary, colors.secondary, colors.warning],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

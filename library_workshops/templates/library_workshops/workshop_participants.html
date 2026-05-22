@@ -1,0 +1,595 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <a href="{% url 'library_workshops:index' %}" class="inline-flex items-center gap-1 text-white/60 hover:text-white text-sm transition-colors mb-3">
+                    <i class="bx bx-arrow-back"></i> Retour aux ateliers
+                </a>
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="bx bx-list-ul text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl sm:text-4xl font-bold text-white">{{ title }}</h1>
+                        <p class="text-white/70 text-sm">
+                            <i class="bx bx-calendar mr-1"></i>{{ workshop.start_date|date:"d/m/Y" }}
+                            {% if not workshop.is_single_day %} — {{ workshop.end_date|date:"d/m/Y" }}{% endif %}
+                            <i class="bx bx-time ml-3 mr-1"></i>{{ workshop.start_time|time:"H:i" }} — {{ workshop.end_time|time:"H:i" }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'library_workshops:add_participant' workshop.id %}"
+                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    <i class="bx bx-user-plus"></i>
+                    Ajouter participant(s)
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for message in messages %}
+        <div class="flex items-start gap-2 rounded-2xl p-4 text-sm transition-all duration-300
+            {% if message.tags == 'success' %}bg-emerald-50 border border-emerald-200 text-emerald-700{% endif %}
+            {% if message.tags == 'error' %}bg-red-50 border border-red-200 text-red-700{% endif %}
+            {% if message.tags == 'warning' %}bg-amber-50 border border-amber-200 text-amber-700{% endif %}
+            {% if message.tags == 'info' %}bg-blue-50 border border-blue-200 text-blue-700{% endif %}">
+            <i class="bx bx-check-circle mt-0.5 shrink-0
+                {% if message.tags == 'success' %}text-emerald-500{% endif %}
+                {% if message.tags == 'error' %}text-red-500{% endif %}
+                {% if message.tags == 'warning' %}text-amber-500{% endif %}
+                {% if message.tags == 'info' %}text-blue-500{% endif %}"></i>
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Participants confirmés</p>
+                    <p class="text-3xl font-bold text-emerald-600 mt-1">{{ workshop.current_participants_count }}</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                    <i class="bx bx-check-circle text-2xl text-emerald-600"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Liste d'attente</p>
+                    <p class="text-3xl font-bold text-amber-600 mt-1">{{ workshop.waiting_list_count }}</p>
+                    {% if workshop.waiting_list_count == 0 %}<p class="text-xs text-[#b0bedb] mt-1">Aucune attente</p>{% endif %}
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
+                    <i class="bx bx-time text-2xl text-amber-600"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">
+                        {% if workshop.is_overbooked %}Surcapacité{% else %}Places disponibles{% endif %}
+                    </p>
+                    <p class="text-3xl font-bold {% if workshop.is_overbooked %}text-red-600{% else %}text-[#4a6fa5]{% endif %} mt-1">
+                        {% if workshop.is_overbooked %}+{{ workshop.overbooking_count }}{% else %}{{ workshop.available_spots }}{% endif %}
+                    </p>
+                </div>
+                <div class="w-12 h-12 rounded-xl {% if workshop.is_overbooked %}bg-red-100{% else %}bg-[#e8eef7]{% endif %} flex items-center justify-center">
+                    <i class="bx {% if workshop.is_overbooked %}bx-error-circle text-red-600{% else %}bx-user-plus text-[#4a6fa5]{% endif %} text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Capacité totale</p>
+                    <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ workshop.max_participants }}</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center">
+                    <i class="bx bx-group text-2xl text-[#4a6fa5]"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef] flex items-center justify-between flex-wrap gap-2">
+            <h5 class="font-semibold text-[#1e293b] flex items-center gap-2">
+                <i class="bx bx-check-circle text-emerald-600"></i>
+                Participants confirmés ({{ workshop.current_participants_count }}/{{ workshop.max_participants }})
+                {% if workshop.is_overbooked %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                    <i class="bx bx-error-circle"></i> Surcapacité
+                </span>
+                {% elif workshop.is_full %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+                    <i class="bx bx-x-circle"></i> Complet
+                </span>
+                {% endif %}
+            </h5>
+        </div>
+        <div class="p-6">
+            {% if workshop.confirmed_participants %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-[#dce3ef]">
+                    <thead class="bg-[#f8f9fc]">
+                        <tr>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Nom</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Prénom</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Âge</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Contact</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Inscription</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Groupe</th>
+                            <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="confirmed-participants-list" class="divide-y divide-[#dce3ef]">
+                        {% for participant in workshop.confirmed_participants %}
+                        <tr class="hover:bg-[#f8f9fc] transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1e293b]">{{ participant.last_name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80]">{{ participant.first_name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80]">{{ participant.age_display }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80]">
+                                {% if participant.email %}
+                                <div class="flex items-center gap-1"><i class="bx bx-envelope text-[#b0bedb] text-xs"></i> {{ participant.email }}</div>
+                                {% endif %}
+                                {% if participant.phone %}
+                                <div class="flex items-center gap-1"><i class="bx bx-phone text-[#b0bedb] text-xs"></i> {{ participant.phone }}</div>
+                                {% endif %}
+                                {% if not participant.email and not participant.phone %}
+                                <span class="text-[#b0bedb]">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80]">{{ participant.registration_date|date:"d/m/Y" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80]">
+                                {% if participant.is_in_group %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                    <i class="bx bx-group"></i> {{ participant.group_display }}
+                                </span>
+                                {% else %}
+                                <span class="text-[#b0bedb]">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <div class="flex gap-1 justify-center">
+                                    <button class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors"
+                                            data-participant-id="{{ participant.id }}"
+                                            data-participant-name="{{ participant.full_name }}"
+                                            onclick="openMoveToWaiting(this)"
+                                            title="Déplacer vers la liste d'attente">
+                                        <i class="bx bx-time"></i>
+                                    </button>
+                                    <button class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                                            data-participant-id="{{ participant.id }}"
+                                            data-participant-name="{{ participant.full_name }}"
+                                            data-is-group-leader="{% if participant.is_group_leader %}true{% else %}false{% endif %}"
+                                            onclick="openDeleteParticipant(this)"
+                                            title="Retirer le participant">
+                                        <i class="bx bx-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-12">
+                <div class="w-16 h-16 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4">
+                    <i class="bx bx-user-x text-3xl text-[#4a6fa5]"></i>
+                </div>
+                <h3 class="text-base font-semibold text-[#1e293b] mb-1">Aucun participant confirmé</h3>
+                <p class="text-sm text-[#7a8fa0]">Aucun participant n'est encore inscrit à cet atelier.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if workshop.waiting_list_count > 0 %}
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h5 class="font-semibold text-[#1e293b] flex items-center gap-2">
+                <i class="bx bx-time text-amber-600"></i>
+                Liste d'attente ({{ workshop.waiting_list_count }})
+            </h5>
+        </div>
+        <div class="p-6">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-[#dce3ef]">
+                    <thead class="bg-[#f8f9fc]">
+                        <tr>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Nom</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Prénom</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Âge</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Contact</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Inscription</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Groupe</th>
+                            <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="waiting-participants-list" class="divide-y divide-[#dce3ef]">
+                        {% for participant in workshop.waiting_participants %}
+                        <tr class="hover:bg-[#f8f9fc] transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1e293b]">{{ participant.last_name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80]">{{ participant.first_name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80]">{{ participant.age_display }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80]">
+                                {% if participant.email %}
+                                <div class="flex items-center gap-1"><i class="bx bx-envelope text-[#b0bedb] text-xs"></i> {{ participant.email }}</div>
+                                {% endif %}
+                                {% if participant.phone %}
+                                <div class="flex items-center gap-1"><i class="bx bx-phone text-[#b0bedb] text-xs"></i> {{ participant.phone }}</div>
+                                {% endif %}
+                                {% if not participant.email and not participant.phone %}
+                                <span class="text-[#b0bedb]">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80]">{{ participant.registration_date|date:"d/m/Y" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80]">
+                                {% if participant.is_in_group %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                    <i class="bx bx-group"></i> {{ participant.group_display }}
+                                </span>
+                                {% else %}
+                                <span class="text-[#b0bedb]">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <div class="flex gap-1 justify-center">
+                                    <button class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                            data-participant-id="{{ participant.id }}"
+                                            data-participant-name="{{ participant.full_name }}"
+                                            onclick="openConfirmFromWaiting(this)"
+                                            title="Confirmer le participant">
+                                        <i class="bx bx-check"></i>
+                                    </button>
+                                    <button class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                                            data-participant-id="{{ participant.id }}"
+                                            data-participant-name="{{ participant.full_name }}"
+                                            data-is-group-leader="{% if participant.is_group_leader %}true{% else %}false{% endif %}"
+                                            onclick="openDeleteParticipant(this)"
+                                            title="Retirer le participant">
+                                        <i class="bx bx-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if workshop.confirmed_participants or workshop.waiting_list_count > 0 %}
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-info-circle mr-1.5 text-[#4a6fa5]"></i> Notes et informations</h5>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-4">Participants avec notes</p>
+                    {% with has_notes=False %}
+                    {% for participant in workshop.participants.all %}
+                    {% if participant.notes %}
+                    {% with has_notes=True %}{% endwith %}
+                    <div class="flex items-start gap-3 p-3 bg-[#f8f9fc] rounded-xl border border-[#dce3ef] mb-2">
+                        <div class="w-8 h-8 rounded-full bg-[#e8eef7] flex items-center justify-center shrink-0">
+                            <span class="text-xs font-semibold text-[#4a6fa5]">{{ participant.first_name|first }}{{ participant.last_name|first }}</span>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-[#1e293b]">{{ participant.full_name }}</p>
+                            <p class="text-xs text-[#7a8fa0] mt-0.5">{{ participant.notes }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% empty %}
+                    <p class="text-sm text-[#b0bedb]">Aucune note</p>
+                    {% endfor %}
+                    {% if not has_notes %}<p class="text-sm text-[#b0bedb]">Aucune note</p>{% endif %}
+                    {% endwith %}
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-4">Actions rapides</p>
+                    <div class="space-y-3">
+                        <a href="{% url 'library_workshops:add_participant' workshop.id %}"
+                           class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#5a6f80] hover:bg-[#f8f9fc] transition-all">
+                            <i class="bx bx-plus"></i>
+                            Ajouter un participant
+                        </a>
+                        {% if workshop.waiting_list_count > 0 %}
+                        <div class="flex items-start gap-2 rounded-xl p-3 text-sm bg-blue-50 border border-blue-200 text-blue-700">
+                            <i class="bx bx-info-circle mt-0.5 shrink-0"></i>
+                            <span>Utilisez le bouton <i class="bx bx-check"></i> dans la liste d'attente pour confirmer des participants.</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</section>
+
+{% csrf_token %}
+
+<div id="moveToWaitingModal" class="hidden fixed inset-0 z-50" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" onclick="closeModal('moveToWaitingModal')"></div>
+    <div class="relative mx-auto mt-24 w-full max-w-md px-4">
+        <div class="bg-white rounded-2xl shadow-xl border border-[#dce3ef] overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-[#dce3ef]">
+                <h3 class="text-lg font-bold text-[#1e293b] flex items-center gap-2">
+                    <i class="bx bx-time text-amber-600"></i>
+                    Déplacer vers la liste d'attente
+                </h3>
+                <button onclick="closeModal('moveToWaitingModal')" class="p-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer" aria-label="Fermer">
+                    <i class="bx bx-x text-xl text-[#7a8fa0]"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-sm text-[#5a6f80]">Êtes-vous sûr de vouloir déplacer <strong class="text-[#1e293b]" id="moveToWaitingParticipantName"></strong> vers la liste d'attente ?</p>
+                <div class="flex items-start gap-2 rounded-xl p-3 text-sm bg-blue-50 border border-blue-200 text-blue-700">
+                    <i class="bx bx-info-circle mt-0.5 shrink-0"></i>
+                    <span>Le participant restera inscrit mais sera en attente de confirmation.</span>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 px-6 py-4 bg-[#f8f9fc] border-t border-[#dce3ef]">
+                <button onclick="closeModal('moveToWaitingModal')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#5a6f80] hover:bg-white transition-all cursor-pointer">
+                    <i class="bx bx-x"></i> Annuler
+                </button>
+                <button onclick="confirmMoveToWaiting()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 transition-all shadow-sm cursor-pointer">
+                    <i class="bx bx-time"></i> Déplacer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="confirmFromWaitingModal" class="hidden fixed inset-0 z-50" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" onclick="closeModal('confirmFromWaitingModal')"></div>
+    <div class="relative mx-auto mt-24 w-full max-w-md px-4">
+        <div class="bg-white rounded-2xl shadow-xl border border-[#dce3ef] overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-[#dce3ef]">
+                <h3 class="text-lg font-bold text-[#1e293b] flex items-center gap-2">
+                    <i class="bx bx-check-circle text-emerald-600"></i>
+                    Confirmer le participant
+                </h3>
+                <button onclick="closeModal('confirmFromWaitingModal')" class="p-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer" aria-label="Fermer">
+                    <i class="bx bx-x text-xl text-[#7a8fa0]"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-sm text-[#5a6f80]">Confirmer <strong class="text-[#1e293b]" id="confirmFromWaitingParticipantName"></strong> pour cet atelier ?</p>
+                <div class="flex items-start gap-2 rounded-xl p-3 text-sm bg-emerald-50 border border-emerald-200 text-emerald-700">
+                    <i class="bx bx-check-circle mt-0.5 shrink-0"></i>
+                    <span>Le participant sera déplacé de la liste d'attente vers les confirmés.</span>
+                </div>
+                {% if workshop.is_full %}
+                <div class="flex items-start gap-2 rounded-xl p-3 text-sm bg-amber-50 border border-amber-200 text-amber-700">
+                    <i class="bx bx-error-circle mt-0.5 shrink-0"></i>
+                    <span><strong>Attention :</strong> L'atelier est complet ({{ workshop.current_participants_count }}/{{ workshop.max_participants }}). Confirmer dépassera la capacité.</span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="flex justify-end gap-3 px-6 py-4 bg-[#f8f9fc] border-t border-[#dce3ef]">
+                <button onclick="closeModal('confirmFromWaitingModal')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#5a6f80] hover:bg-white transition-all cursor-pointer">
+                    <i class="bx bx-x"></i> Annuler
+                </button>
+                <button onclick="confirmFromWaiting()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-all shadow-sm cursor-pointer">
+                    <i class="bx bx-check"></i> Confirmer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="deleteParticipantModal" class="hidden fixed inset-0 z-50" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" onclick="closeModal('deleteParticipantModal')"></div>
+    <div class="relative mx-auto mt-24 w-full max-w-md px-4">
+        <div class="bg-white rounded-2xl shadow-xl border border-[#dce3ef] overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-[#dce3ef]">
+                <h3 class="text-lg font-bold text-[#1e293b] flex items-center gap-2">
+                    <i class="bx bx-trash text-red-600"></i>
+                    Supprimer le participant
+                </h3>
+                <button onclick="closeModal('deleteParticipantModal')" class="p-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer" aria-label="Fermer">
+                    <i class="bx bx-x text-xl text-[#7a8fa0]"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-sm text-[#5a6f80]">Supprimer <strong class="text-[#1e293b]" id="deleteParticipantName"></strong> de cet atelier ?</p>
+                <div class="flex items-start gap-2 rounded-xl p-3 text-sm bg-red-50 border border-red-200 text-red-700">
+                    <i class="bx bx-error-circle mt-0.5 shrink-0"></i>
+                    <span><strong>Attention :</strong> Action irréversible. Le participant sera définitivement retiré.</span>
+                </div>
+                <div id="groupWarning" class="hidden flex items-start gap-2 rounded-xl p-3 text-sm bg-amber-50 border border-amber-200 text-amber-700">
+                    <i class="bx bx-info-circle mt-0.5 shrink-0"></i>
+                    <span><strong>Membre de groupe :</strong> Ce participant sera retiré individuellement.</span>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 px-6 py-4 bg-[#f8f9fc] border-t border-[#dce3ef]">
+                <button onclick="closeModal('deleteParticipantModal')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#5a6f80] hover:bg-white transition-all cursor-pointer">
+                    <i class="bx bx-x"></i> Annuler
+                </button>
+                <button onclick="confirmDeleteParticipant()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-all shadow-sm cursor-pointer">
+                    <i class="bx bx-trash"></i> Supprimer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="deleteGroupModal" class="hidden fixed inset-0 z-50" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" onclick="closeModal('deleteGroupModal')"></div>
+    <div class="relative mx-auto mt-24 w-full max-w-md px-4">
+        <div class="bg-white rounded-2xl shadow-xl border border-[#dce3ef] overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-[#dce3ef]">
+                <h3 class="text-lg font-bold text-[#1e293b] flex items-center gap-2">
+                    <i class="bx bx-group text-red-600"></i>
+                    Supprimer le groupe
+                </h3>
+                <button onclick="closeModal('deleteGroupModal')" class="p-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer" aria-label="Fermer">
+                    <i class="bx bx-x text-xl text-[#7a8fa0]"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-sm text-[#5a6f80]">Supprimer le groupe de <strong class="text-[#1e293b]" id="deleteGroupLeaderName"></strong> ?</p>
+                <div class="flex items-start gap-2 rounded-xl p-3 text-sm bg-red-50 border border-red-200 text-red-700">
+                    <i class="bx bx-error-circle mt-0.5 shrink-0"></i>
+                    <span><strong>Attention :</strong> Cela supprimera le responsable ET tous les membres (<span class="font-semibold" id="deleteGroupMembersCount"></span> personne(s)).</span>
+                </div>
+                <div class="flex items-start gap-2 rounded-xl p-3 text-sm bg-amber-50 border border-amber-200 text-amber-700">
+                    <i class="bx bx-info-circle mt-0.5 shrink-0"></i>
+                    <span><strong>Action irréversible.</strong> Tous les participants du groupe seront retirés.</span>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 px-6 py-4 bg-[#f8f9fc] border-t border-[#dce3ef]">
+                <button onclick="closeModal('deleteGroupModal')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#5a6f80] hover:bg-white transition-all cursor-pointer">
+                    <i class="bx bx-x"></i> Annuler
+                </button>
+                <button onclick="confirmDeleteGroup()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-all shadow-sm cursor-pointer">
+                    <i class="bx bx-group"></i> Tout supprimer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+let currentParticipantId = null;
+let currentParticipantName = null;
+
+function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+}
+
+function openModal(id) {
+    document.getElementById(id).classList.remove('hidden');
+}
+
+function showNotification(message, type) {
+    const container = document.querySelector('section.max-w-7xl > div:first-child');
+    if (!container) return;
+    const colorMap = {
+        success: 'bg-emerald-50 border-emerald-200 text-emerald-700 bx-check-circle text-emerald-500',
+        warning: 'bg-amber-50 border-amber-200 text-amber-700 bx-error-circle text-amber-500',
+        error: 'bg-red-50 border-red-200 text-red-700 bx-x-circle text-red-500',
+        info: 'bg-blue-50 border-blue-200 text-blue-700 bx-info-circle text-blue-500'
+    };
+    const cls = colorMap[type] || colorMap.info;
+    const parts = cls.split(' ');
+    const bg = parts.slice(0, 3).join(' ');
+    const icon = parts[3];
+    const iconColor = parts[4];
+    const div = document.createElement('div');
+    div.className = `flex items-start gap-2 rounded-2xl p-4 text-sm transition-all duration-300 ${bg}`;
+    div.innerHTML = `<i class="bx ${icon} mt-0.5 shrink-0 ${iconColor}"></i><span>${message}</span>`;
+    container.prepend(div);
+    setTimeout(() => { div.remove(); }, 5000);
+}
+
+function getCSRF() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+}
+
+function openMoveToWaiting(btn) {
+    currentParticipantId = btn.getAttribute('data-participant-id');
+    currentParticipantName = btn.getAttribute('data-participant-name');
+    document.getElementById('moveToWaitingParticipantName').textContent = currentParticipantName;
+    openModal('moveToWaitingModal');
+}
+
+function openConfirmFromWaiting(btn) {
+    currentParticipantId = btn.getAttribute('data-participant-id');
+    currentParticipantName = btn.getAttribute('data-participant-name');
+    document.getElementById('confirmFromWaitingParticipantName').textContent = currentParticipantName;
+    openModal('confirmFromWaitingModal');
+}
+
+function openDeleteParticipant(btn) {
+    currentParticipantId = btn.getAttribute('data-participant-id');
+    currentParticipantName = btn.getAttribute('data-participant-name');
+    document.getElementById('deleteParticipantName').textContent = currentParticipantName;
+    const isGroupLeader = btn.getAttribute('data-is-group-leader') === 'true';
+    const gw = document.getElementById('groupWarning');
+    if (isGroupLeader) {
+        gw.classList.remove('hidden');
+    } else {
+        gw.classList.add('hidden');
+    }
+    openModal('deleteParticipantModal');
+}
+
+function confirmAction(url, successMsg, warningMsg, modalId, overbookedCheck) {
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRF(),
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            closeModal(modalId);
+            if (overbookedCheck && data.overbooked) {
+                showNotification(warningMsg || 'Attention : surcapacité', 'warning');
+            } else {
+                showNotification(successMsg, 'success');
+            }
+            setTimeout(() => location.reload(), 800);
+        } else if (data.error === 'group_leader_with_members') {
+            closeModal(modalId);
+            document.getElementById('deleteGroupLeaderName').textContent = currentParticipantName;
+            document.getElementById('deleteGroupMembersCount').textContent = data.group_members_count + 1;
+            openModal('deleteGroupModal');
+        } else {
+            showNotification(data.error || 'Une erreur est survenue', 'error');
+        }
+    })
+    .catch(() => showNotification('Une erreur est survenue', 'error'));
+}
+
+function confirmMoveToWaiting() {
+    const url = "{% url 'library_workshops:move_to_waiting_list' workshop.id 0 %}".replace('0', currentParticipantId);
+    confirmAction(url, 'Participant déplacé vers la liste d\'attente', null, 'moveToWaitingModal');
+}
+
+function confirmFromWaiting() {
+    const url = "{% url 'library_workshops:move_from_waiting_list' workshop.id 0 %}".replace('0', currentParticipantId);
+    confirmAction(url, 'Participant confirmé avec succès', 'L\'atelier dépasse maintenant sa capacité.', 'confirmFromWaitingModal', true);
+}
+
+function confirmDeleteParticipant() {
+    const url = "{% url 'library_workshops:remove_participant' workshop.id 0 %}".replace('0', currentParticipantId);
+    confirmAction(url, 'Participant supprimé avec succès', null, 'deleteParticipantModal');
+}
+
+function confirmDeleteGroup() {
+    const url = "{% url 'library_workshops:remove_group' workshop.id 0 %}".replace('0', currentParticipantId);
+    confirmAction(url, 'Groupe supprimé avec succès', null, 'deleteGroupModal');
+}
+</script>
+{% endblock %}

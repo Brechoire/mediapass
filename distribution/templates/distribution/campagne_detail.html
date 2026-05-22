@@ -1,0 +1,745 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}{{ campagne.name }} - Distribution{% endblock %}
+
+{% block content %}
+<!-- Token CSRF pour les requêtes AJAX -->
+{% csrf_token %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- En-tête -->
+    <div class="mb-8">
+        <nav class="flex mb-4" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li class="inline-flex items-center">
+                    <a href="{% url 'home' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-indigo-600">
+                        <i class="bx bx-home mr-2"></i>
+                        Accueil
+                    </a>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <i class="bx bx-chevron-right text-gray-400 mx-1"></i>
+                        <a href="{% url 'distribution:index' %}" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Distribution</a>
+                    </div>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <i class="bx bx-chevron-right text-gray-400 mx-1"></i>
+                        <a href="{% url 'distribution:campagne_list' %}" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Campagnes</a>
+                    </div>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <i class="bx bx-chevron-right text-gray-400 mx-1"></i>
+                        <span class="text-sm font-medium text-gray-500">{{ campagne.name }}</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+        
+        <div class="flex items-center gap-3">
+            <i class="bx bx-envelope text-3xl text-indigo-600"></i>
+            <h1 class="text-3xl font-bold text-gray-900">{{ campagne.name }}</h1>
+        </div>
+    </div>
+
+    <!-- Informations de la campagne -->
+    <div class="bg-white border border-gray-200 rounded-xl shadow mb-8">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900">Informations de la campagne</h2>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ campagne.name }}</h3>
+                    {% if campagne.description %}
+                        <p class="text-gray-600 mb-4">{{ campagne.description }}</p>
+                    {% endif %}
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Période</p>
+                            <p class="text-lg text-gray-900">{{ campagne.start_date|date:"d/m/Y" }} - {{ campagne.end_date|date:"d/m/Y" }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Statut</p>
+                            <div class="mt-1">
+                                {% if campagne.status == 'active' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">En cours</span>
+                                {% elif campagne.status == 'completed' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Terminée</span>
+                                {% elif campagne.status == 'draft' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Brouillon</span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Annulée</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Créée par</p>
+                            <p class="text-lg text-gray-900">{{ campagne.created_by.get_full_name|default:campagne.created_by.username }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-1">
+                    <div class="bg-gray-50 rounded-xl p-6">
+                        <div class="text-center mb-4">
+                            <h3 class="text-3xl font-bold text-indigo-600 mb-1">{{ campagne.lieux_distribues }}/{{ campagne.total_lieux }}</h3>
+                            <p class="text-sm text-gray-600">Lieux distribués</p>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3 mb-4">
+                            <div class="bg-indigo-600 h-3 rounded-full" style="width: {{ campagne.progression }}%"></div>
+                        </div>
+                        {% if campagne.is_completed %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800">
+                                <i class="bx bx-check mr-1"></i>
+                                Campagne terminée
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                                {{ campagne.progression }}% complété
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="bg-white border border-gray-200 rounded-xl shadow mb-8">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-semibold text-gray-900">Actions</h2>
+                <div class="flex items-center gap-3">
+                    <a href="{% url 'distribution:campagne_edit' campagne.pk %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-indigo-600 text-indigo-600 hover:bg-indigo-50 transition-colors">
+                        <i class="bx bx-edit"></i>
+                        Modifier la campagne
+                    </a>
+                    <a href="{% url 'distribution:commune_list' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-600 text-emerald-600 hover:bg-emerald-50 transition-colors">
+                        <i class="bx bx-buildings"></i>
+                        Gérer les lieux
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Distribution par commune -->
+    <div class="bg-white border border-gray-200 rounded-xl shadow">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-semibold text-gray-900">Distribution par commune</h2>
+                {% if communes_data %}
+                <div class="flex items-center gap-2">
+                    <button type="button" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-indigo-600 text-indigo-600 hover:bg-indigo-50" id="sync-lieux-btn">
+                        <i class="bx bx-refresh"></i>
+                        Synchroniser
+                    </button>
+                    <button type="button" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-emerald-600 text-emerald-600 hover:bg-emerald-50" id="select-all-btn">
+                        <i class="bx bx-check-square"></i>
+                        Tout sélectionner
+                    </button>
+                    <button type="button" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50" id="deselect-all-btn">
+                        <i class="bx bx-square"></i>
+                        Tout désélectionner
+                    </button>
+                    <button type="button" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50" id="validate-selected-btn" disabled>
+                        <i class="bx bx-check"></i>
+                        Valider les sélectionnés
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="p-6">
+            {% if communes_data %}
+                {% for commune_name, data in communes_data.items %}
+                <div class="mb-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <h3 class="text-lg font-semibold text-gray-900">
+                                <i class="bx bx-buildings mr-2 text-indigo-600"></i>
+                                {{ commune_name }}
+                            </h3>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800" id="commune-progress-{{ forloop.counter }}">
+                                {{ data.lieux|length }} lieu{{ data.lieux|length|pluralize }}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="text-sm text-gray-600">
+                                <span id="commune-distributed-{{ forloop.counter }}">0</span>/{{ data.lieux|length }} distribués
+                            </span>
+                            <div class="w-24 bg-gray-200 rounded-full h-2">
+                                <div class="bg-indigo-600 h-2 rounded-full" id="commune-progress-bar-{{ forloop.counter }}" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {% for distribution in data.lieux %}
+                        <div class="bg-white border {% if distribution.is_distributed %}border-emerald-200{% else %}border-gray-200{% endif %} rounded-xl shadow-sm hover:shadow-md transition-shadow distribution-card" data-distribution-id="{{ distribution.pk }}">
+                            <div class="p-4">
+                                <div class="flex items-start justify-between mb-3">
+                                    <h4 class="text-sm font-semibold text-gray-900">{{ distribution.lieu.name }}</h4>
+                                    <div class="flex items-center">
+                                        <input class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 distribution-checkbox" 
+                                               type="checkbox" 
+                                               data-distribution-id="{{ distribution.pk }}"
+                                               data-commune-index="{{ forloop.parentloop.counter }}"
+                                               {% if distribution.is_distributed %}checked{% endif %}>
+                                        <label class="ml-2 text-xs text-gray-600">Distribué</label>
+                                    </div>
+                                </div>
+                                
+                                {% if distribution.lieu.description %}
+                                    <p class="text-gray-600 text-xs mb-3">{{ distribution.lieu.description }}</p>
+                                {% endif %}
+                                
+                                <div class="distribution-info" id="info-{{ distribution.pk }}">
+                                    <!-- Messages supprimés pour simplifier l'interface -->
+                                </div>
+                                
+                                {% if distribution.notes %}
+                                    <div class="mt-3 p-2 bg-gray-50 rounded">
+                                        <small class="text-gray-600">
+                                            <i class="bx bx-note mr-1"></i>
+                                            {{ distribution.notes }}
+                                        </small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-12">
+                    <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="bx bx-map text-4xl text-gray-400"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Aucun lieu de distribution</h3>
+                    <p class="text-gray-500 mb-6">Commencez par créer des communes et des lieux de distribution.</p>
+                    <div class="flex items-center justify-center gap-3">
+                        <a href="{% url 'distribution:commune_create' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
+                            <i class="bx bx-plus"></i>
+                            Créer une commune
+                        </a>
+                        <a href="{% url 'distribution:commune_list' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-indigo-600 text-indigo-600 hover:bg-indigo-50">
+                            <i class="bx bx-buildings"></i>
+                            Gérer les lieux
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+console.log('=== SCRIPT CHARGÉ ===');
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== DOM CONTENT LOADED ===');
+    console.log('Page chargée, initialisation des switches...');
+    
+    // Fonction pour initialiser les switches
+    function initSwitches() {
+        console.log('Recherche des switches...');
+        
+        // Gestion des cases à cocher
+        const checkboxes = document.querySelectorAll('.distribution-checkbox');
+        console.log('Switches trouvés:', checkboxes.length);
+        
+        if (checkboxes.length === 0) {
+            console.error('Aucun switch trouvé ! Vérifiez la classe .distribution-checkbox');
+            console.log('Éléments avec classe form-check-input:', document.querySelectorAll('.form-check-input').length);
+            console.log('Tous les inputs:', document.querySelectorAll('input[type="checkbox"]').length);
+            return false;
+        }
+        
+        // Initialiser les compteurs par commune
+        initializeCommuneCounters();
+        
+        // Initialiser le bouton de validation
+        updateValidateButton();
+        
+        // Attacher les événements
+        attachSwitchEvents(checkboxes);
+        return true;
+    }
+    
+    // Essayer plusieurs fois avec des délais différents
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    function tryInit() {
+        attempts++;
+        console.log(`Tentative ${attempts}/${maxAttempts}`);
+        
+        if (initSwitches()) {
+            console.log('Switches initialisés avec succès !');
+        } else if (attempts < maxAttempts) {
+            console.log('Réessai dans 200ms...');
+            setTimeout(tryInit, 200);
+        } else {
+            console.error('Impossible d\'initialiser les switches après', maxAttempts, 'tentatives');
+        }
+    }
+    
+    // Commencer après un court délai
+    setTimeout(tryInit, 100);
+    
+    // Boutons de sélection en lot
+    const selectAllBtn = document.getElementById('select-all-btn');
+    const deselectAllBtn = document.getElementById('deselect-all-btn');
+    const validateSelectedBtn = document.getElementById('validate-selected-btn');
+    
+    // Fonction pour mettre à jour l'état du bouton de validation
+    function updateValidateButton() {
+        // Re-sélectionner les checkboxes car ils peuvent changer
+        const currentCheckboxes = document.querySelectorAll('.distribution-checkbox');
+        const selectedCheckboxes = Array.from(currentCheckboxes).filter(cb => cb.checked);
+        
+        if (validateSelectedBtn) {
+            validateSelectedBtn.disabled = selectedCheckboxes.length === 0;
+            validateSelectedBtn.innerHTML = `
+                <i class="bx bx-check me-1"></i>
+                Valider les sélectionnés (${selectedCheckboxes.length})
+            `;
+        }
+    }
+    
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function() {
+            // Re-sélectionner les checkboxes
+            const currentCheckboxes = document.querySelectorAll('.distribution-checkbox');
+            const uncheckedBoxes = Array.from(currentCheckboxes).filter(cb => !cb.checked);
+            
+            if (uncheckedBoxes.length === 0) {
+                showAlert('Tous les lieux sont déjà sélectionnés', 'info');
+                return;
+            }
+            
+            if (confirm(`Sélectionner ${uncheckedBoxes.length} lieu(x) non distribués ?`)) {
+                // Marquer visuellement comme sélectionnés sans déclencher les événements
+                uncheckedBoxes.forEach(checkbox => {
+                    checkbox.checked = true;
+                });
+                
+                // Valider toutes les sélections en une fois
+                validateSelectedDistributions(uncheckedBoxes);
+            }
+        });
+    }
+    
+    if (deselectAllBtn) {
+        deselectAllBtn.addEventListener('click', function() {
+            // Re-sélectionner les checkboxes
+            const currentCheckboxes = document.querySelectorAll('.distribution-checkbox');
+            const checkedBoxes = Array.from(currentCheckboxes).filter(cb => cb.checked);
+            
+            if (checkedBoxes.length === 0) {
+                showAlert('Aucun lieu n\'est sélectionné', 'info');
+                return;
+            }
+            
+            if (confirm(`Désélectionner ${checkedBoxes.length} lieu(x) ?`)) {
+                // Désélectionner visuellement
+                checkedBoxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                
+                // Faire les requêtes AJAX pour sauvegarder en base
+                deselectAllDistributions(checkedBoxes);
+            }
+        });
+    }
+    
+    if (validateSelectedBtn) {
+        validateSelectedBtn.addEventListener('click', function() {
+            // Re-sélectionner les checkboxes
+            const currentCheckboxes = document.querySelectorAll('.distribution-checkbox');
+            const selectedCheckboxes = Array.from(currentCheckboxes).filter(cb => cb.checked);
+            
+            if (selectedCheckboxes.length === 0) {
+                alert('Aucun lieu sélectionné pour validation.');
+                return;
+            }
+            
+            validateSelectedDistributions(selectedCheckboxes);
+        });
+    }
+    
+    // Bouton de synchronisation des lieux
+    const syncLieuxBtn = document.getElementById('sync-lieux-btn');
+    if (syncLieuxBtn) {
+        syncLieuxBtn.addEventListener('click', function() {
+            if (confirm('Synchroniser cette campagne avec tous les lieux de distribution disponibles ?')) {
+                syncCampagneLieux();
+            }
+        });
+    }
+    
+    function attachSwitchEvents(checkboxes) {
+        console.log('Attachement des événements aux switches...');
+        
+        checkboxes.forEach((checkbox, index) => {
+            console.log(`Switch ${index + 1}:`, checkbox.dataset.distributionId, 'checked:', checkbox.checked);
+            
+            checkbox.addEventListener('change', function() {
+                console.log('Switch changé:', this.dataset.distributionId, 'checked:', this.checked);
+                
+                const distributionId = this.dataset.distributionId;
+                const communeIndex = this.dataset.communeIndex;
+                const isChecked = this.checked;
+                
+                // Pas de confirmation pour les actions de distribution
+                
+                // Désactiver temporairement la case
+                this.disabled = true;
+                
+                // Ajouter un indicateur de chargement
+                const card = this.closest('.distribution-card');
+                if (card) {
+                    card.style.opacity = '0.6';
+                }
+                
+                console.log('Envoi requête AJAX pour distribution:', distributionId);
+                
+                // Envoyer la requête AJAX
+                fetch(`{% url 'distribution:toggle_distribution' 0 %}`.replace('0', distributionId), {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => {
+                    console.log('Réponse reçue:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Données reçues:', data);
+                    if (data.success) {
+                        // Mettre à jour l'interface
+                        updateDistributionInfo(distributionId, data);
+                        updateCardAppearance(distributionId, data.is_distributed);
+                        updateCommuneProgress(communeIndex);
+                        updateGlobalProgress();
+                        showAlert('Distribution mise à jour avec succès !', 'success');
+                    } else {
+                        // Revenir à l'état précédent en cas d'erreur
+                        this.checked = !isChecked;
+                        showAlert('Erreur lors de la mise à jour : ' + data.error, 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    this.checked = !isChecked;
+                    showAlert('Erreur lors de la mise à jour', 'danger');
+                })
+                .finally(() => {
+                    // Réactiver la case et retirer l'indicateur de chargement
+                    this.disabled = false;
+                    if (card) {
+                        card.style.opacity = '1';
+                    }
+                    // Mettre à jour le bouton de validation
+                    updateValidateButton();
+                });
+            });
+        });
+    }
+    
+    function initializeCommuneCounters() {
+        const communes = document.querySelectorAll('[id^="commune-distributed-"]');
+        communes.forEach(counter => {
+            const communeIndex = counter.id.split('-')[2];
+            updateCommuneProgress(communeIndex);
+        });
+    }
+    
+    function updateDistributionInfo(distributionId, data) {
+        // Messages supprimés - fonction simplifiée
+        console.log('Distribution mise à jour:', distributionId, data.is_distributed ? 'validée' : 'désactivée');
+    }
+    
+    function updateCardAppearance(distributionId, isDistributed) {
+        const card = document.querySelector(`[data-distribution-id="${distributionId}"]`);
+        if (isDistributed) {
+            card.classList.remove('border-light');
+            card.classList.add('border-success');
+        } else {
+            card.classList.remove('border-success');
+            card.classList.add('border-light');
+        }
+    }
+    
+    function updateCommuneProgress(communeIndex) {
+        const communeCheckboxes = document.querySelectorAll(`[data-commune-index="${communeIndex}"]`);
+        const total = communeCheckboxes.length;
+        const distributed = Array.from(communeCheckboxes).filter(cb => cb.checked).length;
+        const percentage = total > 0 ? Math.round((distributed / total) * 100) : 0;
+        
+        console.log(`Commune ${communeIndex}: ${distributed}/${total} (${percentage}%)`);
+        
+        // Mettre à jour le compteur
+        const counter = document.getElementById(`commune-distributed-${communeIndex}`);
+        if (counter) {
+            counter.textContent = distributed;
+        }
+        
+        // Mettre à jour la barre de progression
+        const progressBar = document.getElementById(`commune-progress-bar-${communeIndex}`);
+        if (progressBar) {
+            progressBar.style.width = `${percentage}%`;
+            progressBar.setAttribute('aria-valuenow', percentage);
+        }
+    }
+    
+    function updateGlobalProgress() {
+        // Mettre à jour la progression globale
+        const totalCheckboxes = document.querySelectorAll('.distribution-checkbox');
+        const total = totalCheckboxes.length;
+        const distributed = Array.from(totalCheckboxes).filter(cb => cb.checked).length;
+        const percentage = total > 0 ? Math.round((distributed / total) * 100) : 0;
+        
+        // Mettre à jour l'affichage global
+        const globalProgress = document.querySelector('.progress-bar');
+        if (globalProgress) {
+            globalProgress.style.width = `${percentage}%`;
+            globalProgress.setAttribute('aria-valuenow', percentage);
+        }
+        
+        const globalCounter = document.querySelector('.text-primary');
+        if (globalCounter) {
+            globalCounter.textContent = `${distributed}/${total}`;
+        }
+        
+        const globalBadge = document.querySelector('.badge.fs-6');
+        if (globalBadge) {
+            if (distributed === total && total > 0) {
+                globalBadge.textContent = '✓ Campagne terminée';
+                globalBadge.className = 'badge bg-success fs-6';
+            } else {
+                globalBadge.textContent = `${percentage}% complété`;
+                globalBadge.className = 'badge bg-warning fs-6';
+            }
+        }
+    }
+    
+    function deselectAllDistributions(checkedBoxes) {
+        const deselectBtn = document.getElementById('deselect-all-btn');
+        if (deselectBtn) {
+            deselectBtn.disabled = true;
+            deselectBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i>Désélection...';
+        }
+        
+        let completed = 0;
+        let errors = 0;
+        const total = checkedBoxes.length;
+        
+        console.log(`Désélection de ${total} lieux`);
+        
+        // Traiter les requêtes en parallèle avec un délai réduit
+        checkedBoxes.forEach((checkbox, index) => {
+            const distributionId = checkbox.dataset.distributionId;
+            const communeIndex = checkbox.dataset.communeIndex;
+            
+            console.log(`Désélection lieu ${index + 1}/${total}: ID ${distributionId}`);
+            
+            // Délai progressif réduit pour aller plus vite
+            setTimeout(() => {
+                fetch(`{% url 'distribution:toggle_distribution' 0 %}`.replace('0', distributionId), {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => {
+                    console.log(`Réponse pour ${distributionId}:`, response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log(`Données pour ${distributionId}:`, data);
+                    if (data.success) {
+                        completed++;
+                        updateDistributionInfo(distributionId, data);
+                        updateCardAppearance(distributionId, data.is_distributed);
+                        updateCommuneProgress(communeIndex);
+                    } else {
+                        errors++;
+                        checkbox.checked = true; // Remettre à true en cas d'erreur
+                        console.error(`Erreur pour ${distributionId}:`, data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur réseau pour', distributionId, ':', error);
+                    errors++;
+                    checkbox.checked = true; // Remettre à true en cas d'erreur
+                })
+                .finally(() => {
+                    if (completed + errors === total) {
+                        // Toutes les requêtes sont terminées
+                        console.log(`Désélection terminée: ${completed} succès, ${errors} erreurs`);
+                        updateGlobalProgress();
+                        updateValidateButton();
+                        
+                        if (deselectBtn) {
+                            deselectBtn.disabled = false;
+                            deselectBtn.innerHTML = '<i class="bx bx-square me-1"></i>Tout désélectionner';
+                        }
+                        
+                        if (errors > 0) {
+                            showAlert(`${completed} lieu(x) désélectionné(s), ${errors} erreur(s)`, 'warning');
+                        } else {
+                            showAlert(`${completed} lieu(x) désélectionné(s) avec succès !`, 'success');
+                        }
+                    }
+                });
+            }, index * 50); // Délai réduit à 50ms entre chaque requête
+        });
+    }
+    
+    function validateSelectedDistributions(selectedCheckboxes) {
+        const validateBtn = document.getElementById('validate-selected-btn');
+        if (validateBtn) {
+            validateBtn.disabled = true;
+            validateBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i>Validation...';
+        }
+        
+        let completed = 0;
+        let errors = 0;
+        const total = selectedCheckboxes.length;
+        
+        console.log(`Validation de ${total} lieux sélectionnés`);
+        
+        // Traiter les requêtes en parallèle avec un délai réduit
+        selectedCheckboxes.forEach((checkbox, index) => {
+            const distributionId = checkbox.dataset.distributionId;
+            const communeIndex = checkbox.dataset.communeIndex;
+            
+            console.log(`Validation lieu ${index + 1}/${total}: ID ${distributionId}`);
+            
+            // Délai progressif réduit pour aller plus vite
+            setTimeout(() => {
+                fetch(`{% url 'distribution:force_validate_distribution' 0 %}`.replace('0', distributionId), {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => {
+                    console.log(`Réponse pour ${distributionId}:`, response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log(`Données pour ${distributionId}:`, data);
+                    if (data.success) {
+                        completed++;
+                        updateDistributionInfo(distributionId, data);
+                        updateCardAppearance(distributionId, data.is_distributed);
+                        updateCommuneProgress(communeIndex);
+                    } else {
+                        errors++;
+                        checkbox.checked = false;
+                        console.error(`Erreur pour ${distributionId}:`, data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur réseau pour', distributionId, ':', error);
+                    errors++;
+                    checkbox.checked = false;
+                })
+                .finally(() => {
+                    if (completed + errors === total) {
+                        // Toutes les requêtes sont terminées
+                        console.log(`Validation terminée: ${completed} succès, ${errors} erreurs`);
+                        updateGlobalProgress();
+                        updateValidateButton();
+                        
+                        if (validateBtn) {
+                            validateBtn.disabled = false;
+                            validateBtn.innerHTML = `
+                                <i class="bx bx-check me-1"></i>
+                                Valider les sélectionnés
+                            `;
+                        }
+                        
+                        if (errors > 0) {
+                            showAlert(`${completed} lieu(x) validé(s), ${errors} erreur(s)`, 'warning');
+                        } else {
+                            showAlert(`${completed} lieu(x) validé(s) avec succès !`, 'success');
+                        }
+                    }
+                });
+            }, index * 50); // Délai réduit à 50ms entre chaque requête
+        });
+    }
+    
+    function syncCampagneLieux() {
+        const syncBtn = document.getElementById('sync-lieux-btn');
+        if (syncBtn) {
+            syncBtn.disabled = true;
+            syncBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i>Synchronisation...';
+        }
+        
+        fetch(`{% url 'distribution:sync_campagne_lieux' campagne.pk %}`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                // Recharger la page pour afficher les nouveaux lieux
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                showAlert('Erreur lors de la synchronisation : ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showAlert('Erreur lors de la synchronisation', 'danger');
+        })
+        .finally(() => {
+            if (syncBtn) {
+                syncBtn.disabled = false;
+                syncBtn.innerHTML = '<i class="bx bx-refresh me-1"></i>Synchroniser les lieux';
+            }
+        });
+    }
+    
+    function showAlert(message, type) {
+        // Créer une alerte temporaire
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alertDiv);
+        
+        // Supprimer l'alerte après 5 secondes
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.parentNode.removeChild(alertDiv);
+            }
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}
+

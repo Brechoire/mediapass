@@ -1,0 +1,218 @@
+{% extends 'base_new.html' %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Modifier{% else %}Ajouter{% endif %} l'affiche — {{ workshop.name }} | {{ block.super }}{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <a href="{% url 'workshops_with_poster' %}" class="inline-flex items-center gap-1 text-white/60 hover:text-white text-sm transition-colors mb-3">
+                    <i class="bx bx-arrow-back"></i> Retour à la liste des affiches
+                </a>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="bx bx-image text-2xl text-white"></i>
+                    </div>
+                    <h1 class="text-3xl sm:text-4xl font-bold text-white">{{ workshop.name }}</h1>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 text-white/90 text-sm">
+                        <i class="bx bx-calendar text-xs"></i> {{ workshop.date|date:"d/m/Y" }}
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 text-white/90 text-sm">
+                        <i class="bx bx-time text-xs"></i> {{ workshop.start_time|time:"H:i" }} — {{ workshop.end_time|time:"H:i" }}
+                    </span>
+                    {% if workshop.poster_valide %}
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-400/20 text-emerald-200 text-sm">
+                        <i class="bx bx-check-circle text-xs"></i> Affiche validée
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-400/20 text-amber-200 text-sm">
+                        <i class="bx bx-time text-xs"></i> En attente de validation
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for message in messages %}
+        <div class="flex items-start gap-2 rounded-2xl p-4 text-sm transition-all duration-300
+            {% if message.tags == 'success' %}bg-emerald-50 border border-emerald-200 text-emerald-700{% endif %}
+            {% if message.tags == 'error' %}bg-red-50 border border-red-200 text-red-700{% endif %}
+            {% if message.tags == 'warning' %}bg-amber-50 border border-amber-200 text-amber-700{% endif %}
+            {% if message.tags == 'info' %}bg-sky-50 border border-sky-200 text-sky-700{% endif %}">
+            {% if message.tags == 'success' %}<i class="bx bx-check-circle mt-0.5 shrink-0"></i>{% endif %}
+            {% if message.tags == 'error' %}<i class="bx bx-error-circle mt-0.5 shrink-0"></i>{% endif %}
+            {% if message.tags == 'warning' %}<i class="bx bx-info-circle mt-0.5 shrink-0"></i>{% endif %}
+            {% if message.tags == 'info' %}<i class="bx bx-info-circle mt-0.5 shrink-0"></i>{% endif %}
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not workshop.poster_valide %}
+    <div class="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-5 text-amber-700 text-sm flex items-start gap-3">
+        <i class="bx bx-info-circle mt-0.5 shrink-0 text-lg"></i>
+        <div>
+            <span class="font-medium">En attente de validation</span>
+            <p class="mt-0.5">L'affiche sera soumise à validation par l'administrateur après son envoi.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if workshop.description_poster_valide %}
+    <div class="mb-6 bg-blue-50 border border-blue-200 rounded-2xl p-5 text-blue-700 text-sm flex items-start gap-3">
+        <i class="bx bx-message-square-detail mt-0.5 shrink-0 text-lg"></i>
+        <div>
+            <span class="font-medium">Commentaire du refus</span>
+            <p class="mt-0.5">{{ workshop.description_poster_valide }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+            <div class="md:col-span-2 space-y-6">
+                <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b border-[#dce3ef]">
+                        <div class="flex items-center gap-2">
+                            <i class="bx bx-image text-[#4a6fa5]"></i>
+                            <h5 class="font-semibold text-[#1e293b]">Affiche de l'atelier</h5>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        {% if workshop.image %}
+                        <div class="mb-4">
+                            <div class="relative bg-[#f8f9fc] rounded-xl overflow-hidden border border-[#dce3ef]">
+                                <img src="{{ workshop.image.url }}" alt="{{ workshop.name }}" class="w-full h-56 object-cover" />
+                            </div>
+                            <label class="flex items-center gap-3 mt-3 p-3 border border-[#dce3ef] rounded-xl hover:bg-[#f8f9fc] cursor-pointer transition-colors">
+                                <input type="checkbox" name="{{ form.DELETE.name }}" id="{{ form.DELETE.id_for_label }}" class="tw-checkbox" />
+                                <span class="text-sm font-medium text-red-600"><i class="bx bx-trash mr-1"></i>{{ form.DELETE.label }}</span>
+                            </label>
+                        </div>
+                        {% endif %}
+
+                        <div>
+                            <label class="block text-sm font-medium text-[#4a6fa5] mb-1.5" for="{{ form.image.id_for_label }}">
+                                <i class="bx bx-cloud-upload mr-1"></i> {{ form.image.label }}
+                            </label>
+                            <div class="relative">
+                                <input type="file" name="{{ form.image.name }}" id="{{ form.image.id_for_label }}"
+                                       accept="image/*"
+                                       class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-[#4a6fa5] file:text-white hover:file:bg-[#3d5f8f] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all" />
+                            </div>
+                            {% if form.image.errors %}
+                                {% for error in form.image.errors %}
+                                <p class="mt-1.5 text-xs text-red-600 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ error }}</p>
+                                {% endfor %}
+                            {% endif %}
+                            <p class="mt-1.5 text-xs text-[#b0bedb]">Formats acceptés : JPG, PNG, GIF — Taille max : 5 Mo</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="md:col-span-3 space-y-6">
+                <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b border-[#dce3ef]">
+                        <div class="flex items-center gap-2">
+                            <i class="bx bx-share-alt text-[#4a6fa5]"></i>
+                            <h5 class="font-semibold text-[#1e293b]">Diffusion sur les réseaux sociaux</h5>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <p class="text-sm text-[#7a8fa0] mb-5">Cochez les supports sur lesquels cet atelier sera diffusé.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <label class="flex items-center gap-3 p-4 border border-[#dce3ef] rounded-xl hover:bg-[#f8f9fc] cursor-pointer transition-all has-[:checked]:border-[#4a6fa5] has-[:checked]:bg-[#e8eef7]">
+                                <input type="checkbox" name="{{ form.facebook.name }}" id="{{ form.facebook.id_for_label }}"
+                                       {% if form.facebook.value %}checked{% endif %} class="tw-checkbox">
+                                <i class="bx bxl-facebook-square text-blue-600 text-xl"></i>
+                                <span class="text-sm font-medium text-[#1e293b]">Facebook</span>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-4 border border-[#dce3ef] rounded-xl hover:bg-[#f8f9fc] cursor-pointer transition-all has-[:checked]:border-[#4a6fa5] has-[:checked]:bg-[#e8eef7]">
+                                <input type="checkbox" name="{{ form.instagram.name }}" id="{{ form.instagram.id_for_label }}"
+                                       {% if form.instagram.value %}checked{% endif %} class="tw-checkbox">
+                                <i class="bx bxl-instagram text-pink-600 text-xl"></i>
+                                <span class="text-sm font-medium text-[#1e293b]">Instagram</span>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-4 border border-[#dce3ef] rounded-xl hover:bg-[#f8f9fc] cursor-pointer transition-all has-[:checked]:border-[#4a6fa5] has-[:checked]:bg-[#e8eef7]">
+                                <input type="checkbox" name="{{ form.mail.name }}" id="{{ form.mail.id_for_label }}"
+                                       {% if form.mail.value %}checked{% endif %} class="tw-checkbox">
+                                <i class="bx bx-envelope text-gray-600 text-xl"></i>
+                                <span class="text-sm font-medium text-[#1e293b]">Email</span>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-4 border border-[#dce3ef] rounded-xl hover:bg-[#f8f9fc] cursor-pointer transition-all has-[:checked]:border-[#4a6fa5] has-[:checked]:bg-[#e8eef7]">
+                                <input type="checkbox" name="{{ form.portail.name }}" id="{{ form.portail.id_for_label }}"
+                                       {% if form.portail.value %}checked{% endif %} class="tw-checkbox">
+                                <i class="bx bx-globe text-green-600 text-xl"></i>
+                                <span class="text-sm font-medium text-[#1e293b]">Site Web</span>
+                            </label>
+
+                            <label class="sm:col-span-2 flex items-center gap-3 p-4 border border-[#dce3ef] rounded-xl hover:bg-[#f8f9fc] cursor-pointer transition-all has-[:checked]:border-[#4a6fa5] has-[:checked]:bg-[#e8eef7]">
+                                <input type="checkbox" name="{{ form.vdn.name }}" id="{{ form.vdn.id_for_label }}"
+                                       {% if form.vdn.value %}checked{% endif %} class="tw-checkbox">
+                                <i class="bx bx-news text-red-600 text-xl"></i>
+                                <span class="text-sm font-medium text-[#1e293b]">La Voix du Nord</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b border-[#dce3ef]">
+                        <div class="flex items-center gap-2">
+                            <i class="bx bx-info-circle text-[#4a6fa5]"></i>
+                            <h5 class="font-semibold text-[#1e293b]">Récapitulatif de l'atelier</h5>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                            <div class="bg-[#f8f9fc] rounded-xl p-4 border border-[#dce3ef]">
+                                <p class="text-xs text-[#b0bedb] font-medium uppercase tracking-wider mb-1">Lieu</p>
+                                <p class="font-medium text-[#1e293b]">{{ workshop.location.name }}</p>
+                            </div>
+                            <div class="bg-[#f8f9fc] rounded-xl p-4 border border-[#dce3ef]">
+                                <p class="text-xs text-[#b0bedb] font-medium uppercase tracking-wider mb-1">Date</p>
+                                <p class="font-medium text-[#1e293b]">{{ workshop.date|date:"l d F Y" }}</p>
+                            </div>
+                            <div class="bg-[#f8f9fc] rounded-xl p-4 border border-[#dce3ef]">
+                                <p class="text-xs text-[#b0bedb] font-medium uppercase tracking-wider mb-1">Horaire</p>
+                                <p class="font-medium text-[#1e293b]">{{ workshop.start_time|time:"H:i" }} — {{ workshop.end_time|time:"H:i" }}</p>
+                            </div>
+                            <div class="bg-[#f8f9fc] rounded-xl p-4 border border-[#dce3ef]">
+                                <p class="text-xs text-[#b0bedb] font-medium uppercase tracking-wider mb-1">Participants inscrits</p>
+                                <p class="font-medium text-[#1e293b]">{{ workshop.number_registered|default:"0" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-3">
+                    <a href="{% url 'workshops_with_poster' %}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[#dce3ef] text-sm font-medium text-[#7a8fa0] hover:text-[#1e293b] hover:bg-[#f8f9fc] transition-all">
+                        <i class="bx bx-x"></i> Annuler
+                    </a>
+                    <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4a6fa5] text-white font-medium text-sm hover:bg-[#3d5f8f] transition-all shadow-sm">
+                        <i class="bx bx-save"></i>
+                        {% if form.instance.pk %}Enregistrer les modifications{% else %}Ajouter l'affiche{% endif %}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</section>
+{% endblock %}

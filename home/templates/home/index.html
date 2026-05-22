@@ -1,0 +1,118 @@
+{% extends 'base_new.html' %}
+
+{% block content %}
+<!-- Hero -->
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-32">
+        <div class="max-w-3xl mx-auto text-center">
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-5">
+                Bienvenue sur le site de réservations du réseau Médi@'pass
+            </h1>
+            <p class="text-lg sm:text-xl text-[#c2cce2] max-w-2xl mx-auto mb-8 leading-relaxed">
+                Votre réseau de médiathèques en Sud-Avesnois & Belgique depuis 2016
+            </p>
+            <div class="flex flex-wrap gap-4 justify-center">
+                <a href="#network-info" class="inline-flex items-center px-6 py-3 rounded-xl bg-white text-[#4a6fa5] font-semibold text-sm hover:bg-[#e8eef7] transition-colors shadow-lg">
+                    En savoir plus
+                    <i class="bx bx-chevron-right ml-2 text-lg"></i>
+                </a>
+                <a href="#" class="inline-flex items-center px-6 py-3 rounded-xl border border-white/30 text-white font-medium text-sm hover:bg-white/10 transition-colors">
+                    Découvrir le réseau
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats / Key Features -->
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-10">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-8 text-center hover:shadow-md transition-shadow">
+            <div class="w-14 h-14 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-5">
+                <i class="bx bx-book-reader text-3xl text-[#4a6fa5]"></i>
+            </div>
+            <h3 class="text-xl font-bold text-[#4a6fa5] mb-2">10 Établissements</h3>
+            <p class="text-[#7a8fa0] leading-relaxed">9 médiathèques municipales<br>1 centre de documentation</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-8 text-center hover:shadow-md transition-shadow">
+            <div class="w-14 h-14 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-5">
+                <i class="bx bx-globe text-3xl text-[#4a6fa5]"></i>
+            </div>
+            <h3 class="text-xl font-bold text-[#4a6fa5] mb-2">1 Réseau</h3>
+            <p class="text-[#7a8fa0] leading-relaxed">Une navette, un catalogue commun<br>Du portage à domicile<br>Des ressources en ligne</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-8 text-center hover:shadow-md transition-shadow">
+            <div class="w-14 h-14 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-5">
+                <i class="bx bx-card text-3xl text-[#4a6fa5]"></i>
+            </div>
+            <h3 class="text-xl font-bold text-[#4a6fa5] mb-2">1 seule carte</h3>
+            <p class="text-[#7a8fa0] leading-relaxed">Accédez à plus de 70 000 titres : livres, CD, DVD, jeux de société, magazines…</p>
+        </div>
+    </div>
+</section>
+
+<!-- Network Info -->
+<section id="network-info" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+        <div class="border-b border-[#dce3ef] px-8 py-5">
+            <h2 class="text-2xl font-bold text-[#4a6fa5]">Le réseau Médi@'pass</h2>
+        </div>
+        <div class="p-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                <div class="lg:col-span-2 space-y-6">
+                    <p class="text-[#5a6f80] leading-relaxed">
+                        Les collections, équipements et le personnel des médiathèques sont municipaux. La coordination est intercommunale et plusieurs ressources sont mutualisées, pour plus de services à la population.
+                    </p>
+                    
+                    <div>
+                        <h4 class="text-lg font-bold text-[#4a6fa5] mb-4">Nos objectifs</h4>
+                        <ul class="space-y-3">
+                            <li class="flex items-start gap-3">
+                                <i class="bx bx-check-circle text-[#4a6fa5] mt-1 text-lg"></i>
+                                <span class="text-[#5a6f80]">Proposer une offre complémentaire et variée, une politique documentaire cohérente</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <i class="bx bx-check-circle text-[#4a6fa5] mt-1 text-lg"></i>
+                                <span class="text-[#5a6f80]">Offrir une action culturelle des bébés aux seniors, en passant par les ados et l'intergénérationnel</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <i class="bx bx-check-circle text-[#4a6fa5] mt-1 text-lg"></i>
+                                <span class="text-[#5a6f80]">S'inscrire dans les temps forts nationaux et développer nos propres actions</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <i class="bx bx-check-circle text-[#4a6fa5] mt-1 text-lg"></i>
+                                <span class="text-[#5a6f80]">Le tout en préservant l'identité de chaque établissement</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="flex items-start gap-3 bg-[#e8eef7] text-[#4a6fa5] rounded-xl p-5">
+                        <i class="bx bx-info-circle mt-0.5 text-xl"></i>
+                        <p class="text-sm font-medium">L'accès aux bibliothèques et aux animations est gratuit pour tous.</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="bg-gradient-to-br from-[#f8f9fc] to-[#e8eef7] rounded-xl border border-[#dce3ef] p-6">
+                        <h4 class="text-lg font-bold text-[#4a6fa5] mb-4">Tarifs</h4>
+                        <div class="space-y-4">
+                            <div>
+                                <p class="text-sm text-[#7a8fa0] mb-1">Habitants de la CCSA & de Momignies</p>
+                                <p class="text-2xl font-bold text-[#4a6fa5]">Gratuit</p>
+                            </div>
+                            <hr class="border-[#dce3ef]" />
+                            <div>
+                                <p class="text-sm text-[#7a8fa0] mb-1">Personnes extérieures au territoire</p>
+                                <p class="text-2xl font-bold text-[#4a6fa5]">5€</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-[#b0bedb] mt-4 leading-relaxed">
+                            Paiement possible au siège de la Communauté de Communes Sud-Avesnois ou dans les médiathèques de Fourmies, Anor et Eppe-Sauvage (uniquement par chèque).
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

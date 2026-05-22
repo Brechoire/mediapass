@@ -1,0 +1,107 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Approuver la réservation {{ reservation.product.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- En-tête -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-6">
+            <i class="bx bx-check-circle text-3xl text-emerald-600"></i>
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Approuver la réservation</h1>
+                <p class="text-gray-600 mt-1">Validez cette demande de réservation</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="bg-white border border-gray-200 rounded-xl shadow">
+        <div class="px-6 py-4 bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-t-xl">
+            <div class="flex items-center gap-2">
+                <i class="bx bx-package text-white"></i>
+                <h3 class="text-lg font-semibold text-white">{{ reservation.product.name }}</h3>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <!-- Détails de la réservation -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3">
+                        <i class="bx bx-calendar text-indigo-600"></i>
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Date de début</p>
+                            <p class="text-lg font-semibold text-gray-900">{{ reservation.start_date|date:'d/m/Y' }}</p>
+                            <p class="text-sm text-gray-500">Heure de dépôt : {{ reservation.deposit_time }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <i class="bx bx-calendar-check text-indigo-600"></i>
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Date de fin</p>
+                            <p class="text-lg font-semibold text-gray-900">{{ reservation.end_date|date:'d/m/Y' }}</p>
+                            <p class="text-sm text-gray-500">Heure de retour : {{ reservation.pickup_time }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3">
+                        <i class="bx bx-hash text-indigo-600"></i>
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Quantité</p>
+                            <p class="text-lg font-semibold text-gray-900">{{ reservation.quantity }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <i class="bx bx-building text-indigo-600"></i>
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Structure</p>
+                            <p class="text-lg font-semibold text-gray-900">{{ reservation.structure.name }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulaire d'approbation -->
+            <form method="POST" class="space-y-6">
+                {% csrf_token %}
+                
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Commentaire d'approbation (optionnel)</h4>
+                    <textarea name="{{ form.comment.name }}" id="{{ form.comment.id_for_label }}" class="tw-input w-full text-sm" rows="3" placeholder="Ajoutez un commentaire pour la structure...">{{ form.comment.value|default:'' }}</textarea>
+                    {% if form.comment.errors %}
+                        <div class="mt-2 text-sm text-red-600">
+                            {% for error in form.comment.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Boutons d'action -->
+                <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
+                    <a href="{% url 'reservation_list' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
+                        <i class="bx bx-arrow-back"></i>
+                        Annuler
+                    </a>
+                    <a href="{% url 'delete_reservation' reservation.pk %}" 
+                       class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+                       onclick="return confirm('Êtes-vous sûr de vouloir supprimer la réservation ?');">
+                        <i class="bx bx-trash"></i>
+                        Supprimer
+                    </a>
+                    <button type="submit" class="inline-flex items-center gap-2 px-6 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
+                        <i class="bx bx-check"></i>
+                        Approuver la réservation
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base_new.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- En-tête -->
+        <div class="mb-8">
+            <div class="flex items-center gap-4 mb-4">
+                <a href="{% url 'visitor_tracking:history' %}" 
+                   class="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900">
+                    <i class="bx bx-arrow-back"></i>
+                    Retour à l'historique
+                </a>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                <i class="bx bx-edit text-emerald-600"></i>
+                {{ title }}
+            </h1>
+        </div>
+
+        <!-- Formulaire -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center" 
+                         style="background-color: {{ entry.location.color }}20;">
+                        <i class="bx {{ entry.location.icon }} text-2xl" style="color: {{ entry.location.color }};"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-semibold text-gray-900">{{ entry.location.name }}</h2>
+                        <p class="text-sm text-gray-500">{{ entry.date|date:"l d F Y" }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <form method="post" class="p-6 space-y-6">
+                {% csrf_token %}
+                
+                <div>
+                    <label for="count" class="block text-sm font-medium text-gray-700 mb-2">
+                        Nombre de visiteurs
+                    </label>
+                    <input type="number" name="count" id="count" value="{{ entry.count }}" min="0"
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-2xl font-bold text-center py-4">
+                </div>
+                
+                <div class="text-sm text-gray-500">
+                    <p>Créé le {{ entry.created_at|date:"d/m/Y à H:i" }}{% if entry.created_by %} par {{ entry.created_by.username }}{% endif %}</p>
+                    {% if entry.updated_by %}
+                    <p>Modifié le {{ entry.updated_at|date:"d/m/Y à H:i" }} par {{ entry.updated_by.username }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="flex gap-4 pt-4">
+                    <button type="submit" 
+                            class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors">
+                        <i class="bx bx-save"></i>
+                        Enregistrer
+                    </button>
+                    <a href="{% url 'visitor_tracking:history' %}" 
+                       class="px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors">
+                        Annuler
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

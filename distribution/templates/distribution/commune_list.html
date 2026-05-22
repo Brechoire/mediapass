@@ -1,0 +1,96 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Communes - Distribution{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="bx bx-buildings text-2xl text-white"></i>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-white">Communes</h1>
+                </div>
+                <p class="text-white/70 text-sm">G&#xE9;rez les communes de votre r&#xE9;seau de distribution</p>
+            </div>
+            <a href="{% url 'distribution:commune_create' %}"
+               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#2f4d75] text-sm font-semibold hover:bg-white/90 transition-all shadow-sm">
+                <i class="bx bx-plus"></i> Nouvelle commune
+            </a>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-list-ul mr-1.5 text-[#4a6fa5]"></i>Liste des communes</h2>
+        </div>
+
+        <div class="p-5">
+            {% if communes %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-[#dce3ef]">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Commune</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieux</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden md:table-cell">Cr&#xE9;&#xE9;e le</th>
+                            <th class="px-4 py-3 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#dce3ef]">
+                        {% for commune in communes %}
+                        <tr class="hover:bg-[#f8f9fc] transition-colors">
+                            <td class="px-4 py-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center shrink-0">
+                                        <i class="bx bx-buildings text-lg text-[#4a6fa5]"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-[#1e293b]">{{ commune.name }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-4 text-center">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ commune.lieux_count }}</span>
+                            </td>
+                            <td class="px-4 py-4 text-sm text-[#b0bedb] hidden md:table-cell">{{ commune.created_at|date:"d/m/Y" }}</td>
+                            <td class="px-4 py-4 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <a href="{% url 'distribution:commune_detail' commune.pk %}"
+                                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#e8eef7] text-[#4a6fa5] text-xs font-semibold hover:bg-[#dce3ef] transition-colors">
+                                        D&#xE9;tail <i class="bx bx-chevron-right"></i>
+                                    </a>
+                                    <a href="{% url 'distribution:lieu_create' commune.pk %}"
+                                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 border border-emerald-200 transition-colors">
+                                        <i class="bx bx-plus"></i> Lieu
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-16">
+                <div class="w-20 h-20 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4">
+                    <i class="bx bx-buildings text-4xl text-[#4a6fa5]"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-[#4a6fa5] mb-2">Aucune commune</h3>
+                <p class="text-[#b0bedb] text-sm mb-6">Commencez par cr&#xE9;er votre premi&#xE8;re commune.</p>
+                <a href="{% url 'distribution:commune_create' %}"
+                   class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4a6fa5] text-white font-medium text-sm hover:bg-[#3d5f8f] transition-all shadow-sm">
+                    <i class="bx bx-plus"></i> Cr&#xE9;er une commune
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}
