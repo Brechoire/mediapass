@@ -143,10 +143,10 @@ class Reservation(models.Model):
         ('other', 'Autre raison'),
     ]
 
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reservations")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reservations", db_index=True)
     start_date = models.DateTimeField(db_index=True)
     end_date = models.DateTimeField(db_index=True)
-    structure = models.ForeignKey(Structure, on_delete=models.CASCADE, related_name="reservations")
+    structure = models.ForeignKey(Structure, on_delete=models.CASCADE, related_name="reservations", db_index=True)
     quantity = models.PositiveIntegerField()
     is_approved = models.BooleanField(default=False, db_index=True)
     is_rejected = models.BooleanField(default=False, db_index=True)

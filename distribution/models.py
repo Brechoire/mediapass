@@ -39,7 +39,8 @@ class Lieu(models.Model):
         Commune,
         on_delete=models.CASCADE,
         related_name='lieux',
-        verbose_name="Commune"
+        verbose_name="Commune",
+        db_index=True
     )
     
     name = models.CharField(
@@ -128,7 +129,8 @@ class CampagneDistribution(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='campagnes_created',
-        verbose_name="Créé par"
+        verbose_name="Créé par",
+        db_index=True
     )
     
     created_at = models.DateTimeField(
@@ -186,14 +188,16 @@ class Distribution(models.Model):
         CampagneDistribution,
         on_delete=models.CASCADE,
         related_name='distributions',
-        verbose_name="Campagne"
+        verbose_name="Campagne",
+        db_index=True
     )
     
     lieu = models.ForeignKey(
         Lieu,
         on_delete=models.CASCADE,
         related_name='distributions',
-        verbose_name="Lieu"
+        verbose_name="Lieu",
+        db_index=True
     )
     
     is_distributed = models.BooleanField(

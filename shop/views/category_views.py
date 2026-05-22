@@ -14,7 +14,7 @@ from ..models import Category, Product, Reservation
 @user_passes_test(is_staff_or_superuser)
 def category_list(request):
     q = request.GET.get("q", "")
-    categorys = Category.objects.annotate(
+    categories = Category.objects.annotate(
         product_count=Count("products"),
         active_reservations=Count(
             "products__reservations",
@@ -26,12 +26,12 @@ def category_list(request):
         ),
     )
     if q:
-        categorys = categorys.filter(name__icontains=q)
-    categorys = categorys.order_by("name")
+        categories = categories.filter(name__icontains=q)
+    categories = categories.order_by("name")
     return render(
         request,
         "shop/category_list.html",
-        {"categorys": categorys, "q": q},
+        {"categories": categories, "q": q},
     )
 
 

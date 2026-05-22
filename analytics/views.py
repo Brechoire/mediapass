@@ -73,7 +73,7 @@ def dashboard(request):
     browser_counts = {}
     os_counts = {}
 
-    for visit in visits.order_by('-timestamp')[:1000].iterator():
+    for visit in visits.order_by('-timestamp').only('user_agent')[:1000].iterator():
         if visit.user_agent:
             try:
                 user_agent = parse(visit.user_agent)

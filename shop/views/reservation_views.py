@@ -6,6 +6,7 @@ from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from accounts.utils import is_staff_or_superuser
@@ -269,7 +270,7 @@ def reservation_calendar_events(request):
                 'structure': r.structure.name,
                 'quantity': r.quantity,
             },
-            'url': f"/shop/reservations/{r.pk}/",
+            'url': reverse("reservation_details", args=[r.pk]),
         })
 
     return JsonResponse(events, safe=False)

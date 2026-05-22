@@ -346,7 +346,7 @@ data-template="vertical-menu-template-free"
                 
                 {% if messages %}
                 {% for message in messages %}
-                <div{% if message.tags %} role="alert" {% endif %}>
+                <div{% if message.tags %} role="alert"{% endif %}>
                 {{ message }}
                 <button type="button" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>

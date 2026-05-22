@@ -177,11 +177,9 @@
     <footer class="border-t border-[#dce3ef] bg-white">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-[#7a8fa0]">
-                <div>&copy; <script>document.write(new Date().getFullYear());</script> Médi@'pass · Communauté de Communes Sud-Avesnois</div>
+                <div>&copy; <span id="footer-year"></span><script>document.getElementById("footer-year").textContent=new Date().getFullYear();</script> Médi@'pass · Communauté de Communes Sud-Avesnois</div>
                 <nav class="flex items-center gap-6">
-                    <a href="#" class="hover:text-[#4a6fa5] transition-colors">FAQ</a>
-                    <a href="#" class="hover:text-[#4a6fa5] transition-colors">Mentions légales</a>
-                    <a href="#" class="hover:text-[#4a6fa5] transition-colors">Contact</a>
+                    <a href="{% url 'legalinformation' %}" class="hover:text-[#4a6fa5] transition-colors">Mentions l&eacute;gales</a>
                 </nav>
             </div>
         </div>

@@ -1,5 +1,4 @@
 from django import forms
-from django.templatetags.static import static
 
 from .models import Kakemono, KakemonoReservation
 
@@ -23,7 +22,7 @@ class KakemonoReservationForm(forms.ModelForm):
             "title"
         )
         self.fields["kakemonos"].widget.option_attributes = lambda obj: {
-            "data-image": f"/media/{obj.image}" if obj.image else "",
+            "data-image": obj.image.url if obj.image else "",
             "data-description": obj.description if obj.description else "",
         }
 

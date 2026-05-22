@@ -18,7 +18,7 @@ from .forms import (
 )
 
 
-def is_mediatheque_member_or_admin(user):
+def is_admin_excluding_mediatheque(user):
     """Vérifie si l'utilisateur est un super utilisateur ou un administrateur (exclut le groupe mediatheque)"""
     return (user.is_authenticated and
             (user.is_superuser or
@@ -28,7 +28,7 @@ def is_mediatheque_member_or_admin(user):
 @login_required
 def index(request):
     """Page d'accueil de la gestion des distributions"""
-    if not is_mediatheque_member_or_admin(request.user):
+    if not is_admin_excluding_mediatheque(request.user):
         return redirect('distribution:access_denied')
     
     # Récupérer les campagnes récentes avec annotations
@@ -59,7 +59,7 @@ def index(request):
 @login_required
 def campagne_list(request):
     """Liste des campagnes de distribution"""
-    if not is_mediatheque_member_or_admin(request.user):
+    if not is_admin_excluding_mediatheque(request.user):
         return redirect('distribution:access_denied')
     
     # Formulaire de recherche
@@ -104,7 +104,7 @@ def campagne_list(request):
 @login_required
 def campagne_detail(request, pk):
     """Détail d'une campagne avec gestion des distributions"""
-    if not is_mediatheque_member_or_admin(request.user):
+    if not is_admin_excluding_mediatheque(request.user):
         return redirect('distribution:access_denied')
     
     campagne = get_object_or_404(
@@ -141,7 +141,7 @@ def campagne_detail(request, pk):
 @login_required
 def campagne_create(request):
     """Créer une nouvelle campagne"""
-    if not is_mediatheque_member_or_admin(request.user):
+    if not is_admin_excluding_mediatheque(request.user):
         return redirect('distribution:access_denied')
     
     if request.method == 'POST':
@@ -179,7 +179,7 @@ def campagne_create(request):
 @login_required
 def campagne_edit(request, pk):
     """Modifier une campagne"""
-    if not is_mediatheque_member_or_admin(request.user):
+    if not is_admin_excluding_mediatheque(request.user):
         return redirect('distribution:access_denied')
     
     campagne = get_object_or_404(CampagneDistribution, pk=pk)
@@ -204,7 +204,7 @@ def campagne_edit(request, pk):
 @require_POST
 def toggle_distribution(request, pk):
     """Basculer le statut de distribution d'un lieu (AJAX)"""
-    if not is_mediatheque_member_or_admin(request.user):
+    if not is_admin_excluding_mediatheque(request.user):
         return JsonResponse({'error': 'Accès refusé'}, status=403)
     
     try:
@@ -256,7 +256,7 @@ def toggle_distribution(request, pk):
 @require_POST
 def force_validate_distribution(request, pk):
     """Forcer la validation d'un lieu (AJAX) - ne désactive jamais"""
-    if not is_mediatheque_member_or_admin(request.user):
+    if not is_admin_excluding_mediatheque(request.user):
         return JsonResponse({'error': 'Accès refusé'}, status=403)
     
     try:
@@ -303,7 +303,7 @@ def force_validate_distribution(request, pk):
 @require_POST
 def sync_campagne_lieux(request, pk):
     """Synchroniser les lieux d'une campagne avec tous les lieux actifs"""
-    if not is_mediatheque_member_or_admin(request.user):
+    if not is_admin_excluding_mediatheque(request.user):
         return JsonResponse({'error': 'Accès refusé'}, status=403)
     
     try:
@@ -343,7 +343,7 @@ def sync_campagne_lieux(request, pk):
 @login_required
 def commune_list(request):
     """Liste des communes"""
-    if not is_mediatheque_member_or_admin(request.user):
+    if not is_admin_excluding_mediatheque(request.user):
         return redirect('distribution:access_denied')
     
     communes = Commune.objects.annotate(
@@ -357,7 +357,7 @@ def commune_list(request):
 @login_required
 def commune_detail(request, pk):
     """Détail d'une commune avec ses lieux"""
-    if not is_mediatheque_member_or_admin(request.user):
+    if not is_admin_excluding_mediatheque(request.user):
         return redirect('distribution:access_denied')
     
     commune = get_object_or_404(Commune, pk=pk)
@@ -373,7 +373,7 @@ def commune_detail(request, pk):
 @login_required
 def commune_create(request):
     """Créer une nouvelle commune"""
-    if not is_mediatheque_member_or_admin(request.user):
+    if not is_admin_excluding_mediatheque(request.user):
         return redirect('distribution:access_denied')
     
     if request.method == 'POST':
@@ -394,7 +394,7 @@ def lieu_create(request, commune_pk):
     """Créer un nouveau lieu dans une commune"""
     logger.debug("lieu_create called for commune %s by user %s", commune_pk, request.user)
 
-    if not is_mediatheque_member_or_admin(request.user):
+    if not is_admin_excluding_mediatheque(request.user):
         logger.warning("Access denied for user %s on commune %s", request.user, commune_pk)
         return redirect('distribution:access_denied')
 
@@ -423,7 +423,7 @@ def lieu_create(request, commune_pk):
 @login_required
 def statistics(request):
     """Page des statistiques"""
-    if not is_mediatheque_member_or_admin(request.user):
+    if not is_admin_excluding_mediatheque(request.user):
         return redirect('distribution:access_denied')
     
     # Statistiques générales

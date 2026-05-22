@@ -44,19 +44,6 @@ def index(request):
     return render(request, "home/index.html")
 
 
-def handler404(request, exception):
-    """Gère les erreurs 404 (page non trouvée).
-
-    Args:
-        request: La requête HTTP.
-        exception: L'exception levée.
-
-    Returns:
-        HttpResponse: La page d'erreur 404 rendue.
-    """
-    return render(request, "404.html", status=404)
-
-
 def search(request):
     """Effectue une recherche dans les produits.
 
@@ -243,32 +230,4 @@ def backup_all(request):
         )
 
 
-@login_required(login_url="login")
-@csrf_protect
-def save(request):
-    """Sauvegarde les données du formulaire.
 
-    Args:
-        request: La requête HTTP contenant les données du formulaire.
-
-    Returns:
-        HttpResponse: Réponse indiquant le succès de la sauvegarde.
-    """
-    if request.method == "POST":
-        try:
-            data = request.POST.get("data")
-            if not data:
-                logger.error("Aucune donnée reçue dans la requête POST")
-                return HttpResponse("Erreur: aucune donnée reçue", status=400)
-
-            logger.debug("Données reçues (tronquées) : %.200s", str(data))
-
-            return HttpResponse("Données sauvegardées avec succès.")
-        except Exception as e:
-            logger.error("Erreur lors de la sauvegarde : %s", str(e))
-            return HttpResponse(
-                "Erreur lors de la sauvegarde", status=500
-            )
-    else:
-        logger.warning("Tentative de sauvegarde avec une méthode non-POST")
-        return HttpResponse("Erreur: méthode non autorisée", status=405)

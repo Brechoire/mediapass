@@ -60,7 +60,7 @@ class Workshop(models.Model):
         observations (str): Observations pour le bilan de l'atelier.
     """
 
-    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="workshops")
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="workshops", db_index=True)
     name = models.CharField(max_length=255)
     date = models.DateField(db_index=True)
     date_end = models.DateField(null=True, blank=True, db_index=True)
