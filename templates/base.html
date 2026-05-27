@@ -315,10 +315,13 @@ data-template="vertical-menu-template-free"
                                 
                                 {% endif %}
                                 
-                                <a href="{% url 'logout' %}" class="flex items-center gap-2 px-2 py-2 rounded hover:bg-gray-50 text-sm text-gray-700">
-                                    <i class="bx bx-power-off" aria-hidden="true"></i>
-                                    <span>Déconnexion</span>
-                                </a>
+                                <form method="post" action="{% url 'logout' %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="flex items-center gap-2 px-2 py-2 rounded hover:bg-gray-50 text-sm text-gray-700 w-full text-left">
+                                        <i class="bx bx-power-off" aria-hidden="true"></i>
+                                        <span>Déconnexion</span>
+                                    </button>
+                                </form>
                             </div>
                         </li>
                         <!--/ User -->

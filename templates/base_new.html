@@ -109,9 +109,12 @@
                             </a>
                             <hr class="my-1 border-[#dce3ef]" />
                             {% endif %}
-                            <a href="{% url 'logout' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#d46a78] hover:bg-[#fbe8eb] transition-colors">
-                                <i class="bx bx-power-off text-[#d46a78]"></i> Déconnexion
-                            </a>
+                            <form method="post" action="{% url 'logout' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#d46a78] hover:bg-[#fbe8eb] transition-colors w-full">
+                                    <i class="bx bx-power-off text-[#d46a78]"></i> Déconnexion
+                                </button>
+                            </form>
                         </div>
                     </div>
                     {% else %}
