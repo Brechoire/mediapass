@@ -75,6 +75,15 @@ def category_detail(request, pk):
             .order_by("-end_date")
             .values("end_date")[:1]
         ),
+        next_start_date=Subquery(
+            Reservation.objects.filter(
+                product=OuterRef("pk"),
+                is_approved=True,
+                end_date__gte=today,
+            )
+            .order_by("-end_date")
+            .values("start_date")[:1]
+        ),
     )
 
     return render(

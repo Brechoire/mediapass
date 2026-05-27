@@ -107,8 +107,8 @@
                                     Stock partiel
                                 </span>
                                 {% endif %}
-                                {% if product.next_return_date %}
-                                <span class="text-xs text-[#b0bedb]">· Retour {{ product.next_return_date|date:"d/m" }}</span>
+                                {% if product.next_return_date and product.next_start_date %}
+                                <span class="text-xs text-[#b0bedb]">· du {{ product.next_start_date|date:"d/m" }} au {{ product.next_return_date|date:"d/m" }}</span>
                                 {% endif %}
                             {% else %}
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-700 border border-sky-200">
