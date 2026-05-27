@@ -2,7 +2,6 @@ from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Count, OuterRef, Q, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
-from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -38,20 +37,21 @@ def category_list(request):
 def category_detail(request, pk):
     today = timezone.now()
 
-    category = Category.objects.annotate(
-        total_active_reservations=Coalesce(
-            Sum(
-                "products__reservations__quantity",
-                filter=Q(
-                    products__reservations__is_approved=True,
-                    products__reservations__end_date__gte=today,
+    category = get_object_or_404(
+        Category.objects.annotate(
+            total_active_reservations=Coalesce(
+                Sum(
+                    "products__reservations__quantity",
+                    filter=Q(
+                        products__reservations__is_approved=True,
+                        products__reservations__end_date__gte=today,
+                    ),
                 ),
-            ),
-            0,
-        )
-    ).first()
-    if not category:
-        raise Http404("Cat\u00e9gorie introuvable")
+                0,
+            )
+        ),
+        pk=pk,
+    )
 
     reserved_qty_subq = (
         Reservation.objects.filter(
