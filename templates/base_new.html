@@ -62,7 +62,7 @@
                                 <a href="{% url 'category_list' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Catégories</a>
                                 <a href="{% url 'workshop_list' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Ateliers</a>
                                 <a href="{% url 'statistics' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Stats réservations</a>
-                                <a href="{% url 'library_workshops:statistics' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Stats ateliers</a>
+                                <a href="{% url 'workshop_stats' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Stats ateliers</a>
                                 <hr class="border-[#dce3ef] my-1">
                                 <a href="{% url 'notifications:email_admin' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-envelope mr-1"></i> Emails</a>
                             </div>
@@ -155,7 +155,7 @@
                         <a href="{% url 'category_list' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2">Catégories</a>
                         <a href="{% url 'workshop_list' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2">Ateliers</a>
                         <a href="{% url 'statistics' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2">Stats réservations</a>
-                        <a href="{% url 'library_workshops:statistics' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2">Stats ateliers</a>
+                        <a href="{% url 'workshop_stats' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2">Stats ateliers</a>
                         <a href="{% url 'notifications:email_admin' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-envelope mr-1"></i>Emails</a>
                     </div>
                     {% endif %}
