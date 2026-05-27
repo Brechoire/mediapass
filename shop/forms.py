@@ -162,8 +162,9 @@ class ApprovalForm(forms.Form):
     """
 
     comment = forms.CharField(
-        label="Commentaire",
+        label="Commentaire (optionnel)",
         widget=forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+        required=False,
     )
 
 

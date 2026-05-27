@@ -287,7 +287,6 @@ def approve_reservation(request, pk):
         form = ApprovalForm(request.POST)
         if form.is_valid():
             reservation.is_approved = True
-            reservation.approval_comment = form.cleaned_data["comment"]
             reservation.save()
             from notifications.email_service import send_notification
             send_notification("reservation_approved", {
