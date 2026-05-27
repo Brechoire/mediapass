@@ -7,7 +7,7 @@ import kakemono.models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('kakemono', '0003_alter_kakemonoreservation_user'),
+        ('kakemono', '0002_kakemonoreservation_first_name_and_more'),
     ]
 
     operations = [
