@@ -7,6 +7,7 @@ leurs lieux, et leurs affiches.
 import calendar
 import csv
 import json
+from collections import defaultdict
 from datetime import date
 
 from dateutil.relativedelta import relativedelta
@@ -17,7 +18,7 @@ from django.core.mail import EmailMultiAlternatives, send_mail
 from django.core.paginator import Paginator
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
-from django.db.models import Avg, Count, ExpressionWrapper, F, Max, Min, Q, Sum, Case, IntegerField, When
+from django.db.models import Avg, Count, ExpressionWrapper, F, Max, Min, Q, Sum, Value, Case, IntegerField, When
 from django.db.models.functions import Coalesce, ExtractMonth
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -30,6 +31,7 @@ from accounts.utils import is_staff_or_superuser, group_required, is_staff_or_su
 from .forms import (
     LocationForm,
     WorkshopForm,
+    WorkshopFilterForm,
     WorkshopPosterForm,
     WorkshopPosterValidationForm,
 )
@@ -211,16 +213,27 @@ def workshop_stats(request):
     )
 
     # Données détaillées pour le tableau par commune
+    # + détails des ateliers par commune pour l'expansion inline
+    commune_workshops = defaultdict(list)
+    workshop_details = workshops.values(
+        "id", "name", "date", "class_welcome", "location__city"
+    ).order_by("location__city", "date")
+    for w in workshop_details:
+        city = w["location__city"] or "Non défini"
+        commune_workshops[city].append(w)
+
     commune_table_data = []
     for commune in workshops_by_commune:
+        city = commune["location__city"] or "Non défini"
         commune_table_data.append({
-            'commune': commune['location__city'] or 'Non défini',
+            'commune': city,
             'total_ateliers': commune['total_count'],
             'ateliers_classiques': commune['standard_count'],
             'accueils_classe': commune['class_welcome_count'],
             'total_participants': commune['total_registered'],
             'participants_classiques': commune['standard_registered'],
             'participants_accueils': commune['class_welcome_registered'],
+            'workshops': commune_workshops.get(city, []),
         })
 
     # Top 5 des ateliers les plus fréquentés
@@ -455,9 +468,7 @@ def workshop_stats(request):
         "workshops_by_location": workshops_by_location,
         "workshops_by_commune": workshops_by_commune,
         "commune_table_data": commune_table_data,
-        "workshops_by_month": json.dumps(
-            list(workshops_by_month), cls=DjangoJSONEncoder
-        ),
+        "workshops_by_month": list(workshops_by_month),
         "communication_stats": {
             "instagram": stats["instagram"],
             "facebook": stats["facebook"],
@@ -570,7 +581,7 @@ def workshop_stats(request):
 @login_required(login_url="login")
 @user_passes_test(is_staff_or_superuser_or_in_comm_group)
 def workshop_list(request):
-    """Affiche la liste des ateliers.
+    """Affiche la liste des ateliers avec filtres et pagination.
 
     Args:
         request: La requête HTTP.
@@ -589,16 +600,128 @@ def workshop_list(request):
     all_years = Workshop.objects.dates("date", "year", order="DESC")
     years_list = [date.year for date in all_years]
 
-    # Filtrer les ateliers par année
-    workshops = Workshop.objects.filter(date__year=selected_year).select_related(
-        "location"
-    ).order_by("-date")
+    # Requête de base avec select_related pour éviter les N+1
+    workshops = Workshop.objects.filter(
+        date__year=selected_year
+    ).select_related("location")
+
+    # Appliquer les filtres supplémentaires
+    filter_form = WorkshopFilterForm(request.GET)
+    if filter_form.is_valid():
+        cd = filter_form.cleaned_data
+
+        if cd.get("q"):
+            workshops = workshops.filter(name__icontains=cd["q"])
+
+        if cd.get("location"):
+            workshops = workshops.filter(location=cd["location"])
+
+        if cd.get("city"):
+            workshops = workshops.filter(location__city=cd["city"])
+
+        if cd.get("date_from"):
+            workshops = workshops.filter(date__gte=cd["date_from"])
+
+        if cd.get("date_to"):
+            workshops = workshops.filter(date__lte=cd["date_to"])
+
+        if cd.get("class_welcome") == "yes":
+            workshops = workshops.filter(class_welcome=True)
+        elif cd.get("class_welcome") == "no":
+            workshops = workshops.filter(class_welcome=False)
+
+        if cd.get("poster_required") == "yes":
+            workshops = workshops.filter(poster_required=True)
+        elif cd.get("poster_required") == "no":
+            workshops = workshops.filter(poster_required=False)
+
+        if cd.get("has_image") == "yes":
+            workshops = workshops.filter(image__isnull=False)
+        elif cd.get("has_image") == "no":
+            workshops = workshops.filter(image__isnull=True)
+
+        if cd.get("poster_valide") == "yes":
+            workshops = workshops.filter(poster_valide=True)
+        elif cd.get("poster_valide") == "no":
+            workshops = workshops.filter(poster_valide=False)
+
+        if cd.get("number_registered_min") is not None:
+            workshops = workshops.filter(
+                number_registered__gte=cd["number_registered_min"]
+            )
+
+        if cd.get("number_registered_max") is not None:
+            workshops = workshops.filter(
+                number_registered__lte=cd["number_registered_max"]
+            )
+
+        if cd.get("number_attendees_min") is not None:
+            workshops = workshops.filter(
+                number_attendees__gte=cd["number_attendees_min"]
+            )
+
+        if cd.get("number_attendees_max") is not None:
+            workshops = workshops.filter(
+                number_attendees__lte=cd["number_attendees_max"]
+            )
+
+    # Annotation pour le tri de la colonne Affiche
+    workshops = workshops.annotate(
+        poster_sort=Case(
+            When(class_welcome=True, then=Value(0)),
+            When(image__isnull=False, then=Value(1)),
+            When(poster_required=True, then=Value(2)),
+            default=Value(3),
+            output_field=IntegerField(),
+        )
+    )
+
+    # Tri
+    sort_field = request.GET.get("sort", "-date")
+    sortable_fields = {
+        "name": "name",
+        "poster_sort": "poster_sort",
+        "location__name": "location__name",
+        "date": "date",
+        "number_registered": "number_registered",
+        "number_attendees": "number_attendees",
+    }
+    if sort_field.lstrip("-") not in sortable_fields:
+        sort_field = "-date"
+    workshops = workshops.order_by(sort_field)
+
+    # Pagination (20 par page)
+    paginator = Paginator(workshops, 20)
+    page_number = request.GET.get("page", 1)
+    workshops_page = paginator.get_page(page_number)
+
+    # URL de base sans le paramètre page (pour les liens de pagination)
+    filter_params = request.GET.copy()
+    if "page" in filter_params:
+        del filter_params["page"]
+    filter_params = filter_params.urlencode()
+
+    # Déterminer la direction du tri pour chaque colonne
+    sort_direction = {}
+    for field_name in sortable_fields:
+        if sort_field == field_name:
+            sort_direction[field_name] = "asc"
+        elif sort_field == f"-{field_name}":
+            sort_direction[field_name] = "desc"
+        else:
+            sort_direction[field_name] = ""
 
     context = {
-        "workshops": workshops,
+        "workshops": workshops_page,
+        "filter_form": filter_form,
         "current_year": current_year,
         "selected_year": selected_year,
         "years_list": years_list,
+        "page_obj": workshops_page,
+        "paginator": paginator,
+        "filter_params": filter_params,
+        "sort_field": sort_field,
+        "sort_direction": sort_direction,
     }
     return render(request, "workshop/workshop_list.html", context)
 
@@ -1079,7 +1202,7 @@ def location_detail(request, pk):
     context = {
         "location": location,
         "workshops": workshops,
-        "workshops_data": json.dumps(workshops_data, cls=DjangoJSONEncoder),
+        "workshops_data": workshops_data,
         "total_workshops": total_workshops,
         "total_registered": total_registered,
         "total_attendees": total_attendees,
@@ -1090,9 +1213,7 @@ def location_detail(request, pk):
         "classic_registered": classic_registered,
         "class_welcome_registered": class_welcome_registered,
         "top_workshops": top_workshops,
-        "workshops_by_month": json.dumps(
-            workshops_by_month, cls=DjangoJSONEncoder
-        ),
+        "workshops_by_month": workshops_by_month,
         "communication_stats": communication_stats,
         "previous_year_stats": previous_year_stats,
         "variations": variations,

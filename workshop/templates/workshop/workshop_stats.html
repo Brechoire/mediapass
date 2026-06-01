@@ -380,6 +380,7 @@
             <table class="w-full text-sm" id="communeTable">
                 <thead class="sticky top-0 bg-[#f8f9fc]">
                     <tr class="text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">
+                        <th class="px-2 py-3 w-8"></th>
                         <th class="px-3 py-3 rounded-l-lg cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0]" onclick="sortTable(0)">
                             Commune <i class="bx bx-sort ml-1"></i>
                         </th>
@@ -399,8 +400,25 @@
                 </thead>
                 <tbody class="divide-y divide-[#dce3ef]">
                     {% for commune in commune_table_data %}
-                    <tr class="hover:bg-[#f8f9fc] transition-colors">
-                        <td class="px-3 py-2.5 font-medium text-[#1e293b]">{{ commune.commune }}</td>
+                    <tr class="hover:bg-[#f8f9fc] transition-colors commune-row" data-city="{{ commune.commune }}">
+                        <td class="px-2 py-2.5 text-center">
+                            {% if commune.workshops %}
+                            <button type="button"
+                                class="inline-flex items-center justify-center w-6 h-6 rounded-md text-[#b0bedb] hover:text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors toggle-btn"
+                                data-city="{{ commune.commune|escapejs }}"
+                                title="Voir les ateliers">
+                                <i class="bx bx-chevron-right text-sm"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                        <td class="px-3 py-2.5 font-medium text-[#1e293b]">
+                            <a href="{% url 'workshop_list' %}?year={{ selected_year }}&city={{ commune.commune|urlencode }}"
+                               target="_blank"
+                               class="hover:text-[#4a6fa5] transition-colors">
+                                {{ commune.commune }}
+                                <i class="bx bx-external-link text-[#b0bedb] text-xs align-middle ml-0.5"></i>
+                            </a>
+                        </td>
                         <td class="px-3 py-2.5 text-center">
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ commune.total_ateliers }}</span>
                         </td>
@@ -412,6 +430,37 @@
                         </td>
                         <td class="px-3 py-2.5 text-center">
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">{{ commune.total_participants }}</span>
+                        </td>
+                    </tr>
+                    <tr class="hidden commune-detail" data-city="{{ commune.commune }}">
+                        <td colspan="6" class="px-3 py-0">
+                            <div class="bg-[#f8f9fc] border border-[#dce3ef] rounded-lg my-2 py-2 px-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Ateliers {{ commune.commune }}</span>
+                                    <span class="text-xs text-[#b0bedb]">{{ commune.workshops|length }} atelier{{ commune.workshops|length|pluralize }}</span>
+                                </div>
+                                <div class="divide-y divide-[#dce3ef]">
+                                    {% for w in commune.workshops %}
+                                    <div class="flex items-center justify-between py-1.5 first:pt-0 last:pb-0">
+                                        <div class="flex items-center gap-2 min-w-0">
+                                            {% if w.class_welcome %}
+                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 shrink-0">
+                                                <i class="bx bx-chalkboard text-[10px]"></i> Classe
+                                            </span>
+                                            {% else %}
+                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#e8eef7] text-[#4a6fa5] shrink-0">
+                                                <i class="bx bx-calendar text-[10px]"></i> Atelier
+                                            </span>
+                                            {% endif %}
+                                            <a href="{% url 'workshop_detail' w.id %}" class="text-sm text-[#4a6fa5] hover:text-[#3d5f8f] truncate">{{ w.name }}</a>
+                                        </div>
+                                        <span class="text-xs text-[#b0bedb] shrink-0 ml-2">{{ w.date|date:"d/m/Y" }}</span>
+                                    </div>
+                                    {% empty %}
+                                    <div class="text-sm text-[#b0bedb] py-2 text-center">Aucun atelier</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -661,27 +710,60 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function toggleCommune(city) {
+        var detail = document.querySelector('#communeTable tbody tr.commune-detail[data-city="' + city.replace(/"/g, '&quot;') + '"]');
+        var btn = document.querySelector('#communeTable tbody .toggle-btn[data-city="' + city.replace(/"/g, '&quot;') + '"]');
+        if (detail) {
+            detail.classList.toggle('hidden');
+            if (btn) {
+                var icon = btn.querySelector('i');
+                if (icon) {
+                    icon.className = detail.classList.contains('hidden') ? 'bx bx-chevron-right text-sm' : 'bx bx-chevron-down text-sm';
+                }
+            }
+        }
+    }
+
+    document.querySelector('#communeTable tbody').addEventListener('click', function(e) {
+        var btn = e.target.closest('.toggle-btn');
+        if (btn) {
+            toggleCommune(btn.getAttribute('data-city'));
+        }
+    });
+
     var sortCol = -1;
     var sortDir = 'asc';
 
     window.sortTable = function(col) {
         var tbody = document.querySelector('#communeTable tbody');
-        var rows = Array.from(tbody.querySelectorAll('tr'));
+        var rows = Array.from(tbody.querySelectorAll('tr.commune-row'));
         sortDir = (sortCol === col && sortDir === 'asc') ? 'desc' : 'asc';
         sortCol = col;
+        var cellIdx = col + 1;
         rows.sort(function(a, b) {
-            var aVal = a.cells[col].textContent.trim();
-            var bVal = b.cells[col].textContent.trim();
+            var aVal = a.cells[cellIdx].textContent.trim();
+            var bVal = b.cells[cellIdx].textContent.trim();
             if (col === 0) return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
             return sortDir === 'asc' ? (parseInt(aVal) || 0) - (parseInt(bVal) || 0) : (parseInt(bVal) || 0) - (parseInt(aVal) || 0);
         });
-        rows.forEach(function(r) { tbody.appendChild(r); });
+        rows.forEach(function(r) {
+            tbody.appendChild(r);
+            var detail = r.nextElementSibling;
+            if (detail && detail.classList.contains('commune-detail')) {
+                tbody.appendChild(detail);
+            }
+        });
         updateSortIcons(col);
     };
 
     function updateSortIcons(col) {
-        document.querySelectorAll('#communeTable th i').forEach(function(icon, i) {
-            if (i === col) {
+        var headers = document.querySelectorAll('#communeTable thead th');
+        headers.forEach(function(th, idx) {
+            if (idx === 0) return;
+            var icon = th.querySelector('i');
+            if (!icon) return;
+            var dataCol = idx - 1;
+            if (dataCol === col) {
                 icon.className = 'bx ' + (sortDir === 'asc' ? 'bx-sort-up' : 'bx-sort-down') + ' ml-1 text-[#4a6fa5]';
             } else {
                 icon.className = 'bx bx-sort ml-1 text-[#b0bedb]';
@@ -692,13 +774,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function filterTable() {
         var filter = (document.getElementById('filterCommune').value || '').toLowerCase();
         var minAteliers = parseInt(document.getElementById('filterMinAteliers').value) || 0;
-        var rows = document.querySelectorAll('#communeTable tbody tr');
+        var rows = document.querySelectorAll('#communeTable tbody tr.commune-row');
         var count = 0;
         rows.forEach(function(row) {
-            var commune = row.cells[0].textContent.toLowerCase();
-            var total = parseInt(row.cells[1].textContent) || 0;
+            var commune = row.cells[1].textContent.toLowerCase();
+            var total = parseInt(row.cells[2].textContent) || 0;
             var visible = commune.includes(filter) && total >= minAteliers;
             row.style.display = visible ? '' : 'none';
+            var detail = row.nextElementSibling;
+            if (detail && detail.classList.contains('commune-detail')) {
+                detail.style.display = visible ? '' : 'none';
+            }
             if (visible) count++;
         });
         document.getElementById('visibleRows').textContent = count + '/' + rows.length;

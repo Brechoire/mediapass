@@ -40,13 +40,125 @@
                     {% endfor %}
                 </div>
             </div>
-            <a href="{% url 'workshop_list' %}"
-                class="text-sm text-[#b0bedb] hover:text-[#4a6fa5] transition-colors {% if not request.GET.year %}hidden{% endif %}">
-                <i class="bx bx-x"></i> Réinitialiser
-            </a>
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="document.getElementById('filterPanel').classList.toggle('hidden')"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-[#4a6fa5] border border-[#dce3ef] hover:bg-[#e8eef7] transition-colors">
+                    <i class="bx bx-filter text-sm"></i> Filtres
+                    {% if filter_form.is_bound and filter_form.has_changed %}
+                    <span class="w-2 h-2 rounded-full bg-[#4a6fa5]"></span>
+                    {% endif %}
+                </button>
+                <a href="{% url 'workshop_list' %}"
+                    class="text-sm text-[#b0bedb] hover:text-[#4a6fa5] transition-colors {% if not request.GET.year %}hidden{% endif %}">
+                    <i class="bx bx-x"></i> Réinitialiser
+                </a>
+            </div>
         </div>
     </div>
 </section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-4 relative z-10 {% if not filter_form.has_changed %}hidden{% endif %}" id="filterPanel">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6">
+        <form method="get" action="{% url 'workshop_list' %}">
+            <input type="hidden" name="year" value="{{ selected_year }}">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.q.label }}</label>
+                    {{ filter_form.q }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.location.label }}</label>
+                    {{ filter_form.location }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.city.label }}</label>
+                    {{ filter_form.city }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.date_from.label }}</label>
+                    {{ filter_form.date_from }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.date_to.label }}</label>
+                    {{ filter_form.date_to }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.class_welcome.label }}</label>
+                    {{ filter_form.class_welcome }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.poster_required.label }}</label>
+                    {{ filter_form.poster_required }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.poster_valide.label }}</label>
+                    {{ filter_form.poster_valide }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.has_image.label }}</label>
+                    {{ filter_form.has_image }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.number_registered_min.label }}</label>
+                    {{ filter_form.number_registered_min }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.number_registered_max.label }}</label>
+                    {{ filter_form.number_registered_max }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.number_attendees_min.label }}</label>
+                    {{ filter_form.number_attendees_min }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.number_attendees_max.label }}</label>
+                    {{ filter_form.number_attendees_max }}
+                </div>
+            </div>
+            <div class="flex items-center gap-3 mt-5 pt-4 border-t border-[#dce3ef]">
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-colors">
+                    <i class="bx bx-search text-sm"></i> Filtrer
+                </button>
+                <a href="?year={{ selected_year }}"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-[#5a6f80] border border-[#dce3ef] text-sm font-medium hover:bg-[#f8f9fc] transition-colors">
+                    <i class="bx bx-x text-sm"></i> Réinitialiser les filtres
+                </a>
+            </div>
+        </form>
+    </div>
+</section>
+
+{% if filter_form.is_bound and filter_form.has_changed %}
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-4 relative z-10">
+    <div class="flex flex-wrap items-center gap-2">
+        {% for key, value in request.GET.items %}
+        {% if key != 'year' and key != 'page' and value %}
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">
+            {% if key == 'q' %}<i class="bx bx-search text-xs"></i> "{{ value }}"
+            {% elif key == 'city' %}<i class="bx bx-map text-xs"></i> {{ value }}
+            {% elif key == 'date_from' %}<i class="bx bx-calendar text-xs"></i> Du {{ value }}
+            {% elif key == 'date_to' %}<i class="bx bx-calendar text-xs"></i> Au {{ value }}
+            {% elif key == 'class_welcome' %}{% if value == 'yes' %}<i class="bx bx-chalkboard text-xs"></i> Accueil classe{% else %}<i class="bx bx-chalkboard text-xs"></i> Sans accueil classe{% endif %}
+            {% elif key == 'poster_required' %}{% if value == 'yes' %}<i class="bx bx-image text-xs"></i> Affiche requise{% else %}<i class="bx bx-image text-xs"></i> Sans affiche requise{% endif %}
+            {% elif key == 'has_image' %}{% if value == 'yes' %}<i class="bx bx-check-circle text-xs"></i> Avec affiche{% else %}<i class="bx bx-image text-xs"></i> Sans affiche{% endif %}
+            {% elif key == 'poster_valide' %}{% if value == 'yes' %}<i class="bx bx-check-shield text-xs"></i> Affiche validée{% else %}<i class="bx bx-x-circle text-xs"></i> Affiche non validée{% endif %}
+            {% elif key == 'number_registered_min' %}<i class="bx bx-user text-xs"></i> Inscrits ≥ {{ value }}
+            {% elif key == 'number_registered_max' %}<i class="bx bx-user text-xs"></i> Inscrits ≤ {{ value }}
+            {% elif key == 'number_attendees_min' %}<i class="bx bx-user-check text-xs"></i> Présents ≥ {{ value }}
+            {% elif key == 'number_attendees_max' %}<i class="bx bx-user-check text-xs"></i> Présents ≤ {{ value }}
+            {% elif key == 'location' %}<i class="bx bx-map-pin text-xs"></i> Lieu #{{ value }}
+            {% else %}{{ key }}: {{ value }}{% endif %}
+            <a href="?{% for k2,v2 in request.GET.items %}{% if k2 != key and k2 != 'page' %}{{ k2 }}={{ v2 }}&{% endif %}{% endfor %}year={{ selected_year }}" class="ml-1 hover:text-[#2f4d75]"><i class="bx bx-x"></i></a>
+        </span>
+        {% endif %}
+        {% endfor %}
+        <a href="?year={{ selected_year }}"
+            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+            <i class="bx bx-x"></i> Tout effacer
+        </a>
+    </div>
+</section>
+{% endif %}
 
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
@@ -54,18 +166,66 @@
             <h5 class="font-semibold text-[#1e293b]">
                 <i class="bx bx-calendar mr-1.5 text-[#4a6fa5]"></i> Liste des ateliers {{ selected_year }}
             </h5>
-            <span class="text-sm text-[#b0bedb]">{{ workshops|length }} atelier{{ workshops|length|pluralize }}</span>
+            <span class="text-sm text-[#b0bedb]">{{ paginator.count }} atelier{{ paginator.count|pluralize }}</span>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-[#dce3ef]">
-                <thead class="bg-[#f8f9fc]">
+                <thead class="bg-[#f8f9fc)]">
                     <tr>
-                        <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Nom</th>
-                        <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden sm:table-cell">Affiche</th>
-                        <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieu</th>
-                        <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden md:table-cell">Date</th>
-                        <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Inscrits</th>
-                        <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Présents</th>
+                        <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">
+                            <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}sort={% if sort_field == 'name' %}-{% endif %}name&page=1"
+                               class="inline-flex items-center gap-1 hover:text-[#4a6fa5] transition-colors">
+                                Nom
+                                {% if sort_field == 'name' %}<i class="bx bx-chevron-up text-xs"></i>
+                                {% elif sort_field == '-name' %}<i class="bx bx-chevron-down text-xs"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden sm:table-cell">
+                            <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}sort={% if sort_field == 'poster_sort' %}-{% endif %}poster_sort&page=1"
+                               class="inline-flex items-center gap-1 hover:text-[#4a6fa5] transition-colors">
+                                Affiche
+                                {% if sort_field == 'poster_sort' %}<i class="bx bx-chevron-up text-xs"></i>
+                                {% elif sort_field == '-poster_sort' %}<i class="bx bx-chevron-down text-xs"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">
+                            <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}sort={% if sort_field == 'location__name' %}-{% endif %}location__name&page=1"
+                               class="inline-flex items-center gap-1 hover:text-[#4a6fa5] transition-colors">
+                                Lieu
+                                {% if sort_field == 'location__name' %}<i class="bx bx-chevron-up text-xs"></i>
+                                {% elif sort_field == '-location__name' %}<i class="bx bx-chevron-down text-xs"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden md:table-cell">
+                            <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}sort={% if sort_field == 'date' %}-{% endif %}date&page=1"
+                               class="inline-flex items-center gap-1 hover:text-[#4a6fa5] transition-colors">
+                                Date
+                                {% if sort_field == 'date' %}<i class="bx bx-chevron-up text-xs"></i>
+                                {% elif sort_field == '-date' %}<i class="bx bx-chevron-down text-xs"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">
+                            <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}sort={% if sort_field == 'number_registered' %}-{% endif %}number_registered&page=1"
+                               class="inline-flex items-center gap-1 hover:text-[#4a6fa5] transition-colors">
+                                Inscrits
+                                {% if sort_field == 'number_registered' %}<i class="bx bx-chevron-up text-xs"></i>
+                                {% elif sort_field == '-number_registered' %}<i class="bx bx-chevron-down text-xs"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">
+                            <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}sort={% if sort_field == 'number_attendees' %}-{% endif %}number_attendees&page=1"
+                               class="inline-flex items-center gap-1 hover:text-[#4a6fa5] transition-colors">
+                                Présents
+                                {% if sort_field == 'number_attendees' %}<i class="bx bx-chevron-up text-xs"></i>
+                                {% elif sort_field == '-number_attendees' %}<i class="bx bx-chevron-down text-xs"></i>
+                                {% endif %}
+                            </a>
+                        </th>
                         <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -113,8 +273,11 @@
                             <div class="w-16 h-16 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4">
                                 <i class="bx bx-calendar text-3xl text-[#4a6fa5]"></i>
                             </div>
-                            <h3 class="text-lg font-semibold text-[#4a6fa5] mb-1">Aucun atelier pour {{ selected_year }}</h3>
-                            <p class="text-[#b0bedb] text-sm">Sélectionnez une autre année ou créez un atelier.</p>
+                            <h3 class="text-lg font-semibold text-[#4a6fa5] mb-1">Aucun atelier trouvé</h3>
+                            <p class="text-[#b0bedb] text-sm">
+                                Aucun atelier ne correspond aux critères sélectionnés.
+                                <a href="?year={{ selected_year }}" class="text-[#4a6fa5] hover:underline">Réinitialiser les filtres</a>
+                            </p>
                         </td>
                     </tr>
                     {% endfor %}
@@ -122,5 +285,52 @@
             </table>
         </div>
     </div>
+
+    {% if paginator.num_pages > 1 %}
+    <div class="flex items-center justify-between mt-6">
+        <div class="text-sm text-[#b0bedb]">
+            Page {{ workshops.number }} sur {{ paginator.num_pages }}
+            ({{ paginator.count }} atelier{{ paginator.count|pluralize }})
+        </div>
+        <div class="flex items-center gap-2">
+            {% if workshops.has_previous %}
+            <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ workshops.previous_page_number }}"
+                class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-[#dce3ef] text-[#5a6f80] hover:bg-[#e8eef7] transition-colors">
+                <i class="bx bx-chevron-left text-sm"></i>
+            </a>
+            {% endif %}
+
+            {% for num in paginator.page_range %}
+            {% if num == workshops.number %}
+            <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[#4a6fa5] text-white text-sm font-medium">{{ num }}</span>
+            {% elif num > workshops.number|add:"-3" and num < workshops.number|add:"3" %}
+            <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ num }}"
+                class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-[#dce3ef] text-[#5a6f80] hover:bg-[#e8eef7] transition-colors text-sm">{{ num }}</a>
+            {% endif %}
+            {% endfor %}
+
+            {% if workshops.has_next %}
+            <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ workshops.next_page_number }}"
+                class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-[#dce3ef] text-[#5a6f80] hover:bg-[#e8eef7] transition-colors">
+                <i class="bx bx-chevron-right text-sm"></i>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var filterBtn = document.querySelector('[onclick*="filterPanel"]');
+    if (filterBtn) {
+        filterBtn.removeAttribute('onclick');
+        filterBtn.addEventListener('click', function() {
+            document.getElementById('filterPanel').classList.toggle('hidden');
+        });
+    }
+});
+</script>
 {% endblock %}

@@ -262,3 +262,112 @@ class WorkshopPosterValidationForm(forms.ModelForm):
 
         model = Workshop
         fields = ("description_poster_valide",)
+
+
+class WorkshopFilterForm(forms.Form):
+    """Formulaire de filtrage pour la liste des ateliers.
+
+    Tous les champs sont optionnels. Utilisé en GET pour permettre
+    le bookmarking et le partage des URLs filtrées.
+    """
+
+    q = forms.CharField(
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Rechercher par nom…",
+            }
+        ),
+        label="Recherche",
+    )
+    location = forms.ModelChoiceField(
+        required=False,
+        queryset=Location.objects.all(),
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="Lieu",
+        empty_label="Tous",
+    )
+    city = forms.ChoiceField(
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="Ville",
+    )
+    date_from = forms.DateField(
+        required=False,
+        widget=forms.DateInput(
+            attrs={"type": "date", "class": "form-control"}
+        ),
+        label="Date du",
+    )
+    date_to = forms.DateField(
+        required=False,
+        widget=forms.DateInput(
+            attrs={"type": "date", "class": "form-control"}
+        ),
+        label="Date au",
+    )
+    class_welcome = forms.ChoiceField(
+        required=False,
+        choices=[("", "Tous"), ("yes", "Oui"), ("no", "Non")],
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="Accueil classe",
+    )
+    poster_required = forms.ChoiceField(
+        required=False,
+        choices=[("", "Tous"), ("yes", "Oui"), ("no", "Non")],
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="Affiche requise",
+    )
+    has_image = forms.ChoiceField(
+        required=False,
+        choices=[("", "Tous"), ("yes", "Oui"), ("no", "Non")],
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="Affiche présente",
+    )
+    poster_valide = forms.ChoiceField(
+        required=False,
+        choices=[("", "Tous"), ("yes", "Oui"), ("no", "Non")],
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="Affiche validée",
+    )
+    number_registered_min = forms.IntegerField(
+        required=False,
+        widget=forms.NumberInput(
+            attrs={"class": "form-control", "placeholder": "Min"}
+        ),
+        label="Inscrits (min)",
+    )
+    number_registered_max = forms.IntegerField(
+        required=False,
+        widget=forms.NumberInput(
+            attrs={"class": "form-control", "placeholder": "Max"}
+        ),
+        label="Inscrits (max)",
+    )
+    number_attendees_min = forms.IntegerField(
+        required=False,
+        widget=forms.NumberInput(
+            attrs={"class": "form-control", "placeholder": "Min"}
+        ),
+        label="Présents (min)",
+    )
+    number_attendees_max = forms.IntegerField(
+        required=False,
+        widget=forms.NumberInput(
+            attrs={"class": "form-control", "placeholder": "Max"}
+        ),
+        label="Présents (max)",
+    )
+
+    def __init__(self, *args, **kwargs):
+        """Initialise le formulaire avec la liste dynamique des villes."""
+        super().__init__(*args, **kwargs)
+        cities = (
+            Location.objects.values_list("city", flat=True)
+            .distinct()
+            .order_by("city")
+        )
+        self.fields["city"].choices = [("", "Toutes")] + [
+            (c, c) for c in cities
+        ]
