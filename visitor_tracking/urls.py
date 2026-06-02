@@ -14,6 +14,7 @@ urlpatterns = [
     
     # Gestion des espaces
     path("spaces/add/", views.add_space, name="add_space"),
+    path("spaces/edit/<int:location_id>/", views.edit_space, name="edit_space"),
     path("spaces/delete/<int:location_id>/", views.delete_space, name="delete_space"),
     
     # Saisie rétroactive

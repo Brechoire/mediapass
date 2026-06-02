@@ -14,11 +14,21 @@
                 </a>
                 <div class="flex items-center gap-3">
                     <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        {% if location %}
+                        <i class="bx bx-pencil text-2xl text-white"></i>
+                        {% else %}
                         <i class="bx bx-plus-circle text-2xl text-white"></i>
+                        {% endif %}
                     </div>
                     <div>
                         <h1 class="text-3xl sm:text-4xl font-bold text-white">{{ title }}</h1>
-                        <p class="text-white/70 text-sm">Créez un nouvel espace pour le pointage des visiteurs.</p>
+                        <p class="text-white/70 text-sm">
+                            {% if location %}
+                            Modifiez les informations de l'espace.
+                            {% else %}
+                            Créez un nouvel espace pour le pointage des visiteurs.
+                            {% endif %}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -47,7 +57,9 @@
     {% endif %}
 
     <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
-        <form method="post" class="p-6 sm:p-8 space-y-6">
+        <form method="post"
+              action="{% if location %}{% url 'visitor_tracking:edit_space' location.id %}{% else %}{% url 'visitor_tracking:add_space' %}{% endif %}"
+              class="p-6 sm:p-8 space-y-6">
             {% csrf_token %}
 
             <div class="bg-[#f8f9fc] rounded-xl p-5 border border-[#dce3ef]">
@@ -58,7 +70,8 @@
                             <i class="bx bx-text mr-1"></i> Nom de l'espace <span class="text-red-500">*</span>
                         </label>
                         <input type="text" name="name" id="name" required
-                               placeholder="Ex: M\u00e9diath\u00e8que, Ludoth\u00e8que, Espace Jeunesse..."
+                               placeholder="Ex: Médiathèque, Ludothèque, Espace Jeunesse..."
+                               value="{{ location.name|default:'' }}"
                                class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all">
                     </div>
                     <div>
@@ -67,7 +80,7 @@
                         </label>
                         <textarea name="description" id="description" rows="2"
                                   placeholder="Description de l'espace..."
-                                  class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all resize-y min-h-[60px]"></textarea>
+                                  class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all resize-y min-h-[60px]">{{ location.description|default:'' }}</textarea>
                     </div>
                 </div>
             </div>
@@ -78,7 +91,8 @@
                     {% for icon_class, icon_name in icons %}
                     <label class="cursor-pointer">
                         <input type="radio" name="icon" value="{{ icon_class }}"
-                               class="sr-only peer" {% if forloop.first %}checked{% endif %}>
+                               class="sr-only peer"
+                               {% if location and location.icon == icon_class %}checked{% elif not location and forloop.first %}checked{% endif %}>
                         <div class="w-full aspect-square rounded-xl border-2 border-[#dce3ef] flex items-center justify-center
                                     peer-checked:border-[#4a6fa5] peer-checked:bg-[#e8eef7]
                                     hover:border-[#b0bedb] hover:bg-[#f8f9fc] transition-all"
@@ -95,8 +109,9 @@
                 <div class="grid grid-cols-4 sm:grid-cols-6 gap-3">
                     {% for color_code, color_name in colors %}
                     <label class="cursor-pointer">
-                        <input type="radio" name="color" value="{{ color_code }}"
-                               class="sr-only peer" {% if forloop.first %}checked{% endif %}>
+                        <input type="radio" name="color_preset" value="{{ color_code }}"
+                               class="sr-only peer"
+                               {% if location and location.color == color_code %}checked{% elif not location and forloop.first %}checked{% endif %}>
                         <div class="w-full h-10 rounded-xl border-2 border-transparent
                                     peer-checked:border-[#1e293b] peer-checked:ring-2 peer-checked:ring-[#1e293b]/20 peer-checked:ring-offset-2
                                     hover:opacity-80 transition-all shadow-sm"
@@ -105,19 +120,34 @@
                         </div>
                     </label>
                     {% endfor %}
+                    <label class="cursor-pointer relative" for="custom-color" title="Couleur personnalisée">
+                        <div id="custom-color-swatch"
+                             class="w-full h-10 rounded-xl border-2 border-dashed border-[#b0bedb]
+                                    hover:opacity-80 transition-all shadow-sm
+                                    flex items-center justify-center">
+                            <i id="custom-color-icon" class="bx bx-palette text-lg text-[#b0bedb]"></i>
+                        </div>
+                    </label>
+                    <input type="color" id="custom-color" name="color"
+                           value="{% if location %}{{ location.color }}{% else %}#4F46E5{% endif %}"
+                           class="sr-only">
                 </div>
             </div>
 
             <div class="bg-[#f8f9fc] rounded-xl p-5 border border-[#dce3ef]">
                 <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-4">Aperçu</p>
-                <div id="preview" class="bg-white rounded-xl p-4 border-l-4 shadow-sm" style="border-color: #4F46E5;">
+                <div id="preview" class="bg-white rounded-xl p-4 border-l-4 shadow-sm"
+                     style="border-color: {% if location %}{{ location.color }}{% else %}#4F46E5{% endif %};">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                             style="background-color: #4F46E520;">
-                            <i id="preview-icon" class="bx bx-building text-xl" style="color: #4F46E5;"></i>
+                             style="background-color: {% if location %}{{ location.color }}{% else %}#4F46E5{% endif %}20;">
+                            <i id="preview-icon" class="bx {% if location %}{{ location.icon }}{% else %}bx-building{% endif %} text-xl"
+                               style="color: {% if location %}{{ location.color }}{% else %}#4F46E5{% endif %};"></i>
                         </div>
                         <div class="min-w-0">
-                            <span id="preview-name" class="font-semibold text-[#1e293b]">Nouvel espace</span>
+                            <span id="preview-name" class="font-semibold text-[#1e293b]">
+                                {% if location %}{{ location.name }}{% else %}Nouvel espace{% endif %}
+                            </span>
                             <p class="text-xs text-[#7a8fa0] mt-0.5">Espace de pointage</p>
                         </div>
                         <span class="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -131,7 +161,7 @@
                 <button type="submit"
                         class="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-all shadow-sm">
                     <i class="bx bx-check"></i>
-                    Créer l'espace
+                    {% if location %}Enregistrer{% else %}Créer l'espace{% endif %}
                 </button>
                 <a href="{% url 'visitor_tracking:index' %}"
                    class="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#5a6f80] hover:bg-white hover:border-[#b0bedb] transition-all">
@@ -149,15 +179,23 @@
 document.addEventListener('DOMContentLoaded', function() {
     const nameInput = document.getElementById('name');
     const iconInputs = document.querySelectorAll('input[name="icon"]');
-    const colorInputs = document.querySelectorAll('input[name="color"]');
+    const presetColorInputs = document.querySelectorAll('input[name="color_preset"]');
+    const customColorInput = document.getElementById('custom-color');
+    const customColorSwatch = document.getElementById('custom-color-swatch');
+    const customColorIcon = document.getElementById('custom-color-icon');
     const preview = document.getElementById('preview');
     const previewIcon = document.getElementById('preview-icon');
     const previewName = document.getElementById('preview-name');
 
+    function getCurrentColor() {
+        const checked = document.querySelector('input[name="color_preset"]:checked');
+        return checked ? checked.value : customColorInput.value;
+    }
+
     function updatePreview() {
         const name = nameInput.value || 'Nouvel espace';
         const icon = document.querySelector('input[name="icon"]:checked')?.value || 'bx-building';
-        const color = document.querySelector('input[name="color"]:checked')?.value || '#4F46E5';
+        const color = getCurrentColor();
 
         previewName.textContent = name;
         previewIcon.className = `bx ${icon} text-xl`;
@@ -166,9 +204,40 @@ document.addEventListener('DOMContentLoaded', function() {
         preview.style.borderColor = color;
     }
 
+    function syncCustomSwatch() {
+        const color = customColorInput.value;
+        const matchedPreset = document.querySelector(`input[name="color_preset"][value="${color}"]`);
+        if (matchedPreset) {
+            matchedPreset.checked = true;
+            customColorSwatch.className = 'w-full h-10 rounded-xl border-2 border-dashed border-[#b0bedb] hover:opacity-80 transition-all shadow-sm flex items-center justify-center';
+            customColorSwatch.style.backgroundColor = '';
+            customColorIcon.className = 'bx bx-palette text-lg text-[#b0bedb]';
+        } else {
+            presetColorInputs.forEach(r => r.checked = false);
+            customColorSwatch.className = 'w-full h-10 rounded-xl border-2 border-[#1e293b] hover:opacity-80 transition-all shadow-sm flex items-center justify-center ring-2 ring-[#1e293b]/20 ring-offset-2';
+            customColorSwatch.style.backgroundColor = color;
+            customColorIcon.className = 'bx bx-palette text-lg text-white';
+        }
+        updatePreview();
+    }
+
+    presetColorInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            customColorInput.value = this.value;
+            customColorSwatch.className = 'w-full h-10 rounded-xl border-2 border-dashed border-[#b0bedb] hover:opacity-80 transition-all shadow-sm flex items-center justify-center';
+            customColorSwatch.style.backgroundColor = '';
+            customColorIcon.className = 'bx bx-palette text-lg text-[#b0bedb]';
+            updatePreview();
+        });
+    });
+
+    customColorInput.addEventListener('input', syncCustomSwatch);
+
     nameInput.addEventListener('input', updatePreview);
     iconInputs.forEach(input => input.addEventListener('change', updatePreview));
-    colorInputs.forEach(input => input.addEventListener('change', updatePreview));
+
+    // Initial sync: if custom color doesn't match any preset, highlight the swatch
+    syncCustomSwatch();
 });
 </script>
 {% endblock %}

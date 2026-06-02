@@ -133,3 +133,111 @@ class VisitorIndexViewTests(TestCase):
         self.login()
         response = self.client.get("/mediatheque/visiteurs/")
         self.assertContains(response, "+1")
+
+
+class SpaceEditViewTests(TestCase):
+    """Tests pour la vue d'édition d'espace."""
+
+    def setUp(self):
+        self.group = create_mediatheque_group()
+        self.user = User.objects.create_user(username="mediat", password="pass")
+        self.user.groups.add(self.group)
+
+        self.other_user = User.objects.create_user(username="other", password="pass")
+        self.other_user.groups.add(self.group)
+
+        self.location = Location.objects.create(
+            name="Médiathèque", color="#4a6fa5", icon="bx-building",
+            is_active=True, order=1, user=self.user,
+            description="Espace principal",
+        )
+        self.other_location = Location.objects.create(
+            name="Autre", color="#ef4444", icon="bx-book",
+            is_active=True, order=1, user=self.other_user,
+        )
+
+    def login(self):
+        self.client.login(username="mediat", password="pass")
+
+    def test_get_returns_200(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/spaces/edit/{self.location.id}/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_get_contains_prefilled_name(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/spaces/edit/{self.location.id}/")
+        self.assertContains(response, "Médiathèque")
+        self.assertContains(response, "Espace principal")
+
+    def test_get_contains_title(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/spaces/edit/{self.location.id}/")
+        self.assertContains(response, "Modifier")
+        self.assertContains(response, "Enregistrer")
+
+    def test_redirects_without_login(self):
+        response = self.client.get(f"/mediatheque/visiteurs/spaces/edit/{self.location.id}/")
+        self.assertEqual(response.status_code, 302)
+
+    def test_edit_updates_location(self):
+        self.login()
+        response = self.client.post(f"/mediatheque/visiteurs/spaces/edit/{self.location.id}/", {
+            "name": "Médiathèque Renovée",
+            "description": "Nouvelle description",
+            "icon": "bx-library",
+            "color": "#22C55E",
+        })
+        self.assertRedirects(response, "/mediatheque/visiteurs/")
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.name, "Médiathèque Renovée")
+        self.assertEqual(self.location.description, "Nouvelle description")
+        self.assertEqual(self.location.icon, "bx-library")
+        self.assertEqual(self.location.color, "#22C55E")
+
+    def test_edit_rejects_empty_name(self):
+        self.login()
+        response = self.client.post(f"/mediatheque/visiteurs/spaces/edit/{self.location.id}/", {
+            "name": "",
+            "description": "",
+            "icon": "bx-building",
+            "color": "#4F46E5",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "obligatoire")
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.name, "Médiathèque")
+
+    def test_edit_rejects_duplicate_name_excluding_self(self):
+        Location.objects.create(
+            name="Ludothèque", color="#10b981", icon="bx-game",
+            is_active=True, order=2, user=self.user,
+        )
+        self.login()
+        response = self.client.post(f"/mediatheque/visiteurs/spaces/edit/{self.location.id}/", {
+            "name": "Ludothèque",
+            "description": "",
+            "icon": "bx-building",
+            "color": "#4F46E5",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "existe déjà")
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.name, "Médiathèque")
+
+    def test_edit_saves_same_name_no_duplicate_error(self):
+        self.login()
+        response = self.client.post(f"/mediatheque/visiteurs/spaces/edit/{self.location.id}/", {
+            "name": "Médiathèque",
+            "description": "Mise à jour",
+            "icon": "bx-building",
+            "color": "#4a6fa5",
+        })
+        self.assertRedirects(response, "/mediatheque/visiteurs/")
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.description, "Mise à jour")
+
+    def test_edit_returns_404_for_other_user_location(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/spaces/edit/{self.other_location.id}/")
+        self.assertEqual(response.status_code, 404)

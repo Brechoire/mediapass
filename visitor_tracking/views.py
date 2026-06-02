@@ -16,6 +16,41 @@ from library_workshops.utils import filter_owned, filter_location_owned
 from .models import Location, VisitorCount
 from .forms import BulkVisitorCountForm, DateRangeForm, LocationForm
 
+# Constantes partagées entre les vues d'espaces
+SPACE_ICONS = [
+    ('bx-building', 'Bâtiment'),
+    ('bx-book', 'Livre'),
+    ('bx-book-reader', 'Lecteur'),
+    ('bx-library', 'Bibliothèque'),
+    ('bx-game', 'Jeu'),
+    ('bx-joystick', 'Joystick'),
+    ('bx-music', 'Musique'),
+    ('bx-movie', 'Film'),
+    ('bx-desktop', 'Ordinateur'),
+    ('bx-laptop', 'Portable'),
+    ('bx-user', 'Utilisateur'),
+    ('bx-group', 'Groupe'),
+    ('bx-child', 'Enfant'),
+    ('bx-home', 'Maison'),
+    ('bx-store', 'Magasin'),
+    ('bx-coffee', 'Café'),
+]
+
+SPACE_COLORS = [
+    ('#4F46E5', 'Indigo'),
+    ('#7C3AED', 'Violet'),
+    ('#EC4899', 'Rose'),
+    ('#EF4444', 'Rouge'),
+    ('#F97316', 'Orange'),
+    ('#EAB308', 'Jaune'),
+    ('#22C55E', 'Vert'),
+    ('#14B8A6', 'Turquoise'),
+    ('#06B6D4', 'Cyan'),
+    ('#3B82F6', 'Bleu'),
+    ('#6366F1', 'Indigo clair'),
+    ('#8B5CF6', 'Violet clair'),
+]
+
 
 @mediatheque_member_required
 def index(request):
@@ -57,21 +92,21 @@ def index(request):
     # Statistiques du jour
     total_today = sum(item['count'] for item in location_data)
     
-    # Statistiques des 7 derniers jours
+    # Statistiques des 7 derniers jours (hors dimanche)
     seven_days_ago = today - timedelta(days=6)
     week_total = filter_owned(VisitorCount.objects.filter(
         date__gte=seven_days_ago,
         date__lte=today,
         location__is_active=True
-    ), request.user, field='location__user').aggregate(total=Sum('count'))['total'] or 0
+    ).exclude(date__week_day=1), request.user, field='location__user').aggregate(total=Sum('count'))['total'] or 0
     
-    # Statistiques du mois en cours
+    # Statistiques du mois en cours (hors dimanche)
     month_start = today.replace(day=1)
     month_total = filter_owned(VisitorCount.objects.filter(
         date__gte=month_start,
         date__lte=today,
         location__is_active=True
-    ), request.user, field='location__user').aggregate(total=Sum('count'))['total'] or 0
+    ).exclude(date__week_day=1), request.user, field='location__user').aggregate(total=Sum('count'))['total'] or 0
     
     context = {
         'location_data': location_data,
@@ -263,10 +298,14 @@ def statistics(request):
     # Requête de base
     qs = filter_owned(VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date), request.user, field='location__user')
 
+    # Variante sans dimanche pour les stats agrégées
+    qs_no_sunday = qs.exclude(date__week_day=1)
+
     # Période précédente
     prev_start = start_date - timedelta(days=period_length)
     prev_end = start_date - timedelta(days=1)
     prev_qs = filter_owned(VisitorCount.objects.filter(date__gte=prev_start, date__lte=prev_end), request.user, field='location__user')
+    prev_qs_no_sunday = prev_qs.exclude(date__week_day=1)
 
     # Filtrer par espace
     selected_location = None
@@ -278,8 +317,8 @@ def statistics(request):
         except Location.DoesNotExist:
             pass
 
-    # Stats globales (1 requête)
-    stats = qs.aggregate(
+    # Stats globales (1 requête, hors dimanche)
+    stats = qs_no_sunday.aggregate(
         total=Sum("count"),
         days_count=Count("date", distinct=True),
         max_count=Max("count"),
@@ -288,9 +327,9 @@ def statistics(request):
     days_with_data = stats["days_count"] or 0
     avg_per_day = round(total_visitors / period_length, 1) if period_length > 0 else 0
 
-    # Meilleur et pire jour
+    # Meilleur et pire jour (hors dimanche)
     daily_totals = (
-        qs.values("date").annotate(total=Sum("count")).order_by("-total")
+        qs_no_sunday.values("date").annotate(total=Sum("count")).order_by("-total")
     )
     best_day = daily_totals.first()
     worst_day = daily_totals.order_by("total").first()
@@ -298,9 +337,9 @@ def statistics(request):
     # Record
     record_day = best_day  # best_day is already the max total
 
-    # Moyenne par jour de semaine
+    # Moyenne par jour de semaine (hors dimanche)
     weekday_data = (
-        qs.values("date").annotate(total=Sum("count")).order_by("date")
+        qs_no_sunday.values("date").annotate(total=Sum("count")).order_by("date")
     )
     weekday_sums = {}
     weekday_counts = {}
@@ -309,10 +348,10 @@ def statistics(request):
         weekday_sums[wd] = weekday_sums.get(wd, 0) + d["total"]
         weekday_counts[wd] = weekday_counts.get(wd, 0) + 1
 
-    weekday_names = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+    weekday_names = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
     weekday_avg_list = []
     max_wavg = 0
-    for i in range(7):
+    for i in range(6):
         val = weekday_sums.get(i, 0) / weekday_counts.get(i, 1) if weekday_counts.get(i, 0) > 0 else 0
         val = round(val, 1)
         weekday_avg_list.append({"name": weekday_names[i], "avg": val})
@@ -324,17 +363,17 @@ def statistics(request):
     best_weekday = sorted_days[0] if sorted_days else None
     worst_weekday = sorted_days[-1] if sorted_days else None
 
-    # Semaine vs week-end
+    # Semaine vs week-end (samedi seulement, dimanche exclu)
     weekdays_total = sum(weekday_sums.get(i, 0) for i in range(5))
-    weekend_total = sum(weekday_sums.get(i, 0) for i in (5, 6))
+    weekend_total = weekday_sums.get(5, 0)
     weekdays_count = sum(weekday_counts.get(i, 0) for i in range(5))
-    weekend_count = sum(weekday_counts.get(i, 0) for i in (5, 6))
+    weekend_count = weekday_counts.get(5, 0)
     weekday_avg = round(weekdays_total / weekdays_count, 1) if weekdays_count > 0 else 0
     weekend_avg = round(weekend_total / weekend_count, 1) if weekend_count > 0 else 0
     weekend_vs_weekday_var = round(((weekday_avg - weekend_avg) / weekend_avg * 100), 1) if weekend_avg > 0 else 0
 
-    # Comparaison période précédente
-    prev_stats = prev_qs.aggregate(total=Sum("count"))
+    # Comparaison période précédente (hors dimanche)
+    prev_stats = prev_qs_no_sunday.aggregate(total=Sum("count"))
     prev_total = prev_stats["total"] or 0
     variation = (
         round(
@@ -343,9 +382,10 @@ def statistics(request):
         )
     )
 
-    # Top 3 espaces
+    # Top 3 espaces (hors dimanche)
     top_locations = (
         filter_owned(VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date), request.user, field='location__user')
+        .exclude(date__week_day=1)
         .values("location__name", "location__color")
         .annotate(total=Sum("count"))
         .order_by("-total")[:3]
@@ -359,9 +399,10 @@ def statistics(request):
         prev_qs.values("date").annotate(total=Sum("count")).order_by("date")
     )
 
-    # Données par espace
+    # Données par espace (hors dimanche)
     by_location = (
         filter_owned(VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date), request.user, field='location__user')
+        .exclude(date__week_day=1)
         .values("location__name", "location__color")
         .annotate(total=Sum("count"))
         .order_by("-total")
@@ -629,11 +670,9 @@ def add_space(request):
         color = request.POST.get('color', '#4F46E5')
         
         if name:
-            # Vérifier si l'espace existe déjà pour cet utilisateur
             if filter_location_owned(Location.objects.all(), request.user).filter(name__iexact=name).exists():
                 messages.error(request, f"L'espace '{name}' existe déjà.")
             else:
-                # Trouver le prochain ordre
                 max_order = filter_location_owned(Location.objects.all(), request.user).aggregate(
                     max_order=Max('order')
                 )['max_order'] or 0
@@ -651,47 +690,53 @@ def add_space(request):
         else:
             messages.error(request, "Le nom de l'espace est obligatoire.")
     
-    # Liste des icônes populaires
-    icons = [
-        ('bx-building', 'Bâtiment'),
-        ('bx-book', 'Livre'),
-        ('bx-book-reader', 'Lecteur'),
-        ('bx-library', 'Bibliothèque'),
-        ('bx-game', 'Jeu'),
-        ('bx-joystick', 'Joystick'),
-        ('bx-music', 'Musique'),
-        ('bx-movie', 'Film'),
-        ('bx-desktop', 'Ordinateur'),
-        ('bx-laptop', 'Portable'),
-        ('bx-user', 'Utilisateur'),
-        ('bx-group', 'Groupe'),
-        ('bx-child', 'Enfant'),
-        ('bx-home', 'Maison'),
-        ('bx-store', 'Magasin'),
-        ('bx-coffee', 'Café'),
-    ]
-    
-    colors = [
-        ('#4F46E5', 'Indigo'),
-        ('#7C3AED', 'Violet'),
-        ('#EC4899', 'Rose'),
-        ('#EF4444', 'Rouge'),
-        ('#F97316', 'Orange'),
-        ('#EAB308', 'Jaune'),
-        ('#22C55E', 'Vert'),
-        ('#14B8A6', 'Turquoise'),
-        ('#06B6D4', 'Cyan'),
-        ('#3B82F6', 'Bleu'),
-        ('#6366F1', 'Indigo clair'),
-        ('#8B5CF6', 'Violet clair'),
-    ]
-    
     context = {
-        'icons': icons,
-        'colors': colors,
-        'title': 'Ajouter un espace'
+        'icons': SPACE_ICONS,
+        'colors': SPACE_COLORS,
+        'title': 'Ajouter un espace',
     }
-    
+    return render(request, "visitor_tracking/add_space.html", context)
+
+
+@mediatheque_member_required
+def edit_space(request, location_id):
+    """Modifier un espace existant"""
+    location = get_object_or_404(
+        filter_location_owned(Location.objects.all(), request.user), id=location_id
+    )
+
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        description = request.POST.get('description', '').strip()
+        icon = request.POST.get('icon', 'bx-building')
+        color = request.POST.get('color', '#4F46E5')
+
+        if name:
+            duplicate = (
+                filter_location_owned(Location.objects.all(), request.user)
+                .filter(name__iexact=name)
+                .exclude(id=location.id)
+                .exists()
+            )
+            if duplicate:
+                messages.error(request, f"L'espace '{name}' existe déjà.")
+            else:
+                location.name = name
+                location.description = description
+                location.icon = icon
+                location.color = color
+                location.save(update_fields=["name", "description", "icon", "color"])
+                messages.success(request, f"Espace '{name}' modifié avec succès.")
+                return redirect('visitor_tracking:index')
+        else:
+            messages.error(request, "Le nom de l'espace est obligatoire.")
+
+    context = {
+        'icons': SPACE_ICONS,
+        'colors': SPACE_COLORS,
+        'location': location,
+        'title': f'Modifier {location.name}',
+    }
     return render(request, "visitor_tracking/add_space.html", context)
 
 
