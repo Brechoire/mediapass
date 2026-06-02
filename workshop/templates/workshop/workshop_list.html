@@ -129,7 +129,7 @@
 </section>
 
 {% if filter_form.is_bound and filter_form.has_changed %}
-<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-4 relative z-10">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-2 relative z-10">
     <div class="flex flex-wrap items-center gap-2">
         {% for key, value in request.GET.items %}
         {% if key != 'year' and key != 'page' and value %}
@@ -148,7 +148,7 @@
             {% elif key == 'number_attendees_max' %}<i class="bx bx-user-check text-xs"></i> Présents ≤ {{ value }}
             {% elif key == 'location' %}<i class="bx bx-map-pin text-xs"></i> Lieu #{{ value }}
             {% else %}{{ key }}: {{ value }}{% endif %}
-            <a href="?{% for k2,v2 in request.GET.items %}{% if k2 != key and k2 != 'page' %}{{ k2 }}={{ v2 }}&{% endif %}{% endfor %}year={{ selected_year }}" class="ml-1 hover:text-[#2f4d75]"><i class="bx bx-x"></i></a>
+            <a href="?{% for k2,v2 in request.GET.items %}{% if k2 != key and k2 != 'page' and k2 != 'year' %}{{ k2 }}={{ v2 }}&{% endif %}{% endfor %}year={{ selected_year }}" class="ml-1 hover:text-[#2f4d75]"><i class="bx bx-x"></i></a>
         </span>
         {% endif %}
         {% endfor %}
