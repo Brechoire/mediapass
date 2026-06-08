@@ -10,7 +10,7 @@ from django.db.models.functions import TruncDate
 
 from library_workshops.decorators import (
     mediatheque_member_required,
-    mediatheque_member_required_json
+    mediatheque_member_required_json,
 )
 from library_workshops.utils import filter_owned, filter_location_owned
 from .models import Location, VisitorCount
@@ -18,37 +18,37 @@ from .forms import BulkVisitorCountForm, DateRangeForm, LocationForm
 
 # Constantes partagées entre les vues d'espaces
 SPACE_ICONS = [
-    ('bx-building', 'Bâtiment'),
-    ('bx-book', 'Livre'),
-    ('bx-book-reader', 'Lecteur'),
-    ('bx-library', 'Bibliothèque'),
-    ('bx-game', 'Jeu'),
-    ('bx-joystick', 'Joystick'),
-    ('bx-music', 'Musique'),
-    ('bx-movie', 'Film'),
-    ('bx-desktop', 'Ordinateur'),
-    ('bx-laptop', 'Portable'),
-    ('bx-user', 'Utilisateur'),
-    ('bx-group', 'Groupe'),
-    ('bx-child', 'Enfant'),
-    ('bx-home', 'Maison'),
-    ('bx-store', 'Magasin'),
-    ('bx-coffee', 'Café'),
+    ("bx-building", "Bâtiment"),
+    ("bx-book", "Livre"),
+    ("bx-book-reader", "Lecteur"),
+    ("bx-library", "Bibliothèque"),
+    ("bx-game", "Jeu"),
+    ("bx-joystick", "Joystick"),
+    ("bx-music", "Musique"),
+    ("bx-movie", "Film"),
+    ("bx-desktop", "Ordinateur"),
+    ("bx-laptop", "Portable"),
+    ("bx-user", "Utilisateur"),
+    ("bx-group", "Groupe"),
+    ("bx-child", "Enfant"),
+    ("bx-home", "Maison"),
+    ("bx-store", "Magasin"),
+    ("bx-coffee", "Café"),
 ]
 
 SPACE_COLORS = [
-    ('#4F46E5', 'Indigo'),
-    ('#7C3AED', 'Violet'),
-    ('#EC4899', 'Rose'),
-    ('#EF4444', 'Rouge'),
-    ('#F97316', 'Orange'),
-    ('#EAB308', 'Jaune'),
-    ('#22C55E', 'Vert'),
-    ('#14B8A6', 'Turquoise'),
-    ('#06B6D4', 'Cyan'),
-    ('#3B82F6', 'Bleu'),
-    ('#6366F1', 'Indigo clair'),
-    ('#8B5CF6', 'Violet clair'),
+    ("#4F46E5", "Indigo"),
+    ("#7C3AED", "Violet"),
+    ("#EC4899", "Rose"),
+    ("#EF4444", "Rouge"),
+    ("#F97316", "Orange"),
+    ("#EAB308", "Jaune"),
+    ("#22C55E", "Vert"),
+    ("#14B8A6", "Turquoise"),
+    ("#06B6D4", "Cyan"),
+    ("#3B82F6", "Bleu"),
+    ("#6366F1", "Indigo clair"),
+    ("#8B5CF6", "Violet clair"),
 ]
 
 
@@ -56,19 +56,30 @@ SPACE_COLORS = [
 def index(request):
     """Dashboard principal avec compteurs temps réel"""
     today = timezone.now().date()
-    
+
     # Récupérer les espaces actifs de l'utilisateur avec leur comptage du jour
-    locations = filter_location_owned(Location.objects.filter(is_active=True), request.user).order_by('order', 'name')
-    
+    locations = filter_location_owned(
+        Location.objects.filter(is_active=True), request.user
+    ).order_by("order", "name")
+
     location_data = []
-    today_counts = filter_owned(VisitorCount.objects.filter(date=today), request.user, field='location__user')
+    today_counts = filter_owned(
+        VisitorCount.objects.filter(date=today), request.user, field="location__user"
+    )
     today_map = {v.location_id: v for v in today_counts}
 
     # Derniers 7 jours par espace (pour sparklines)
     seven_days_ago = today - timedelta(days=6)
-    last_7_days = filter_owned(VisitorCount.objects.filter(
-        date__gte=seven_days_ago, date__lte=today
-    ), request.user, field='location__user').values("location_id", "date").annotate(total=Sum("count")).order_by("date")
+    last_7_days = (
+        filter_owned(
+            VisitorCount.objects.filter(date__gte=seven_days_ago, date__lte=today),
+            request.user,
+            field="location__user",
+        )
+        .values("location_id", "date")
+        .annotate(total=Sum("count"))
+        .order_by("date")
+    )
 
     sparklines = {}
     for entry in last_7_days:
@@ -82,41 +93,53 @@ def index(request):
         else:
             c = 0
             cid = None
-        location_data.append({
-            "location": location,
-            "count": c,
-            "count_id": cid,
-            "sparkline": sparklines.get(location.id, []),
-        })
-    
+        location_data.append(
+            {
+                "location": location,
+                "count": c,
+                "count_id": cid,
+                "sparkline": sparklines.get(location.id, []),
+            }
+        )
+
     # Statistiques du jour
-    total_today = sum(item['count'] for item in location_data)
-    
+    total_today = sum(item["count"] for item in location_data)
+
     # Statistiques des 7 derniers jours (hors dimanche)
     seven_days_ago = today - timedelta(days=6)
-    week_total = filter_owned(VisitorCount.objects.filter(
-        date__gte=seven_days_ago,
-        date__lte=today,
-        location__is_active=True
-    ).exclude(date__week_day=1), request.user, field='location__user').aggregate(total=Sum('count'))['total'] or 0
-    
+    week_total = (
+        filter_owned(
+            VisitorCount.objects.filter(
+                date__gte=seven_days_ago, date__lte=today, location__is_active=True
+            ).exclude(date__week_day=1),
+            request.user,
+            field="location__user",
+        ).aggregate(total=Sum("count"))["total"]
+        or 0
+    )
+
     # Statistiques du mois en cours (hors dimanche)
     month_start = today.replace(day=1)
-    month_total = filter_owned(VisitorCount.objects.filter(
-        date__gte=month_start,
-        date__lte=today,
-        location__is_active=True
-    ).exclude(date__week_day=1), request.user, field='location__user').aggregate(total=Sum('count'))['total'] or 0
-    
+    month_total = (
+        filter_owned(
+            VisitorCount.objects.filter(
+                date__gte=month_start, date__lte=today, location__is_active=True
+            ).exclude(date__week_day=1),
+            request.user,
+            field="location__user",
+        ).aggregate(total=Sum("count"))["total"]
+        or 0
+    )
+
     context = {
-        'location_data': location_data,
-        'today': today,
-        'total_today': total_today,
-        'week_total': week_total,
-        'month_total': month_total,
-        'title': 'Pointage visiteurs'
+        "location_data": location_data,
+        "today": today,
+        "total_today": total_today,
+        "week_total": week_total,
+        "month_total": month_total,
+        "title": "Pointage visiteurs",
     }
-    
+
     return render(request, "visitor_tracking/index.html", context)
 
 
@@ -125,31 +148,35 @@ def index(request):
 def increment_count(request, location_id, amount=1):
     """Incrémenter le compteur d'un espace (+N visiteurs)"""
     today = timezone.now().date()
-    location = get_object_or_404(filter_location_owned(Location.objects.filter(is_active=True), request.user), id=location_id)
-    
+    location = get_object_or_404(
+        filter_location_owned(Location.objects.filter(is_active=True), request.user),
+        id=location_id,
+    )
+
     # Limiter le montant entre 1 et 10 pour éviter les abus
     amount = max(1, min(int(amount), 10))
-    
+
     count_obj, created = VisitorCount.objects.get_or_create(
-        location=location,
-        date=today,
-        defaults={'count': 0, 'created_by': request.user}
+        location=location, date=today, defaults={"count": 0, "created_by": request.user}
     )
-    
+
     count_obj.count += amount
     count_obj.updated_by = request.user
     count_obj.save()
-    
+
     # Calculer le nouveau total du jour
-    total_today = filter_owned(VisitorCount.objects.filter(
-        date=today
-    ), request.user, field='location__user').aggregate(total=Sum('count'))['total'] or 0
-    
-    return JsonResponse({
-        'success': True,
-        'count': count_obj.count,
-        'total_today': total_today
-    })
+    total_today = (
+        filter_owned(
+            VisitorCount.objects.filter(date=today),
+            request.user,
+            field="location__user",
+        ).aggregate(total=Sum("count"))["total"]
+        or 0
+    )
+
+    return JsonResponse(
+        {"success": True, "count": count_obj.count, "total_today": total_today}
+    )
 
 
 @mediatheque_member_required_json
@@ -157,94 +184,127 @@ def increment_count(request, location_id, amount=1):
 def decrement_count(request, location_id):
     """Décrémenter le compteur d'un espace (-1)"""
     today = timezone.now().date()
-    location = get_object_or_404(filter_location_owned(Location.objects.filter(is_active=True), request.user), id=location_id)
-    
-    count_obj, created = VisitorCount.objects.get_or_create(
-        location=location,
-        date=today,
-        defaults={'count': 0, 'created_by': request.user}
+    location = get_object_or_404(
+        filter_location_owned(Location.objects.filter(is_active=True), request.user),
+        id=location_id,
     )
-    
+
+    count_obj, created = VisitorCount.objects.get_or_create(
+        location=location, date=today, defaults={"count": 0, "created_by": request.user}
+    )
+
     if count_obj.count > 0:
         count_obj.count -= 1
         count_obj.updated_by = request.user
         count_obj.save()
-    
+
     # Calculer le nouveau total du jour
-    total_today = filter_owned(VisitorCount.objects.filter(
-        date=today
-    ), request.user, field='location__user').aggregate(total=Sum('count'))['total'] or 0
-    
-    return JsonResponse({
-        'success': True,
-        'count': count_obj.count,
-        'total_today': total_today
-    })
+    total_today = (
+        filter_owned(
+            VisitorCount.objects.filter(date=today),
+            request.user,
+            field="location__user",
+        ).aggregate(total=Sum("count"))["total"]
+        or 0
+    )
+
+    return JsonResponse(
+        {"success": True, "count": count_obj.count, "total_today": total_today}
+    )
 
 
 @mediatheque_member_required
 def entry_form(request):
     """Formulaire de saisie rétroactive (par date)"""
-    if request.method == 'POST':
+    if request.method == "POST":
         form = BulkVisitorCountForm(request.POST, user=request.user)
         if form.is_valid():
-            date = form.cleaned_data['date']
-            locations = filter_location_owned(Location.objects.filter(is_active=True), request.user)
-            
+            date = form.cleaned_data["date"]
+            active_locations = filter_location_owned(
+                Location.objects.filter(is_active=True), request.user
+            )
+
+            submitted_ids = {
+                int(k.removeprefix("location_"))
+                for k in form.cleaned_data
+                if k.startswith("location_")
+            }
+            active_ids = set(active_locations.values_list("id", flat=True))
+            missing_ids = submitted_ids - active_ids
+            if missing_ids:
+                missing_names = list(
+                    Location.objects.filter(id__in=missing_ids).values_list(
+                        "name", flat=True
+                    )
+                )
+                if missing_names:
+                    messages.warning(
+                        request,
+                        f"Espaces ignorés car désactivés depuis l'ouverture du formulaire : "
+                        f"{', '.join(missing_names)}.",
+                    )
+
             saved_count = 0
-            for location in locations:
-                field_name = f'location_{location.id}'
+            for location in active_locations:
+                field_name = f"location_{location.id}"
                 count = form.cleaned_data.get(field_name, 0) or 0
-                
-                # Mettre à jour ou créer le comptage
-                count_obj, created = VisitorCount.objects.update_or_create(
+
+                count_obj, created = VisitorCount.objects.get_or_create(
                     location=location,
                     date=date,
                     defaults={
-                        'count': count,
-                        'updated_by': request.user
-                    }
+                        "count": count,
+                        "created_by": request.user,
+                        "updated_by": request.user,
+                    },
                 )
-                if created:
-                    count_obj.created_by = request.user
+                if not created and count_obj.count != count:
+                    count_obj.count = count
+                    count_obj.updated_by = request.user
                     count_obj.save()
                 saved_count += 1
-            
+
             messages.success(
                 request,
                 f"Comptages enregistrés pour le {date.strftime('%d/%m/%Y')} "
-                f"({saved_count} espaces)."
+                f"({saved_count} espaces).",
             )
-            return redirect('visitor_tracking:index')
+            return redirect("visitor_tracking:index")
     else:
         # Pré-remplir avec les valeurs existantes si date fournie
-        initial_date = request.GET.get('date')
-        form = BulkVisitorCountForm(user=request.user)
-        
+        initial_date = request.GET.get("date")
+        form_initial = {}
+
         if initial_date:
             try:
                 from datetime import datetime
-                date_obj = datetime.strptime(initial_date, '%Y-%m-%d').date()
-                form.fields['date'].initial = date_obj
-                
+
+                date_obj = datetime.strptime(initial_date, "%Y-%m-%d").date()
+                form_initial["date"] = date_obj
+
                 # Charger les valeurs existantes
-                existing_counts = filter_owned(VisitorCount.objects.filter(
-                    date=date_obj
-                ).select_related('location'), request.user, field='location__user')
-                
+                existing_counts = filter_owned(
+                    VisitorCount.objects.filter(date=date_obj).select_related(
+                        "location"
+                    ),
+                    request.user,
+                    field="location__user",
+                )
+
                 for count in existing_counts:
-                    field_name = f'location_{count.location.id}'
-                    if field_name in form.fields:
-                        form.fields[field_name].initial = count.count
+                    field_name = f"location_{count.location.id}"
+                    form_initial[field_name] = count.count
             except (ValueError, TypeError):
                 pass
-    
+
+        form = BulkVisitorCountForm(user=request.user, initial=form_initial)
+
     context = {
-        'form': form,
-        'location_fields': form.get_location_fields(user=request.user),
-        'title': 'Saisie des visiteurs'
+        "form": form,
+        "location_fields": form.get_location_fields(user=request.user),
+        "title": "Saisie des visiteurs",
     }
-    
+
     return render(request, "visitor_tracking/entry_form.html", context)
 
 
@@ -296,7 +356,11 @@ def statistics(request):
     period_length = (end_date - start_date).days or 1
 
     # Requête de base
-    qs = filter_owned(VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date), request.user, field='location__user')
+    qs = filter_owned(
+        VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date),
+        request.user,
+        field="location__user",
+    )
 
     # Variante sans dimanche pour les stats agrégées
     qs_no_sunday = qs.exclude(date__week_day=1)
@@ -304,14 +368,20 @@ def statistics(request):
     # Période précédente
     prev_start = start_date - timedelta(days=period_length)
     prev_end = start_date - timedelta(days=1)
-    prev_qs = filter_owned(VisitorCount.objects.filter(date__gte=prev_start, date__lte=prev_end), request.user, field='location__user')
+    prev_qs = filter_owned(
+        VisitorCount.objects.filter(date__gte=prev_start, date__lte=prev_end),
+        request.user,
+        field="location__user",
+    )
     prev_qs_no_sunday = prev_qs.exclude(date__week_day=1)
 
     # Filtrer par espace
     selected_location = None
     if location_id:
         try:
-            selected_location = filter_location_owned(Location.objects.all(), request.user).get(id=location_id)
+            selected_location = filter_location_owned(
+                Location.objects.all(), request.user
+            ).get(id=location_id)
             qs = qs.filter(location=selected_location)
             prev_qs = prev_qs.filter(location=selected_location)
         except Location.DoesNotExist:
@@ -352,7 +422,11 @@ def statistics(request):
     weekday_avg_list = []
     max_wavg = 0
     for i in range(6):
-        val = weekday_sums.get(i, 0) / weekday_counts.get(i, 1) if weekday_counts.get(i, 0) > 0 else 0
+        val = (
+            weekday_sums.get(i, 0) / weekday_counts.get(i, 1)
+            if weekday_counts.get(i, 0) > 0
+            else 0
+        )
         val = round(val, 1)
         weekday_avg_list.append({"name": weekday_names[i], "avg": val})
         if val > max_wavg:
@@ -370,21 +444,27 @@ def statistics(request):
     weekend_count = weekday_counts.get(5, 0)
     weekday_avg = round(weekdays_total / weekdays_count, 1) if weekdays_count > 0 else 0
     weekend_avg = round(weekend_total / weekend_count, 1) if weekend_count > 0 else 0
-    weekend_vs_weekday_var = round(((weekday_avg - weekend_avg) / weekend_avg * 100), 1) if weekend_avg > 0 else 0
+    weekend_vs_weekday_var = (
+        round(((weekday_avg - weekend_avg) / weekend_avg * 100), 1)
+        if weekend_avg > 0
+        else 0
+    )
 
     # Comparaison période précédente (hors dimanche)
     prev_stats = prev_qs_no_sunday.aggregate(total=Sum("count"))
     prev_total = prev_stats["total"] or 0
-    variation = (
-        round(
-            ((total_visitors - prev_total) / prev_total * 100) if prev_total > 0 else 100,
-            1,
-        )
+    variation = round(
+        ((total_visitors - prev_total) / prev_total * 100) if prev_total > 0 else 100,
+        1,
     )
 
     # Top 3 espaces (hors dimanche)
     top_locations = (
-        filter_owned(VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date), request.user, field='location__user')
+        filter_owned(
+            VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date),
+            request.user,
+            field="location__user",
+        )
         .exclude(date__week_day=1)
         .values("location__name", "location__color")
         .annotate(total=Sum("count"))
@@ -401,7 +481,11 @@ def statistics(request):
 
     # Données par espace (hors dimanche)
     by_location = (
-        filter_owned(VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date), request.user, field='location__user')
+        filter_owned(
+            VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date),
+            request.user,
+            field="location__user",
+        )
         .exclude(date__week_day=1)
         .values("location__name", "location__color")
         .annotate(total=Sum("count"))
@@ -410,7 +494,11 @@ def statistics(request):
 
     # Données journalières par espace (barres empilées)
     daily_by_location = (
-        filter_owned(VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date), request.user, field='location__user')
+        filter_owned(
+            VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date),
+            request.user,
+            field="location__user",
+        )
         .values("date", "location__name", "location__color")
         .annotate(total=Sum("count"))
         .order_by("date")
@@ -441,7 +529,9 @@ def statistics(request):
         for label in chart_labels:
             data_row.append(stacked_raw.get(label, {}).get(loc_name, 0))
         if any(v > 0 for v in data_row):
-            stacked_datasets.append({"label": loc_name, "data": data_row, "backgroundColor": color})
+            stacked_datasets.append(
+                {"label": loc_name, "data": data_row, "backgroundColor": color}
+            )
 
     # Supprimer la comparaison d'espaces (remplacée par le filtre personnalisé)
     # Courbe cumulée
@@ -458,7 +548,11 @@ def statistics(request):
         month_days = (end_date - start_date).days + 1
         days_left = month_days - days_done
         daily_avg_proj = total_visitors / days_done if days_done > 0 else 0
-        projection = round(total_visitors + daily_avg_proj * days_left) if days_left > 0 else total_visitors
+        projection = (
+            round(total_visitors + daily_avg_proj * days_left)
+            if days_left > 0
+            else total_visitors
+        )
 
     chart_prev_values = None
     if prev_daily_data:
@@ -478,8 +572,16 @@ def statistics(request):
         second_half = chart_values[len(chart_values) // 2 :]
         avg_first = sum(first_half) / len(first_half) if first_half else 0
         avg_second = sum(second_half) / len(second_half) if second_half else 0
-        trend = "up" if avg_second > avg_first else ("down" if avg_second < avg_first else "stable")
-        trend_pct = round(((avg_second - avg_first) / avg_first * 100), 1) if avg_first > 0 else 0
+        trend = (
+            "up"
+            if avg_second > avg_first
+            else ("down" if avg_second < avg_first else "stable")
+        )
+        trend_pct = (
+            round(((avg_second - avg_first) / avg_first * 100), 1)
+            if avg_first > 0
+            else 0
+        )
     else:
         trend = "stable"
         trend_pct = 0
@@ -530,51 +632,52 @@ def statistics(request):
 @mediatheque_member_required
 def export_csv(request):
     """Exporter les données en CSV"""
-    period = request.GET.get('period', '30_days')
-    location_id = request.GET.get('location')
-    
+    period = request.GET.get("period", "30_days")
+    location_id = request.GET.get("location")
+
     today = timezone.now().date()
-    
+
     # Calculer les dates selon la période
-    if period == '7_days':
+    if period == "7_days":
         start_date = today - timedelta(days=7)
-    elif period == 'this_month':
+    elif period == "this_month":
         start_date = today.replace(day=1)
-    elif period == 'this_year':
+    elif period == "this_year":
         start_date = today.replace(month=1, day=1)
     else:
         start_date = today - timedelta(days=30)
-    
+
     end_date = today
-    
+
     # Requête
-    queryset = filter_owned(VisitorCount.objects.filter(
-        date__gte=start_date,
-        date__lte=end_date
-    ).select_related('location'), request.user, field='location__user').order_by('date', 'location__order')
-    
+    queryset = filter_owned(
+        VisitorCount.objects.filter(
+            date__gte=start_date, date__lte=end_date
+        ).select_related("location"),
+        request.user,
+        field="location__user",
+    ).order_by("date", "location__order")
+
     if location_id:
         queryset = queryset.filter(location_id=location_id)
-    
+
     # Créer la réponse CSV
-    response = HttpResponse(content_type='text/csv; charset=utf-8')
-    response['Content-Disposition'] = (
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = (
         f'attachment; filename="visiteurs_{start_date}_{end_date}.csv"'
     )
-    
+
     # BOM UTF-8 pour Excel
-    response.write('\ufeff')
-    
-    writer = csv.writer(response, delimiter=';')
-    writer.writerow(['Date', 'Espace', 'Nombre de visiteurs'])
-    
+    response.write("\ufeff")
+
+    writer = csv.writer(response, delimiter=";")
+    writer.writerow(["Date", "Espace", "Nombre de visiteurs"])
+
     for entry in queryset:
-        writer.writerow([
-            entry.date.strftime('%d/%m/%Y'),
-            entry.location.name,
-            entry.count
-        ])
-    
+        writer.writerow(
+            [entry.date.strftime("%d/%m/%Y"), entry.location.name, entry.count]
+        )
+
     return response
 
 
@@ -582,48 +685,56 @@ def export_csv(request):
 def history(request):
     """Historique des pointages avec possibilité de modification"""
     # Filtres
-    date_filter = request.GET.get('date')
-    location_filter = request.GET.get('location')
-    
-    queryset = filter_owned(VisitorCount.objects.select_related(
-        'location', 'created_by', 'updated_by'
-    ), request.user, field='location__user').order_by('-date', 'location__order')
-    
+    date_filter = request.GET.get("date")
+    location_filter = request.GET.get("location")
+
+    queryset = filter_owned(
+        VisitorCount.objects.select_related("location", "created_by", "updated_by"),
+        request.user,
+        field="location__user",
+    ).order_by("-date", "location__order")
+
     if date_filter:
         from datetime import datetime
+
         try:
-            date_obj = datetime.strptime(date_filter, '%Y-%m-%d').date()
+            date_obj = datetime.strptime(date_filter, "%Y-%m-%d").date()
             queryset = queryset.filter(date=date_obj)
         except ValueError:
             pass
-    
+
     if location_filter:
         queryset = queryset.filter(location_id=location_filter)
-    
+
     # Limiter aux 100 dernières entrées
     entries = queryset[:100]
-    
+
     # Listes pour les filtres
-    locations = filter_location_owned(Location.objects.filter(is_active=True), request.user).order_by('order', 'name')
-    
+    locations = filter_location_owned(
+        Location.objects.filter(is_active=True), request.user
+    ).order_by("order", "name")
+
     context = {
-        'entries': entries,
-        'locations': locations,
-        'date_filter': date_filter,
-        'location_filter': location_filter,
-        'title': 'Historique des pointages'
+        "entries": entries,
+        "locations": locations,
+        "date_filter": date_filter,
+        "location_filter": location_filter,
+        "title": "Historique des pointages",
     }
-    
+
     return render(request, "visitor_tracking/history.html", context)
 
 
 @mediatheque_member_required
 def edit_entry(request, entry_id):
     """Modifier un pointage existant"""
-    entry = get_object_or_404(filter_owned(VisitorCount.objects.all(), request.user, field='location__user'), id=entry_id)
-    
-    if request.method == 'POST':
-        new_count = request.POST.get('count')
+    entry = get_object_or_404(
+        filter_owned(VisitorCount.objects.all(), request.user, field="location__user"),
+        id=entry_id,
+    )
+
+    if request.method == "POST":
+        new_count = request.POST.get("count")
         try:
             new_count = int(new_count)
             if new_count >= 0:
@@ -633,20 +744,17 @@ def edit_entry(request, entry_id):
                 messages.success(
                     request,
                     f"Comptage modifié : {entry.location.name} - "
-                    f"{entry.date.strftime('%d/%m/%Y')} = {new_count}"
+                    f"{entry.date.strftime('%d/%m/%Y')} = {new_count}",
                 )
             else:
                 messages.error(request, "Le nombre doit être positif.")
         except (ValueError, TypeError):
             messages.error(request, "Valeur invalide.")
-        
-        return redirect('visitor_tracking:history')
-    
-    context = {
-        'entry': entry,
-        'title': f'Modifier - {entry.location.name}'
-    }
-    
+
+        return redirect("visitor_tracking:history")
+
+    context = {"entry": entry, "title": f"Modifier - {entry.location.name}"}
+
     return render(request, "visitor_tracking/edit_entry.html", context)
 
 
@@ -654,46 +762,56 @@ def edit_entry(request, entry_id):
 @require_POST
 def delete_entry(request, entry_id):
     """Supprimer un pointage"""
-    entry = get_object_or_404(filter_owned(VisitorCount.objects.all(), request.user, field='location__user'), id=entry_id)
+    entry = get_object_or_404(
+        filter_owned(VisitorCount.objects.all(), request.user, field="location__user"),
+        id=entry_id,
+    )
     entry.delete()
-    
-    return JsonResponse({'success': True})
+
+    return JsonResponse({"success": True})
 
 
 @mediatheque_member_required
 def add_space(request):
     """Ajouter un nouvel espace"""
-    if request.method == 'POST':
-        name = request.POST.get('name', '').strip()
-        description = request.POST.get('description', '').strip()
-        icon = request.POST.get('icon', 'bx-building')
-        color = request.POST.get('color', '#4F46E5')
-        
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        description = request.POST.get("description", "").strip()
+        icon = request.POST.get("icon", "bx-building")
+        color = request.POST.get("color", "#4F46E5")
+
         if name:
-            if filter_location_owned(Location.objects.all(), request.user).filter(name__iexact=name).exists():
+            if (
+                filter_location_owned(Location.objects.all(), request.user)
+                .filter(name__iexact=name)
+                .exists()
+            ):
                 messages.error(request, f"L'espace '{name}' existe déjà.")
             else:
-                max_order = filter_location_owned(Location.objects.all(), request.user).aggregate(
-                    max_order=Max('order')
-                )['max_order'] or 0
-                
+                max_order = (
+                    filter_location_owned(
+                        Location.objects.all(), request.user
+                    ).aggregate(max_order=Max("order"))["max_order"]
+                    or 0
+                )
+
                 Location.objects.create(
                     name=name,
                     description=description,
                     icon=icon,
                     color=color,
                     user=request.user,
-                    order=max_order + 1
+                    order=max_order + 1,
                 )
                 messages.success(request, f"Espace '{name}' créé avec succès.")
-                return redirect('visitor_tracking:index')
+                return redirect("visitor_tracking:index")
         else:
             messages.error(request, "Le nom de l'espace est obligatoire.")
-    
+
     context = {
-        'icons': SPACE_ICONS,
-        'colors': SPACE_COLORS,
-        'title': 'Ajouter un espace',
+        "icons": SPACE_ICONS,
+        "colors": SPACE_COLORS,
+        "title": "Ajouter un espace",
     }
     return render(request, "visitor_tracking/add_space.html", context)
 
@@ -705,11 +823,11 @@ def edit_space(request, location_id):
         filter_location_owned(Location.objects.all(), request.user), id=location_id
     )
 
-    if request.method == 'POST':
-        name = request.POST.get('name', '').strip()
-        description = request.POST.get('description', '').strip()
-        icon = request.POST.get('icon', 'bx-building')
-        color = request.POST.get('color', '#4F46E5')
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        description = request.POST.get("description", "").strip()
+        icon = request.POST.get("icon", "bx-building")
+        color = request.POST.get("color", "#4F46E5")
 
         if name:
             duplicate = (
@@ -727,15 +845,15 @@ def edit_space(request, location_id):
                 location.color = color
                 location.save(update_fields=["name", "description", "icon", "color"])
                 messages.success(request, f"Espace '{name}' modifié avec succès.")
-                return redirect('visitor_tracking:index')
+                return redirect("visitor_tracking:index")
         else:
             messages.error(request, "Le nom de l'espace est obligatoire.")
 
     context = {
-        'icons': SPACE_ICONS,
-        'colors': SPACE_COLORS,
-        'location': location,
-        'title': f'Modifier {location.name}',
+        "icons": SPACE_ICONS,
+        "colors": SPACE_COLORS,
+        "location": location,
+        "title": f"Modifier {location.name}",
     }
     return render(request, "visitor_tracking/add_space.html", context)
 
@@ -744,9 +862,10 @@ def edit_space(request, location_id):
 @require_POST
 def delete_space(request, location_id):
     """Supprimer un espace"""
-    location = get_object_or_404(filter_location_owned(Location.objects.all(), request.user), id=location_id)
+    location = get_object_or_404(
+        filter_location_owned(Location.objects.all(), request.user), id=location_id
+    )
     name = location.name
     location.delete()
-    
-    return JsonResponse({'success': True, 'message': f"Espace '{name}' supprimé."})
 
+    return JsonResponse({"success": True, "message": f"Espace '{name}' supprimé."})

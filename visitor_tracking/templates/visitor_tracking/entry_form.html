@@ -144,7 +144,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (dateInput) {
         dateInput.addEventListener('change', function() {
             if (this.value) {
-                window.location.href = '?date=' + this.value;
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('date') !== this.value) {
+                    window.location.href = '?date=' + this.value;
+                }
             }
         });
     }
