@@ -345,10 +345,10 @@
         </div>
     </div>
 
-    {% if cancelled_workshops %}
+    {% if cancelled_workshops_list %}
     <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
         <div class="px-6 py-4 border-b border-[#dce3ef] flex items-center justify-between">
-            <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-x-circle mr-1.5 text-red-500"></i> Ateliers annulés ({{ cancelled_workshops.count }})</h5>
+            <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-x-circle mr-1.5 text-red-500"></i> Ateliers annulés ({{ cancelled_workshops_list.count }})</h5>
             <a href="{% url 'library_workshops:archives' %}?show_cancelled=1" class="text-xs text-[#4a6fa5] hover:underline">Voir tout</a>
         </div>
         <div class="overflow-x-auto">
@@ -362,7 +362,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-[#dce3ef]">
-                    {% for w in cancelled_workshops|slice:":5" %}
+                    {% for w in cancelled_workshops_list|slice:":5" %}
                     <tr class="hover:bg-[#f8f9fc] transition-colors">
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1e293b]">{{ w.title }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80]">{{ w.start_date|date:"d/m/Y" }}</td>

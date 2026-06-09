@@ -927,7 +927,7 @@ def workshop_statistics(request):
     logger.debug("Données annuelles préparées: %s", yearly_data)
     logger.debug("Répartition par âge: %s", stats.get("age_distribution", {}))
 
-    cancelled_workshops = service.get_cancelled_workshops()
+    cancelled_workshops_list = service.get_cancelled_workshops()
 
     context = {
         "period": period,
@@ -938,7 +938,7 @@ def workshop_statistics(request):
         "monthly_data": monthly_data,
         "yearly_data": yearly_data,
         "age_distribution": stats.get("age_distribution", {}),
-        "cancelled_workshops": cancelled_workshops,
+        "cancelled_workshops_list": cancelled_workshops_list,
     }
 
     return render(request, "library_workshops/statistics.html", context)
