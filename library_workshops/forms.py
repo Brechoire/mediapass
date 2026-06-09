@@ -112,6 +112,7 @@ class WorkshopForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
         self.fields["title"].label = "Titre de l'atelier"
         self.fields["description"].label = "Description"
@@ -121,9 +122,10 @@ class WorkshopForm(forms.ModelForm):
         self.fields["end_time"].label = "Heure de fin"
         self.fields["location"].label = "Lieu"
         self.fields["location"].empty_label = "Sélectionnez un lieu..."
-        self.fields["location"].queryset = VisitorLocation.objects.filter(
-            is_active=True
-        ).order_by("order", "name")
+        qs = VisitorLocation.objects.filter(is_active=True)
+        if user and not user.is_superuser:
+            qs = qs.filter(user=user)
+        self.fields["location"].queryset = qs.order_by("order", "name")
         self.fields["max_participants"].label = "Nombre maximum de participants"
         self.fields["poster"].label = "Affiche de l'atelier"
         self.fields["is_all_ages"].label = "Tout public"

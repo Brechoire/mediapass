@@ -57,7 +57,7 @@ def index(request):
 @mediatheque_member_required
 def create_workshop(request):
     if request.method == "POST":
-        form = WorkshopForm(request.POST, request.FILES)
+        form = WorkshopForm(request.POST, request.FILES, user=request.user)
         recurrence_form = RecurrenceForm(request.POST)
 
         if form.is_valid():
@@ -96,7 +96,7 @@ def create_workshop(request):
         else:
             messages.error(request, "Veuillez corriger les erreurs dans le formulaire.")
     else:
-        form = WorkshopForm()
+        form = WorkshopForm(user=request.user)
         recurrence_form = RecurrenceForm()
 
     return render(
@@ -155,7 +155,7 @@ def check_duplicate_title(workshop, request):
 def _edit_recurrence_pattern(request, pattern):
     """Édition de tous les ateliers futurs d'un pattern de récurrence."""
     if request.method == "POST":
-        form = WorkshopForm(request.POST, request.FILES)
+        form = WorkshopForm(request.POST, request.FILES, user=request.user)
         recurrence_form = RecurrenceForm(request.POST, instance=pattern)
         edit_action = request.POST.get("edit_action", "all_future")
 
@@ -210,7 +210,7 @@ def _edit_recurrence_pattern(request, pattern):
             "newsletter": pattern.newsletter,
             "is_class_welcome": pattern.is_class_welcome,
         }
-        form = WorkshopForm(initial=data)
+        form = WorkshopForm(initial=data, user=request.user)
         recurrence_form = RecurrenceForm(instance=pattern)
 
     return render(
@@ -344,7 +344,7 @@ def edit_workshop(request, workshop_id):
         return _edit_recurrence_pattern(request, pattern)
 
     if request.method == "POST":
-        form = WorkshopForm(request.POST, request.FILES, instance=workshop)
+        form = WorkshopForm(request.POST, request.FILES, instance=workshop, user=request.user)
         if form.is_valid():
             ws = form.save(commit=False)
             if pattern:
@@ -357,7 +357,7 @@ def edit_workshop(request, workshop_id):
         else:
             messages.error(request, "Veuillez corriger les erreurs dans le formulaire.")
     else:
-        form = WorkshopForm(instance=workshop)
+        form = WorkshopForm(instance=workshop, user=request.user)
 
     ctx = {"form": form, "title": f"Modifier l'atelier : {workshop.title}"}
     if pattern:
@@ -992,7 +992,10 @@ def workshop_archives(request):
 def create_location_modal(request):
     """Vue HTMX : retourne le fragment HTML du modal de création de lieu"""
     form = QuickLocationForm()
-    existing_locations = VisitorLocation.objects.filter(is_active=True).order_by("order", "name")
+    qs = VisitorLocation.objects.filter(is_active=True)
+    if not request.user.is_superuser:
+        qs = qs.filter(user=request.user)
+    existing_locations = qs.order_by("order", "name")
     html = render_to_string(
         "library_workshops/partials/location_modal.html",
         {

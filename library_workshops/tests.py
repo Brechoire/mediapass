@@ -271,7 +271,7 @@ class WorkshopViewsTest(TestCase):
             username="testuser", password="testpass123"
         )
         self.location = VisitorLocation.objects.create(
-            name="Médiathèque", icon="bx-building", color="#4F46E5"
+            name="Médiathèque", icon="bx-building", color="#4F46E5", user=self.user
         )
         self.mediatheque_group = Group.objects.create(name="mediatheque")
         self.user.groups.add(self.mediatheque_group)
