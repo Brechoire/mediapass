@@ -220,6 +220,8 @@ def _edit_recurrence_pattern(request, pattern):
         data = {
             "title": pattern.title,
             "description": pattern.description,
+            "start_date": pattern.period_start,
+            "end_date": pattern.period_end,
             "start_time": pattern.start_time,
             "end_time": pattern.end_time,
             "location": pattern.location,
