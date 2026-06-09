@@ -82,6 +82,8 @@ def create_workshop(request):
                 pattern.max_age = cd["max_age"]
                 pattern.newsletter = cd["newsletter"]
                 pattern.is_class_welcome = cd["is_class_welcome"]
+                if "poster" in request.FILES:
+                    pattern.poster = request.FILES["poster"]
                 dates = RecurrenceService.generate_dates(pattern)
                 if not dates:
                     messages.error(
@@ -189,6 +191,9 @@ def _edit_recurrence_pattern(request, pattern):
                 "newsletter": cd["newsletter"],
                 "is_class_welcome": cd["is_class_welcome"],
             }
+            if "poster" in request.FILES:
+                new_data["poster"] = request.FILES["poster"]
+                pattern.poster = request.FILES["poster"]
             recd = recurrence_form.cleaned_data
             new_data.update(
                 {

@@ -118,6 +118,7 @@ class RecurrenceService:
                 max_age=pattern.max_age,
                 newsletter=pattern.newsletter,
                 is_class_welcome=pattern.is_class_welcome,
+                poster=pattern.poster,
                 created_by=request.user,
                 recurrence_group=pattern,
             )
@@ -150,6 +151,7 @@ class RecurrenceService:
             "max_age",
             "newsletter",
             "is_class_welcome",
+            "poster",
         ]:
             if field in new_data:
                 setattr(pattern, field, new_data[field])

@@ -547,6 +547,12 @@ class RecurrencePattern(models.Model):
     is_class_welcome = models.BooleanField(
         default=False, verbose_name="Accueil de classe"
     )
+    poster = models.ImageField(
+        upload_to="workshop_posters/",
+        null=True,
+        blank=True,
+        verbose_name="Affiche",
+    )
 
     class Meta:
         verbose_name = "Pattern de récurrence"
