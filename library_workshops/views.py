@@ -155,7 +155,7 @@ def create_workshop(request):
     )
 
 
-def check_workshop_conflicts(workshop, request=None, conflicts_list=None):
+def check_workshop_conflicts(workshop, request=None):
     conflicts = Workshop.objects.filter(
         location=workshop.location,
         status="active",
@@ -184,9 +184,6 @@ def check_workshop_conflicts(workshop, request=None, conflicts_list=None):
                 request,
                 f"Conflit : « {c.title} » ({c.start_date.strftime('%d/%m/%Y')}) est déjà programmé au même créneau au même lieu.",
             )
-
-    if conflicts_list is not None:
-        conflicts_list.extend(result)
 
     return result
 
@@ -241,9 +238,6 @@ def _edit_recurrence_pattern(request, pattern):
             )
 
             if edit_action == "all":
-                Workshop.objects.filter(
-                    recurrence_group=pattern, recurrence_modified=False
-                ).delete()
                 pattern.workshops.exclude(recurrence_modified=True).delete()
 
             RecurrenceService.update_future_workshops(request, pattern, new_data)
@@ -518,17 +512,21 @@ def add_participant(request, workshop_id):
                     participant.save()
 
                     timestamp = int(time.time())
-                    for i in range(1, group_size):
-                        WorkshopParticipant.objects.create(
-                            workshop=workshop,
-                            first_name=f"Membre {i}",
-                            last_name=f"Groupe_{timestamp}_{participant.last_name}",
-                            age=participant.age,
-                            status=participant.status,
-                            notes=f"Membre du groupe de {participant.full_name}",
-                            added_by=request.user,
-                            group_leader=participant,
-                        )
+                    WorkshopParticipant.objects.bulk_create(
+                        [
+                            WorkshopParticipant(
+                                workshop=workshop,
+                                first_name=f"Membre {i}",
+                                last_name=f"Groupe_{timestamp}_{participant.last_name}",
+                                age=participant.age,
+                                status=participant.status,
+                                notes=f"Membre du groupe de {participant.full_name}",
+                                added_by=request.user,
+                                group_leader=participant,
+                            )
+                            for i in range(1, group_size)
+                        ]
+                    )
 
                 if request.headers.get("HX-Request"):
                     return JsonResponse({"success": True})
@@ -657,17 +655,21 @@ def add_group_reservation(request, workshop_id):
                 )
 
                 group_size = form.cleaned_data["group_size"]
-                for i in range(1, group_size):
-                    WorkshopParticipant.objects.create(
-                        workshop=workshop,
-                        first_name=f"Membre {i}",
-                        last_name=f"du groupe de {leader.full_name}",
-                        age=leader.age,
-                        status=form.cleaned_data["status"],
-                        notes=f"Membre du groupe de {leader.full_name}",
-                        added_by=request.user,
-                        group_leader=leader,
-                    )
+                WorkshopParticipant.objects.bulk_create(
+                    [
+                        WorkshopParticipant(
+                            workshop=workshop,
+                            first_name=f"Membre {i}",
+                            last_name=f"du groupe de {leader.full_name}",
+                            age=leader.age,
+                            status=form.cleaned_data["status"],
+                            notes=f"Membre du groupe de {leader.full_name}",
+                            added_by=request.user,
+                            group_leader=leader,
+                        )
+                        for i in range(1, group_size)
+                    ]
+                )
 
                 if group_size == 2:
                     msg = (

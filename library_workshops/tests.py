@@ -1,12 +1,10 @@
 from datetime import date, time, timedelta
+from datetime import date as dt_date
 from calendar import monthrange
-from collections import OrderedDict
 
 from django.test import TestCase, Client
 from django.contrib.auth.models import User, Group
 from django.urls import reverse
-from django.db.models import Count, Q
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 import re
 from .models import Workshop, WorkshopParticipant
@@ -1101,3 +1099,145 @@ class NewsletterViewTest(TestCase):
         response = self.client.get(reverse("library_workshops:newsletter"))
         self.assertContains(response, "Visible")
         self.assertNotContains(response, "Caché")
+
+
+from .recurrence import RecurrenceService
+from .models import RecurrencePattern
+
+
+class RecurrenceServiceTest(TestCase):
+    """Tests pour le service de récurrence"""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="recurtest", password="testpass123"
+        )
+
+    def _make_pattern(self, **kwargs):
+        defaults = dict(
+            frequency="biweekly",
+            interval=2,
+            days_of_week=[0],
+            period_start=dt_date(2026, 1, 5),
+            period_end=dt_date(2026, 2, 28),
+            month_day=None,
+            excluded_dates=[],
+            title="Test",
+            description="Desc",
+            start_time=time(14, 0),
+            end_time=time(16, 0),
+            location=None,
+            max_participants=15,
+            is_all_ages=True,
+            newsletter=True,
+            is_class_welcome=False,
+        )
+        defaults.update(kwargs)
+        p = RecurrencePattern(**defaults)
+        p.__dict__.pop("_state", None)
+        return p
+
+    def test_generate_dates_weekly_lundi(self):
+        p = self._make_pattern(frequency="weekly", days_of_week=[0])
+        dates = RecurrenceService.generate_dates(p)
+        self.assertEqual(len(dates), 8)
+        for d in dates:
+            self.assertEqual(d.weekday(), 0)
+
+    def test_generate_dates_biweekly(self):
+        p = self._make_pattern(frequency="biweekly", days_of_week=[0])
+        dates = RecurrenceService.generate_dates(p)
+        for i in range(1, len(dates)):
+            self.assertEqual((dates[i] - dates[i - 1]).days, 14)
+
+    def test_generate_dates_daily(self):
+        p = self._make_pattern(
+            frequency="daily",
+            days_of_week=[],
+            period_start=dt_date(2026, 1, 1),
+            period_end=dt_date(2026, 1, 10),
+        )
+        dates = RecurrenceService.generate_dates(p)
+        self.assertEqual(len(dates), 10)
+
+    def test_generate_dates_every_2_days(self):
+        p = self._make_pattern(
+            frequency="every_2_days",
+            days_of_week=[],
+            period_start=dt_date(2026, 1, 1),
+            period_end=dt_date(2026, 1, 10),
+        )
+        dates = RecurrenceService.generate_dates(p)
+        self.assertEqual(len(dates), 5)
+
+    def test_generate_dates_monthly(self):
+        p = self._make_pattern(
+            frequency="monthly",
+            days_of_week=[],
+            month_day=15,
+            period_start=dt_date(2026, 1, 1),
+            period_end=dt_date(2026, 6, 30),
+        )
+        dates = RecurrenceService.generate_dates(p)
+        self.assertEqual(len(dates), 6)
+        for d in dates:
+            self.assertEqual(d.day, 15)
+
+    def test_generate_dates_excluded(self):
+        p = self._make_pattern(
+            frequency="daily",
+            days_of_week=[],
+            period_start=dt_date(2026, 1, 1),
+            period_end=dt_date(2026, 1, 5),
+            excluded_dates=["2026-01-03"],
+        )
+        dates = RecurrenceService.generate_dates(p)
+        expected = [
+            dt_date(2026, 1, 1),
+            dt_date(2026, 1, 2),
+            dt_date(2026, 1, 4),
+            dt_date(2026, 1, 5),
+        ]
+        self.assertEqual(dates, expected)
+
+    def test_generate_dates_empty_period(self):
+        p = self._make_pattern(
+            frequency="weekly",
+            days_of_week=[0],
+            period_start=dt_date(2026, 6, 1),
+            period_end=dt_date(2026, 5, 1),
+        )
+        dates = RecurrenceService.generate_dates(p)
+        self.assertEqual(dates, [])
+
+    def test_generate_dates_no_days_for_weekly(self):
+        p = self._make_pattern(frequency="weekly", days_of_week=[])
+        dates = RecurrenceService.generate_dates(p)
+        self.assertEqual(dates, [])
+
+    def test_generate_dates_no_month_day(self):
+        p = self._make_pattern(frequency="monthly", days_of_week=[], month_day=None)
+        dates = RecurrenceService.generate_dates(p)
+        self.assertEqual(dates, [])
+
+    def test_generate_dates_every_3_weeks(self):
+        p = self._make_pattern(
+            frequency="every_3_weeks",
+            days_of_week=[0],
+            period_start=dt_date(2026, 1, 5),
+            period_end=dt_date(2026, 3, 30),
+        )
+        dates = RecurrenceService.generate_dates(p)
+        for i in range(1, len(dates)):
+            self.assertEqual((dates[i] - dates[i - 1]).days, 21)
+
+    def test_generate_dates_every_2_months(self):
+        p = self._make_pattern(
+            frequency="every_2_months",
+            days_of_week=[],
+            month_day=1,
+            period_start=dt_date(2026, 1, 1),
+            period_end=dt_date(2026, 12, 31),
+        )
+        dates = RecurrenceService.generate_dates(p)
+        self.assertEqual([d.month for d in dates], [1, 3, 5, 7, 9, 11])
