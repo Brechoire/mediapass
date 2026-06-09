@@ -67,6 +67,18 @@ def create_workshop(request):
 
             if is_recurring:
                 pattern = recurrence_form.save(commit=False)
+                cd = form.cleaned_data
+                pattern.start_time = cd["start_time"]
+                pattern.end_time = cd["end_time"]
+                pattern.title = cd["title"]
+                pattern.description = cd["description"]
+                pattern.location = cd["location"]
+                pattern.max_participants = cd["max_participants"]
+                pattern.is_all_ages = cd["is_all_ages"]
+                pattern.min_age = cd["min_age"]
+                pattern.max_age = cd["max_age"]
+                pattern.newsletter = cd["newsletter"]
+                pattern.is_class_welcome = cd["is_class_welcome"]
                 dates = RecurrenceService.generate_dates(pattern)
                 if not dates:
                     messages.error(
