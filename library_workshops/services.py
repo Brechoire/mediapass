@@ -175,6 +175,7 @@ class WorkshopStatisticsService:
             total=Count("id"),
             past=Count("id", filter=Q(start_date__lt=timezone.now().date())),
             upcoming=Count("id", filter=Q(start_date__gte=timezone.now().date())),
+            cancelled=Count("id", filter=Q(status="cancelled")),
         )
 
         participant_stats = self._filter_participants(
@@ -192,6 +193,7 @@ class WorkshopStatisticsService:
             "total_participants": participant_stats["total"],
             "past_workshops": workshop_stats["past"],
             "upcoming_workshops": workshop_stats["upcoming"],
+            "cancelled_workshops": workshop_stats["cancelled"],
             "confirmed_participants": participant_stats["confirmed"],
             "waiting_participants": participant_stats["waiting"],
         }
@@ -413,3 +415,15 @@ class WorkshopStatisticsService:
             "popular_locations": self.get_location_statistics(),
             **overbooking_stats,
         }
+
+    def get_cancelled_workshops(self):
+        """Retourne les ateliers annulés avec motif"""
+        return (
+            self._filter_workshops(
+                Workshop.objects.filter(
+                    start_date__gte=self.start_date, status="cancelled"
+                )
+            )
+            .select_related("location", "created_by")
+            .order_by("-start_date")
+        )
