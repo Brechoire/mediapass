@@ -8,6 +8,8 @@ from django.views.decorators.http import require_POST
 from django.db.models import Sum, Count, Max
 from django.db.models.functions import TruncDate
 
+from django.contrib.auth.decorators import login_required, user_passes_test
+
 from library_workshops.decorators import (
     mediatheque_member_required,
     mediatheque_member_required_json,
@@ -15,6 +17,7 @@ from library_workshops.decorators import (
 from library_workshops.utils import filter_owned, filter_location_owned
 from .models import Location, VisitorCount
 from .forms import BulkVisitorCountForm, DateRangeForm, LocationForm
+from .services import SuperadminStatisticsService
 
 # Constantes partagées entre les vues d'espaces
 SPACE_ICONS = [
@@ -869,3 +872,128 @@ def delete_space(request, location_id):
     location.delete()
 
     return JsonResponse({"success": True, "message": f"Espace '{name}' supprimé."})
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_statistics(request):
+    """Page superadmin : stats globales + comparaison par médiathèque"""
+    period = request.GET.get("period", "30_days")
+    start_date, end_date = SuperadminStatisticsService.compute_period(period)
+
+    global_stats = SuperadminStatisticsService.get_global_stats(start_date, end_date)
+    locations, grand_total = SuperadminStatisticsService.get_locations_comparison(
+        start_date, end_date
+    )
+    stacked_data = SuperadminStatisticsService.get_stacked_chart_data(
+        start_date, end_date
+    )
+
+    # Utilisateurs disponibles pour le filtre
+    available_users = SuperadminStatisticsService.get_available_users(
+        start_date, end_date
+    )
+
+    # Comparaison par utilisateur
+    selected_usernames = request.GET.getlist("users") or None
+    users_comparison = SuperadminStatisticsService.get_users_comparison(
+        start_date, end_date, selected_usernames
+    )
+
+    # Mode duel: si 2 users sélectionnés, ajouter % de différence
+    duel = None
+    if len(users_comparison) == 2:
+        u1, u2 = users_comparison[0], users_comparison[1]
+
+        def pct_diff(a, b):
+            if b == 0:
+                return 100 if a > 0 else 0
+            return round(((a - b) / b) * 100, 1)
+
+        duel = {
+            "total_diff": pct_diff(u1["total"], u2["total"]),
+            "avg_diff": pct_diff(u1["avg_per_day"], u2["avg_per_day"]),
+            "max_diff": pct_diff(u1["max_count"], u2["max_count"]),
+        }
+
+    # Données journalières par utilisateur (graphique multi-lignes)
+    daily_by_user = list(
+        VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date)
+        .values("date", "location__user__username")
+        .annotate(total=Sum("count"))
+        .order_by("date")
+    )
+
+    all_dates_set = set()
+    user_date_totals = {}
+    user_colors = {
+        "trelon": "#8B5CF6",
+        "fourmies": "#22C55E",
+        "anor": "#F97316",
+        "testd": "#3B82F6",
+    }
+    palette = [
+        "#4F46E5",
+        "#7C3AED",
+        "#EC4899",
+        "#EF4444",
+        "#14B8A6",
+        "#6366F1",
+        "#06B6D4",
+        "#84CC16",
+    ]
+
+    for row in daily_by_user:
+        ds = row["date"].isoformat()
+        uname = row["location__user__username"]
+        all_dates_set.add(ds)
+        if uname not in user_date_totals:
+            user_date_totals[uname] = {}
+        user_date_totals[uname][ds] = user_date_totals[uname].get(ds, 0) + (
+            row["total"] or 0
+        )
+
+    all_dates = sorted(all_dates_set)
+    chart_labels = all_dates
+    chart_datasets = []
+    color_idx = 0
+    for uname in sorted(user_date_totals.keys()):
+        c = user_colors.get(uname, palette[color_idx % len(palette)])
+        color_idx += 1
+        data_vals = [user_date_totals[uname].get(d, 0) for d in all_dates]
+        chart_datasets.append(
+            {
+                "label": uname,
+                "color": c,
+                "data": data_vals,
+            }
+        )
+
+    # Cumulé (global)
+    daily_global = {
+        ds: sum(ds_data.get(ds, 0) for ds_data in user_date_totals.values())
+        for ds in all_dates
+    }
+    cumulative = []
+    running = 0
+    for d in all_dates:
+        running += daily_global.get(d, 0)
+        cumulative.append(running)
+
+    context = {
+        "period": period,
+        "start_date": start_date,
+        "end_date": end_date,
+        "period_length": (end_date - start_date).days or 1,
+        "global_stats": global_stats,
+        "locations": locations,
+        "stacked_datasets": stacked_data["datasets"],
+        "chart_labels": chart_labels,
+        "chart_datasets": chart_datasets,
+        "cumulative": cumulative,
+        "available_users": available_users,
+        "selected_usernames": selected_usernames or [],
+        "users_comparison": users_comparison,
+        "duel": duel,
+    }
+    return render(request, "visitor_tracking/superadmin_statistics.html", context)

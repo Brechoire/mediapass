@@ -47,7 +47,7 @@
     {% endif %}
 
     <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
-        <form method="post" enctype="multipart/form-data" novalidate>
+        <form method="post" enctype="multipart/form-data" novalidate id="workshop-form">
             {% csrf_token %}
 
             {% if form.non_field_errors %}
@@ -82,7 +82,14 @@
                                            name="{{ form.title.name }}"
                                            value="{{ form.title.value|default:'' }}"
                                            class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all {% if form.title.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}"
-                                           placeholder="Titre de l'atelier">
+                                           placeholder="Titre de l'atelier"
+                                           list="workshop-titles"
+                                           hx-get="{% url 'library_workshops:search_titles' %}"
+                                           hx-trigger="keyup changed delay:500ms"
+                                           hx-target="#workshop-titles"
+                                           hx-swap="innerHTML"
+                                           hx-params="title">
+                                    <datalist id="workshop-titles"></datalist>
                                     {% if form.title.errors %}
                                     <p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.title.errors|join:", " }}</p>
                                     {% endif %}
@@ -127,11 +134,12 @@
                                         <input type="date"
                                                id="{{ form.start_date.id_for_label }}"
                                                name="{{ form.start_date.name }}"
-                                               value="{{ form.start_date.value|default:'' }}"
+                                               value="{{ form.start_date.value|date:'Y-m-d' }}"
+                                               {% if not form.instance.pk %}min="{% now 'Y-m-d' %}"{% endif %}
                                                class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all {% if form.start_date.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}">
-                                        {% if form.start_date.errors %}
-                                        <p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.start_date.errors|join:", " }}</p>
-                                        {% endif %}
+                                         {% if form.start_date.errors %}
+                                         <p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.start_date.errors|join:", " }}</p>
+                                         {% endif %}
                                     </div>
                                     <div id="end-date-field">
                                         <label for="{{ form.end_date.id_for_label }}" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
@@ -140,7 +148,8 @@
                                         <input type="date"
                                                id="{{ form.end_date.id_for_label }}"
                                                name="{{ form.end_date.name }}"
-                                               value="{{ form.end_date.value|default:'' }}"
+                                               value="{{ form.end_date.value|date:'Y-m-d' }}"
+                                               {% if not form.instance.pk %}min="{% now 'Y-m-d' %}"{% endif %}
                                                class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all {% if form.end_date.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}">
                                         {% if form.end_date.errors %}
                                         <p class="text-red-600 text-xs mt-1.5 flex items-center gap-1"><i class="bx bx-error-circle"></i> {{ form.end_date.errors|join:", " }}</p>
@@ -191,10 +200,20 @@
                                     </label>
                                     <div class="flex gap-2">
                                         <div class="flex-1 relative">
+                                            <input type="text"
+                                                   id="location-search"
+                                                   placeholder="Rechercher un lieu..."
+                                                   autocomplete="off"
+                                                   class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all {% if form.location.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}">
+                                            <datalist id="location-list">
+                                                {% for loc in form.location.field.queryset %}
+                                                <option value="{{ loc.name }}" data-id="{{ loc.pk }}"></option>
+                                                {% endfor %}
+                                            </datalist>
                                             <select id="{{ form.location.id_for_label }}"
                                                     name="{{ form.location.name }}"
-                                                    class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20fill%3D%22none%22%20stroke%3D%22%23b0bedb%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_0.75rem_center] bg-[length:1.25rem] {% if form.location.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}">
-                                                <option value="" {% if not form.location.value %}selected{% endif %} disabled>Sélectionnez un lieu...</option>
+                                                    class="hidden">
+                                                <option value="">Sélectionnez un lieu...</option>
                                                 {% for loc in form.location.field.queryset %}
                                                 <option value="{{ loc.pk }}" {% if form.location.value|stringformat:"s" == loc.pk|stringformat:"s" %}selected{% endif %}>{{ loc.name }}</option>
                                                 {% endfor %}
@@ -329,14 +348,15 @@
                                     <p class="text-[#b0bedb] text-xs mt-1">{{ form.poster.help_text }}</p>
                                     {% endif %}
                                 </div>
-                                {% if form.instance.poster %}
-                                <div class="text-center">
-                                    <img src="{{ form.instance.poster.url }}"
+                                <div id="poster-preview" class="text-center {% if not form.instance.poster %}hidden{% endif %}">
+                                    <img id="poster-preview-img"
+                                         src="{% if form.instance.poster %}{{ form.instance.poster.url }}{% else %}#{% endif %}"
                                          alt="Aperçu de l'affiche"
                                          class="mx-auto rounded-xl max-h-40 shadow-sm">
-                                    <p class="text-[#b0bedb] text-xs mt-2">Affiche actuelle</p>
+                                    <p class="text-[#b0bedb] text-xs mt-2" id="poster-preview-label">
+                                        {% if form.instance.poster %}Affiche actuelle{% else %}Aperçu{% endif %}
+                                    </p>
                                 </div>
-                                {% endif %}
                             </div>
                         </div>
 
@@ -385,18 +405,11 @@
                         <i class="bx bx-x"></i>
                         Annuler
                     </a>
-                    <div class="flex gap-3">
-                        <button type="submit" name="save_draft"
-                                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[#4a6fa5] text-sm font-medium text-[#4a6fa5] hover:bg-[#e8eef7] transition-all">
-                            <i class="bx bx-save"></i>
-                            Enregistrer en brouillon
-                        </button>
-                        <button type="submit" name="save_publish"
-                                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-all shadow-sm">
-                            <i class="bx bx-check"></i>
-                            Publier l'atelier
-                        </button>
-                    </div>
+                    <button type="submit" id="save-btn"
+                            class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-all shadow-sm">
+                        <i class="bx bx-check"></i>
+                        <span id="save-btn-text">Enregistrer</span>
+                    </button>
                 </div>
             </div>
         </form>
@@ -517,6 +530,34 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+
+    let formModified = false;
+
+    function markModified() { formModified = true; }
+
+    document.querySelectorAll('#workshop-form input, #workshop-form textarea, #workshop-form select').forEach(function(el) {
+        el.addEventListener('change', markModified);
+        el.addEventListener('input', markModified);
+    });
+
+    window.addEventListener('beforeunload', function(e) {
+        if (formModified) {
+            e.preventDefault();
+            e.returnValue = 'Vous avez des modifications non sauvegardées.';
+        }
+    });
+
+    const saveBtn = document.getElementById('save-btn');
+    const saveBtnText = document.getElementById('save-btn-text');
+    if (saveBtn) {
+        document.getElementById('workshop-form').addEventListener('submit', function() {
+            saveBtn.disabled = true;
+            saveBtn.classList.add('opacity-60', 'cursor-not-allowed');
+            saveBtnText.textContent = 'Enregistrement...';
+            formModified = false;
+        });
+    }
+
     const isSingleDayCheckbox = document.getElementById('{{ form.is_single_day.id_for_label }}');
     const endDateField = document.getElementById('end-date-field');
     const endDateInput = document.getElementById('{{ form.end_date.id_for_label }}');
@@ -534,6 +575,69 @@ document.addEventListener('DOMContentLoaded', function() {
     if (isSingleDayCheckbox) {
         toggleEndDate();
         isSingleDayCheckbox.addEventListener('change', toggleEndDate);
+    }
+
+    const posterInput = document.getElementById('{{ form.poster.id_for_label }}');
+    const posterPreview = document.getElementById('poster-preview');
+    const posterPreviewImg = document.getElementById('poster-preview-img');
+    const posterPreviewLabel = document.getElementById('poster-preview-label');
+    if (posterInput && posterPreview && posterPreviewImg) {
+        posterInput.addEventListener('change', function() {
+            var file = this.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    posterPreviewImg.src = e.target.result;
+                    posterPreview.classList.remove('hidden');
+                    posterPreviewLabel.textContent = 'Nouvel aperçu';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    const locationSelect = document.getElementById('{{ form.location.id_for_label }}');
+    const locationSearch = document.getElementById('location-search');
+    if (locationSearch && locationSelect) {
+        var selectedText = locationSelect.options[locationSelect.selectedIndex] ? locationSelect.options[locationSelect.selectedIndex].text : '';
+        if (selectedText && selectedText !== 'Sélectionnez un lieu...') {
+            locationSearch.value = selectedText;
+        }
+
+        locationSearch.addEventListener('input', function() {
+            var val = this.value;
+            var options = locationSelect.options;
+            var found = false;
+            for (var i = 0; i < options.length; i++) {
+                if (options[i].text === val) {
+                    options[i].selected = true;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                locationSelect.value = '';
+            }
+        });
+
+        locationSearch.addEventListener('blur', function() {
+            var val = this.value;
+            var options = locationSelect.options;
+            var found = false;
+            for (var i = 0; i < options.length; i++) {
+                if (options[i].text === val) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found && val !== '') {
+                var firstOpt = locationSelect.options[0];
+                if (firstOpt && firstOpt.text !== 'Sélectionnez un lieu...') {
+                    locationSearch.value = firstOpt.text;
+                    firstOpt.selected = true;
+                }
+            }
+        });
     }
 });
 

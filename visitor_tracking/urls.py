@@ -22,6 +22,7 @@ urlpatterns = [
     
     # Statistiques
     path("statistics/", views.statistics, name="statistics"),
+    path("admin-statistics/", views.superadmin_statistics, name="superadmin_statistics"),
     path("export/csv/", views.export_csv, name="export_csv"),
     
     # Historique et modification

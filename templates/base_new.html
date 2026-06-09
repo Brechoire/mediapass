@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <link rel="stylesheet" href="{% static 'vendor/fonts/boxicons.css' %}" />
     <link rel="stylesheet" href="{% static 'css/site.css' %}" />
     {% block stylesheets %}{% endblock %}
@@ -63,6 +64,8 @@
                                 <a href="{% url 'workshop_list' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Ateliers</a>
                                 <a href="{% url 'statistics' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Stats réservations</a>
                                 <a href="{% url 'workshop_stats' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Stats ateliers</a>
+                                <a href="{% url 'visitor_tracking:superadmin_statistics' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-bar-chart-alt-2 mr-1"></i> Stats visiteurs</a>
+                                <a href="{% url 'library_workshops:newsletter' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-envelope mr-1"></i> Newsletter</a>
                                 <hr class="border-[#dce3ef] my-1">
                                 <a href="{% url 'notifications:email_admin' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-envelope mr-1"></i> Emails</a>
                             </div>
@@ -156,6 +159,8 @@
                         <a href="{% url 'workshop_list' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2">Ateliers</a>
                         <a href="{% url 'statistics' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2">Stats réservations</a>
                         <a href="{% url 'workshop_stats' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2">Stats ateliers</a>
+                        <a href="{% url 'visitor_tracking:superadmin_statistics' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-bar-chart-alt-2 mr-1"></i>Stats visiteurs</a>
+                        <a href="{% url 'library_workshops:newsletter' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-envelope mr-1"></i>Newsletter</a>
                         <a href="{% url 'notifications:email_admin' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-envelope mr-1"></i>Emails</a>
                     </div>
                     {% endif %}

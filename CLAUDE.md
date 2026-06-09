@@ -28,6 +28,9 @@ python manage.py test
 # Send reservation reminders (cron job)
 python manage.py send_reservation_reminders
 
+# Generate demo data (69 workshops + participants, user "anor")
+python manage.py generate_seed_data
+
 # Pre-push checks (runs tests, migrations check, Black, flake8, isort)
 python scripts/pre_push_check.py
 ```

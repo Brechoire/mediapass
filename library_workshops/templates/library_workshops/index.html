@@ -3,6 +3,57 @@
 
 {% block title %}Gestion des ateliers{% endblock %}
 
+{% block stylesheets %}
+<style>
+    [data-tooltip] {
+        position: relative;
+        cursor: pointer;
+    }
+    [data-tooltip]::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 6px 12px;
+        background: #1e293b;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 1.4;
+        white-space: nowrap;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s ease, transform 0.15s ease;
+        transform: translateX(-50%) translateY(4px);
+        z-index: 100;
+    }
+    [data-tooltip]::before {
+        content: '';
+        position: absolute;
+        bottom: calc(100% + 4px);
+        left: 50%;
+        transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-top-color: #1e293b;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+        z-index: 100;
+    }
+    [data-tooltip]:hover::after,
+    [data-tooltip]:hover::before {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+    [data-tooltip]:hover::before {
+        transform: translateX(-50%);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
     <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
@@ -139,29 +190,29 @@
                             <div class="flex gap-0.5">
                                 <a href="{% url 'library_workshops:workshop_detail' workshop.id %}"
                                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"
-                                   title="Voir les détails">
+                                   data-tooltip="Voir les détails">
                                     <i class="bx bx-show"></i>
                                 </a>
                                 <a href="{% url 'library_workshops:add_participant' workshop.id %}"
                                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors {% if workshop.is_full %}opacity-50 cursor-not-allowed{% endif %}"
-                                   title="Ajouter un participant">
+                                   data-tooltip="Ajouter un participant">
                                     <i class="bx bx-plus"></i>
                                 </a>
                                 <a href="{% url 'library_workshops:workshop_participants' workshop.id %}"
                                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors"
-                                   title="Gérer les participants">
+                                   data-tooltip="Gérer les participants">
                                     <i class="bx bx-list-ul"></i>
                                 </a>
                                 <a href="{% url 'library_workshops:edit_workshop' workshop.id %}"
                                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"
-                                   title="Modifier l'atelier">
+                                   data-tooltip="Modifier l'atelier">
                                     <i class="bx bx-edit-alt"></i>
                                 </a>
                                 <form method="post" action="{% url 'library_workshops:duplicate_workshop' workshop.id %}" class="inline" onsubmit="return confirm('Dupliquer cet atelier ?');">
                                     {% csrf_token %}
                                     <button type="submit"
                                             class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#7a8fa0] hover:bg-[#f8f9fc] transition-colors cursor-pointer"
-                                            title="Dupliquer l'atelier">
+                                            data-tooltip="Dupliquer l'atelier">
                                         <i class="bx bx-copy"></i>
                                     </button>
                                 </form>
