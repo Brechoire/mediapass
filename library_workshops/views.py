@@ -999,7 +999,7 @@ def create_location_modal(request):
         },
         request=request,
     )
-    return JsonResponse({"html": html})
+    return HttpResponse(html)
 
 
 @login_required
