@@ -61,16 +61,34 @@ def index(request):
 def create_workshop(request):
     if request.method == "POST":
         form = WorkshopForm(request.POST, request.FILES, user=request.user)
-        recurrence_form = RecurrenceForm(request.POST)
 
         if form.is_valid():
+            cd = form.cleaned_data
+            conflicts = []
+
+            # Vérifier les conflits avant création
+            if (
+                cd.get("location")
+                and cd.get("start_date")
+                and cd.get("start_time")
+                and cd.get("end_time")
+            ):
+                dummy = Workshop(
+                    location=cd["location"],
+                    start_date=cd["start_date"],
+                    end_date=cd.get("end_date"),
+                    start_time=cd["start_time"],
+                    end_time=cd["end_time"],
+                )
+                conflicts = check_workshop_conflicts(dummy)
+
+            recurrence_form = RecurrenceForm(request.POST)
             is_recurring = (
                 request.POST.get("is_recurring") == "on" and recurrence_form.is_valid()
             )
 
             if is_recurring:
                 pattern = recurrence_form.save(commit=False)
-                cd = form.cleaned_data
                 pattern.start_time = cd["start_time"]
                 pattern.end_time = cd["end_time"]
                 pattern.title = cd["title"]
@@ -100,12 +118,22 @@ def create_workshop(request):
                         },
                     )
                 RecurrenceService.create_workshops(request, pattern, dates)
+                if conflicts:
+                    for c in conflicts:
+                        messages.warning(
+                            request,
+                            f"Conflit : « {c.title} » ({c.start_date}) est déjà programmé au même créneau au même lieu.",
+                        )
                 messages.success(request, f"{len(dates)} ateliers créés avec succès !")
             else:
                 workshop = form.save(commit=False)
                 workshop.created_by = request.user
                 workshop.save()
-                check_workshop_conflicts(workshop, request)
+                for c in conflicts:
+                    messages.warning(
+                        request,
+                        f"Conflit : « {c.title} » ({c.start_date}) est déjà programmé au même créneau au même lieu.",
+                    )
                 check_duplicate_title(workshop, request)
                 messages.success(request, "L'atelier a été créé avec succès !")
 
@@ -127,35 +155,40 @@ def create_workshop(request):
     )
 
 
-def check_workshop_conflicts(workshop, request):
+def check_workshop_conflicts(workshop, request=None, conflicts_list=None):
     conflicts = Workshop.objects.filter(
         location=workshop.location,
-        newsletter=True,
+        status="active",
     ).exclude(pk=workshop.pk)
 
-    date_overlap = Q(
-        start_date__lte=workshop.start_date, end_date__gte=workshop.start_date
-    )
-    if workshop.end_date:
-        date_overlap |= Q(
-            start_date__lte=workshop.end_date, end_date__gte=workshop.end_date
-        )
-        date_overlap |= Q(
-            start_date__gte=workshop.start_date, end_date__lte=workshop.end_date
-        )
-    else:
-        date_overlap |= Q(start_date=workshop.start_date)
+    ws_start = workshop.start_date
+    ws_end = workshop.end_date or workshop.start_date
+    ws_start_time = workshop.start_time
+    ws_end_time = workshop.end_time
 
+    # Chevauchement de dates : [ws_start, ws_end] ∩ [conflict_start, conflict_end]
+    date_overlap = Q(start_date__lte=ws_end) & (
+        Q(end_date__gte=ws_start) | Q(end_date__isnull=True, start_date__gte=ws_start)
+    )
     conflicts = conflicts.filter(date_overlap)
 
-    time_overlap = Q(start_time__lt=workshop.end_time, end_time__gt=workshop.start_time)
+    # Chevauchement d'horaires
+    time_overlap = Q(start_time__lt=ws_end_time, end_time__gt=ws_start_time)
     conflicts = conflicts.filter(time_overlap)
 
-    for conflict in conflicts:
-        messages.warning(
-            request,
-            f"Attention : l'atelier « {conflict.title} » ({conflict.start_date}) est programmé au même moment au même lieu.",
-        )
+    result = list(conflicts)
+
+    if request and result:
+        for c in result:
+            messages.warning(
+                request,
+                f"Conflit : « {c.title} » ({c.start_date.strftime('%d/%m/%Y')}) est déjà programmé au même créneau au même lieu.",
+            )
+
+    if conflicts_list is not None:
+        conflicts_list.extend(result)
+
+    return result
 
 
 def check_duplicate_title(workshop, request):
@@ -373,8 +406,13 @@ def edit_workshop(request, workshop_id):
             ws = form.save(commit=False)
             if pattern:
                 ws.recurrence_modified = True
+            conflicts = check_workshop_conflicts(ws) if ws.location else []
             ws.save()
-            check_workshop_conflicts(ws, request)
+            for c in conflicts:
+                messages.warning(
+                    request,
+                    f"Conflit : « {c.title} » ({c.start_date}) est déjà programmé au même créneau au même lieu.",
+                )
             check_duplicate_title(ws, request)
             messages.success(request, "L'atelier a été modifié avec succès !")
             return redirect("library_workshops:index")
