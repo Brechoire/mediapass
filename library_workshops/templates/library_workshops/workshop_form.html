@@ -200,24 +200,36 @@
                                     </label>
                                     <div class="flex gap-2">
                                         <div class="flex-1 relative">
-                                            <input type="text"
-                                                   id="location-search"
-                                                   placeholder="Rechercher un lieu..."
-                                                   autocomplete="off"
-                                                   class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all {% if form.location.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}">
-                                            <datalist id="location-list">
-                                                {% for loc in form.location.field.queryset %}
-                                                <option value="{{ loc.name }}" data-id="{{ loc.pk }}"></option>
-                                                {% endfor %}
-                                            </datalist>
-                                            <select id="{{ form.location.id_for_label }}"
-                                                    name="{{ form.location.name }}"
-                                                    class="hidden">
-                                                <option value="">Sélectionnez un lieu...</option>
-                                                {% for loc in form.location.field.queryset %}
-                                                <option value="{{ loc.pk }}" {% if form.location.value|stringformat:"s" == loc.pk|stringformat:"s" %}selected{% endif %}>{{ loc.name }}</option>
-                                                {% endfor %}
-                                            </select>
+                                            <div class="relative">
+                                                <input type="text"
+                                                       id="location-search"
+                                                       placeholder="Rechercher un lieu..."
+                                                       autocomplete="off"
+                                                       class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all {% if form.location.errors %}border-red-300 focus:ring-red-500/20 focus:border-red-500{% endif %}">
+                                                <div id="location-dropdown"
+                                                     class="hidden absolute left-0 top-full mt-1 w-full bg-white border border-[#dce3ef] rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto py-1">
+                                                    {% for loc in form.location.field.queryset %}
+                                                    <button type="button"
+                                                            data-value="{{ loc.pk }}"
+                                                            data-icon="{{ loc.icon }}"
+                                                            data-color="{{ loc.color }}"
+                                                            class="location-option w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left hover:bg-[#e8eef7] transition-colors border-b border-[#dce3ef] last:border-b-0">
+                                                        <div class="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style="background-color: {{ loc.color }}15;">
+                                                            <i class="bx {{ loc.icon }} text-xs" style="color: {{ loc.color }};"></i>
+                                                        </div>
+                                                        <span class="font-medium text-[#1e293b]">{{ loc.name }}</span>
+                                                    </button>
+                                                    {% endfor %}
+                                                </div>
+                                                <select id="{{ form.location.id_for_label }}"
+                                                        name="{{ form.location.name }}"
+                                                        class="hidden">
+                                                    <option value="">Sélectionnez un lieu...</option>
+                                                    {% for loc in form.location.field.queryset %}
+                                                    <option value="{{ loc.pk }}" {% if form.location.value|stringformat:"s" == loc.pk|stringformat:"s" %}selected{% endif %}>{{ loc.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
                                         </div>
                                         <button type="button"
                                                 hx-get="{% url 'library_workshops:create_location_modal' %}"
@@ -634,44 +646,53 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const locationSelect = document.getElementById('{{ form.location.id_for_label }}');
     const locationSearch = document.getElementById('location-search');
-    if (locationSearch && locationSelect) {
-        var selectedText = locationSelect.options[locationSelect.selectedIndex] ? locationSelect.options[locationSelect.selectedIndex].text : '';
-        if (selectedText && selectedText !== 'Sélectionnez un lieu...') {
-            locationSearch.value = selectedText;
+    const locationDropdown = document.getElementById('location-dropdown');
+    const locationOptions = document.querySelectorAll('.location-option');
+
+    function showDropdown() {
+        if (locationDropdown) locationDropdown.classList.remove('hidden');
+    }
+    function hideDropdown() {
+        if (locationDropdown) setTimeout(function() { locationDropdown.classList.add('hidden'); }, 150);
+    }
+    function filterDropdown(val) {
+        if (!locationOptions) return;
+        var lower = val.toLowerCase();
+        locationOptions.forEach(function(opt) {
+            var text = opt.textContent.trim().toLowerCase();
+            opt.style.display = text.indexOf(lower) !== -1 ? '' : 'none';
+        });
+        if (val.length > 0) showDropdown();
+    }
+
+    if (locationSearch && locationSelect && locationDropdown) {
+        var selectedPk = locationSelect.value;
+        if (selectedPk) {
+            locationOptions.forEach(function(opt) {
+                if (opt.getAttribute('data-value') === selectedPk) {
+                    locationSearch.value = opt.textContent.trim();
+                }
+            });
         }
 
-        locationSearch.addEventListener('input', function() {
-            var val = this.value;
-            var options = locationSelect.options;
-            var found = false;
-            for (var i = 0; i < options.length; i++) {
-                if (options[i].text === val) {
-                    options[i].selected = true;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                locationSelect.value = '';
-            }
+        locationSearch.addEventListener('focus', function() { showDropdown(); filterDropdown(this.value); });
+        locationSearch.addEventListener('blur', hideDropdown);
+        locationSearch.addEventListener('input', function() { filterDropdown(this.value); });
+
+        locationOptions.forEach(function(opt) {
+            opt.addEventListener('click', function() {
+                var pk = this.getAttribute('data-value');
+                var name = this.textContent.trim();
+                locationSearch.value = name;
+                locationSelect.value = pk;
+                locationSelect.dispatchEvent(new Event('change'));
+                hideDropdown();
+            });
         });
 
-        locationSearch.addEventListener('blur', function() {
-            var val = this.value;
-            var options = locationSelect.options;
-            var found = false;
-            for (var i = 0; i < options.length; i++) {
-                if (options[i].text === val) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found && val !== '') {
-                var firstOpt = locationSelect.options[0];
-                if (firstOpt && firstOpt.text !== 'Sélectionnez un lieu...') {
-                    locationSearch.value = firstOpt.text;
-                    firstOpt.selected = true;
-                }
+        document.addEventListener('click', function(e) {
+            if (locationSearch && !locationSearch.contains(e.target) && locationDropdown && !locationDropdown.contains(e.target)) {
+                locationDropdown.classList.add('hidden');
             }
         });
     }
