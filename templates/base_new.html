@@ -57,17 +57,33 @@
                         {% if user.is_superuser %}
                         <div class="relative group">
                             <button class="flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer">Admin <i class="bx bx-chevron-down text-base"></i></button>
-                            <div class="absolute left-0 top-full z-50 hidden group-hover:block bg-white border border-[#dce3ef] rounded-xl shadow-lg py-1.5 min-w-[220px]">
-                                <a href="{% url 'product_list' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Produits</a>
-                                <a href="{% url 'structure_list' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Structures</a>
-                                <a href="{% url 'category_list' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Catégories</a>
-                                <a href="{% url 'workshop_list' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Ateliers</a>
-                                <a href="{% url 'statistics' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Stats réservations</a>
-                                <a href="{% url 'workshop_stats' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Stats ateliers</a>
-                                <a href="{% url 'visitor_tracking:superadmin_statistics' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-bar-chart-alt-2 mr-1"></i> Stats visiteurs</a>
-                                <a href="{% url 'library_workshops:newsletter' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-envelope mr-1"></i> Newsletter</a>
+                            <div class="absolute left-0 top-full z-50 hidden group-hover:block bg-white border border-[#dce3ef] rounded-xl shadow-lg py-2 min-w-[230px]">
+                                <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Gestion</p>
+                                <a href="{% url 'product_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-package text-[#b0bedb]"></i> Produits</a>
+                                <a href="{% url 'structure_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-building text-[#b0bedb]"></i> Structures</a>
+                                <a href="{% url 'category_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-tag text-[#b0bedb]"></i> Catégories</a>
+                                <a href="{% url 'workshop_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-wrench text-[#b0bedb]"></i> Ateliers</a>
                                 <hr class="border-[#dce3ef] my-1">
-                                <a href="{% url 'notifications:email_admin' %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-envelope mr-1"></i> Emails</a>
+                                <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Réservations</p>
+                                <a href="{% url 'reservation_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
+                                    <i class="bx bx-calendar text-[#b0bedb]"></i> Toutes
+                                    {% if pending_reservations_count > 0 %}
+                                    <span class="ml-auto inline-flex items-center justify-center rounded-full bg-[#d46a78] text-white text-xs px-2 py-0.5">{{ pending_reservations_count }}</span>
+                                    {% endif %}
+                                </a>
+                                <a href="{% url 'reservation_calendar' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-calendar-alt text-[#b0bedb]"></i> Calendrier</a>
+                                <hr class="border-[#dce3ef] my-1">
+                                <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Statistiques</p>
+                                <a href="{% url 'statistics' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-line-chart text-[#b0bedb]"></i> Réservations</a>
+                                <a href="{% url 'workshop_stats' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-bar-chart text-[#b0bedb]"></i> Ateliers</a>
+                                <a href="{% url 'visitor_tracking:superadmin_statistics' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-group text-[#b0bedb]"></i> Visiteurs</a>
+                                <hr class="border-[#dce3ef] my-1">
+                                <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Communication</p>
+                                <a href="{% url 'library_workshops:newsletter' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-mail-send text-[#b0bedb]"></i> Newsletter</a>
+                                <a href="{% url 'notifications:email_admin' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-envelope text-[#b0bedb]"></i> Emails</a>
+                                <hr class="border-[#dce3ef] my-1">
+                                <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Système</p>
+                                <a href="#" id="open-backup-modal" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-download text-[#b0bedb]"></i> Sauvegardes</a>
                             </div>
                         </div>
                         {% endif %}
@@ -96,22 +112,7 @@
                             <span class="text-sm font-medium text-[#4a6fa5] hidden sm:inline">{{ user.username }}</span>
                             <i class="bx bx-chevron-down text-[#b0bedb]"></i>
                         </button>
-                        <div class="absolute right-0 top-full w-56 bg-white rounded-xl shadow-lg border border-[#dce3ef] py-1.5 z-50 hidden group-hover:block">
-                            {% if user.is_superuser %}
-                            <a href="#" id="open-backup-modal" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
-                                <i class="bx bx-download text-[#b0bedb]"></i> Sauvegardes
-                            </a>
-                            <a href="{% url 'reservation_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
-                                <i class="bx bx-calendar text-[#b0bedb]"></i> Réservations
-                                {% if pending_reservations_count > 0 %}
-                                <span class="ml-auto inline-flex items-center justify-center rounded-full bg-[#d46a78] text-white text-xs px-2 py-0.5">{{ pending_reservations_count }}</span>
-                                {% endif %}
-                            </a>
-                            <a href="{% url 'reservation_calendar' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
-                                <i class="bx bx-calendar-alt text-[#b0bedb]"></i> Calendrier
-                            </a>
-                            <hr class="my-1 border-[#dce3ef]" />
-                            {% endif %}
+                        <div class="absolute right-0 top-full w-48 bg-white rounded-xl shadow-lg border border-[#dce3ef] py-1.5 z-50 hidden group-hover:block">
                             <form method="post" action="{% url 'logout' %}">
                                 {% csrf_token %}
                                 <button type="submit" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#d46a78] hover:bg-[#fbe8eb] transition-colors w-full">
@@ -151,17 +152,31 @@
                     {% endif %}
                     {% if user.is_superuser %}
                     <div class="px-3 py-2">
-                        <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Admin</p>
-                        <a href="{% url 'product_list' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2">Produits</a>
-                        <a href="{% url 'product_create' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2">Ajouter un produit</a>
-                        <a href="{% url 'structure_list' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2">Structures</a>
-                        <a href="{% url 'category_list' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2">Catégories</a>
-                        <a href="{% url 'workshop_list' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2">Ateliers</a>
-                        <a href="{% url 'statistics' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2">Stats réservations</a>
-                        <a href="{% url 'workshop_stats' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2">Stats ateliers</a>
-                        <a href="{% url 'visitor_tracking:superadmin_statistics' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-bar-chart-alt-2 mr-1"></i>Stats visiteurs</a>
-                        <a href="{% url 'library_workshops:newsletter' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-envelope mr-1"></i>Newsletter</a>
-                        <a href="{% url 'notifications:email_admin' %}" class="block px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-envelope mr-1"></i>Emails</a>
+                        <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Gestion</p>
+                        <a href="{% url 'product_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-package text-[#b0bedb]"></i> Produits</a>
+                        <a href="{% url 'structure_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-building text-[#b0bedb]"></i> Structures</a>
+                        <a href="{% url 'category_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-tag text-[#b0bedb]"></i> Catégories</a>
+                        <a href="{% url 'workshop_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-wrench text-[#b0bedb]"></i> Ateliers</a>
+                    </div>
+                    <div class="px-3 py-2">
+                        <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Réservations</p>
+                        <a href="{% url 'reservation_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-calendar text-[#b0bedb]"></i> Toutes{% if pending_reservations_count > 0 %} <span class="ml-auto inline-flex items-center justify-center rounded-full bg-[#d46a78] text-white text-xs px-2 py-0.5">{{ pending_reservations_count }}</span>{% endif %}</a>
+                        <a href="{% url 'reservation_calendar' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-calendar-alt text-[#b0bedb]"></i> Calendrier</a>
+                    </div>
+                    <div class="px-3 py-2">
+                        <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Statistiques</p>
+                        <a href="{% url 'statistics' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-line-chart text-[#b0bedb]"></i> Réservations</a>
+                        <a href="{% url 'workshop_stats' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-bar-chart text-[#b0bedb]"></i> Ateliers</a>
+                        <a href="{% url 'visitor_tracking:superadmin_statistics' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-group text-[#b0bedb]"></i> Visiteurs</a>
+                    </div>
+                    <div class="px-3 py-2">
+                        <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Communication</p>
+                        <a href="{% url 'library_workshops:newsletter' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-mail-send text-[#b0bedb]"></i> Newsletter</a>
+                        <a href="{% url 'notifications:email_admin' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-envelope text-[#b0bedb]"></i> Emails</a>
+                    </div>
+                    <div class="px-3 py-2">
+                        <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Système</p>
+                        <a href="#" id="open-backup-modal-mobile" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-download text-[#b0bedb]"></i> Sauvegardes</a>
                     </div>
                     {% endif %}
                 {% else %}
@@ -276,13 +291,13 @@
           });
         }
 
-        const openBtn = document.getElementById('open-backup-modal');
         const modal = document.getElementById('backup-modal');
         const closeBtn = document.getElementById('close-backup-modal');
-        if (openBtn && modal) {
+        if (modal) {
+          const openBtns = [document.getElementById('open-backup-modal'), document.getElementById('open-backup-modal-mobile')];
           function openModal(){ modal.classList.remove('hidden'); }
           function closeModal(){ modal.classList.add('hidden'); }
-          openBtn.addEventListener('click', function(e){ e.preventDefault(); openModal(); });
+          openBtns.forEach(function(b) { if (b) b.addEventListener('click', function(e){ e.preventDefault(); openModal(); }); });
           if (closeBtn) closeBtn.addEventListener('click', closeModal);
           modal.addEventListener('click', function(e){
             if (e.target === modal) closeModal();
