@@ -216,6 +216,11 @@
                                         <i class="bx bx-copy"></i>
                                     </button>
                                 </form>
+                                <a href="{% url 'library_workshops:delete_workshop' workshop.id %}"
+                                   class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
+                                   data-tooltip="Annuler l'atelier">
+                                    <i class="bx bx-x-circle"></i>
+                                </a>
                             </div>
                         </div>
                     </div>

@@ -1,111 +1,70 @@
 {% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Annuler l'atelier{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 py-8">
-    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
-            <!-- Header -->
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h1 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                    <i class="bx bx-trash text-red-600"></i>
-                    Confirmer la suppression
-                </h1>
-            </div>
-
-            <div class="p-6">
-                <!-- Warning Icon -->
-                <div class="text-center mb-6">
-                    <i class="bx bx-error-circle text-6xl text-red-500"></i>
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div>
+            <a href="{% url 'library_workshops:workshop_detail' workshop.id %}" class="inline-flex items-center gap-1 text-white/60 hover:text-white text-sm transition-colors mb-3">
+                <i class="bx bx-arrow-back"></i> Retour à l'atelier
+            </a>
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                    <i class="bx bx-x-circle text-2xl text-white"></i>
                 </div>
-                
-                <!-- Main Question -->
-                <h2 class="text-center text-lg font-semibold text-gray-900 mb-6">
-                    Êtes-vous sûr de vouloir supprimer cet atelier ?
-                </h2>
-                
-                <!-- Warning Alert -->
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                    <div class="flex items-start gap-3">
-                        <i class="bx bx-warning text-yellow-600 text-xl mt-0.5"></i>
-                        <div>
-                            <h3 class="font-semibold text-yellow-800 mb-1">Attention</h3>
-                            <p class="text-yellow-700 text-sm">
-                                Cette action est irréversible. Tous les participants inscrits seront également supprimés.
-                            </p>
-                        </div>
-                    </div>
+                <div>
+                    <h1 class="text-3xl sm:text-4xl font-bold text-white">Annuler l'atelier</h1>
+                    <p class="text-white/70 text-sm">Cette action peut &#234;tre annul&#233;e (r&#233;activation possible)</p>
                 </div>
-                
-                <!-- Workshop Details -->
-                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-                    <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <i class="bx bx-info-circle text-blue-600"></i>
-                        Détails de l'atelier
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="space-y-3">
-                            <div>
-                                <span class="text-sm font-medium text-gray-500">Titre :</span>
-                                <p class="text-gray-900">{{ workshop.title }}</p>
-                            </div>
-                            <div>
-                                <span class="text-sm font-medium text-gray-500">Lieu :</span>
-                                <p class="text-gray-900">{{ workshop.location.name|default:"Non défini" }}</p>
-                            </div>
-                            <div>
-                                <span class="text-sm font-medium text-gray-500">Public :</span>
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    {{ workshop.age_range_display }}
-                                </span>
-                            </div>
-                            <div>
-                                <span class="text-sm font-medium text-gray-500">Newsletter :</span>
-                                {% if workshop.newsletter %}
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                        Oui
-                                    </span>
-                                {% else %}
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                        Non
-                                    </span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="space-y-3">
-                            <div>
-                                <span class="text-sm font-medium text-gray-500">Date :</span>
-                                <p class="text-gray-900">{{ workshop.start_date }}</p>
-                            </div>
-                            <div>
-                                <span class="text-sm font-medium text-gray-500">Heure :</span>
-                                <p class="text-gray-900">{{ workshop.start_time }} - {{ workshop.end_time }}</p>
-                            </div>
-                            <div>
-                                <span class="text-sm font-medium text-gray-500">Participants :</span>
-                                <p class="text-gray-900">{{ workshop.current_participants_count }}/{{ workshop.max_participants }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Action Buttons -->
-                <form method="post" class="mt-6">
-                    {% csrf_token %}
-                    <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                        <a href="{% url 'library_workshops:index' %}" 
-                           class="inline-flex items-center justify-center gap-2 px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                            <i class="bx bx-x"></i>
-                            Annuler
-                        </a>
-                        <button type="submit" 
-                                class="inline-flex items-center justify-center gap-2 px-6 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors">
-                            <i class="bx bx-trash"></i>
-                            Confirmer la suppression
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>
-</div>
-{% endblock %} 
+</section>
+
+<section class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+        <div class="p-6">
+            <div class="flex items-start gap-4 mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-5">
+                <i class="bx bx-info-circle text-amber-600 text-xl mt-0.5 shrink-0"></i>
+                <div>
+                    <p class="font-semibold text-amber-800 mb-1">Vous &#234;tes sur le point d'annuler :</p>
+                    <p class="text-amber-700 text-lg font-bold">{{ workshop.title }}</p>
+                    <p class="text-amber-600 text-sm mt-1">{{ workshop.start_date|date:"l d F Y" }} · {{ workshop.start_time|time:"H:i" }} - {{ workshop.end_time|time:"H:i" }}</p>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <p class="text-[#7a8fa0] text-sm">Les participants inscrits seront marqu&#233;s comme <strong>Annul&#233;</strong>. Vous pourrez r&#233;activer l'atelier ult&#233;rieurement.</p>
+            </div>
+
+            <form method="post" action="{% url 'library_workshops:cancel_workshop' workshop.id %}">
+                {% csrf_token %}
+                <div class="mb-6">
+                    <label for="reason" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
+                        <i class="bx bx-message-detail mr-1"></i> Motif de l'annulation
+                    </label>
+                    <textarea name="reason" id="reason" rows="3"
+                              placeholder="Ex: Manque d'inscrits, intervenant indisponible, probl&#232;me de planning..."
+                              class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all resize-y"></textarea>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 justify-between items-center pt-4 border-t border-[#dce3ef]">
+                    <a href="{% url 'library_workshops:workshop_detail' workshop.id %}"
+                       class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#5a6f80] hover:bg-white hover:border-[#b0bedb] transition-all">
+                        <i class="bx bx-arrow-back"></i>
+                        Retour
+                    </a>
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-all shadow-sm">
+                        <i class="bx bx-x-circle"></i>
+                        Confirmer l'annulation
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}

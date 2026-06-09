@@ -8,6 +8,12 @@ urlpatterns = [
     path("create/", views.create_workshop, name="create_workshop"),
     path("edit/<int:workshop_id>/", views.edit_workshop, name="edit_workshop"),
     path("delete/<int:workshop_id>/", views.delete_workshop, name="delete_workshop"),
+    path("cancel/<int:workshop_id>/", views.cancel_workshop, name="cancel_workshop"),
+    path(
+        "reactiver/<int:workshop_id>/",
+        views.reactivate_workshop,
+        name="reactivate_workshop",
+    ),
     path("access-denied/", views.access_denied, name="access_denied"),
     # Gestion des participants
     path("archives/", views.workshop_archives, name="archives"),

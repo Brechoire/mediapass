@@ -34,7 +34,10 @@ logger = logging.getLogger(__name__)
 def index(request):
     upcoming_workshops = (
         filter_owned(
-            Workshop.objects.filter(start_date__gte=timezone.now().date()), request.user
+            Workshop.objects.filter(
+                start_date__gte=timezone.now().date(), status="active"
+            ),
+            request.user,
         )
         .annotate(
             confirmed_count=Count(
@@ -356,7 +359,9 @@ def edit_workshop(request, workshop_id):
         return _edit_recurrence_pattern(request, pattern)
 
     if request.method == "POST":
-        form = WorkshopForm(request.POST, request.FILES, instance=workshop, user=request.user)
+        form = WorkshopForm(
+            request.POST, request.FILES, instance=workshop, user=request.user
+        )
         if form.is_valid():
             ws = form.save(commit=False)
             if pattern:
@@ -380,17 +385,41 @@ def edit_workshop(request, workshop_id):
 
 @login_required
 @mediatheque_member_required
+@require_POST
+def cancel_workshop(request, workshop_id):
+    workshop = get_object_or_404(
+        filter_owned(Workshop.objects.all(), request.user), id=workshop_id
+    )
+    reason = request.POST.get("reason", "").strip()
+    workshop.status = "cancelled"
+    workshop.cancellation_reason = reason or None
+    workshop.save()
+    workshop.participants.update(status="cancelled")
+    messages.success(request, f"L'atelier '{workshop.title}' a été annulé.")
+    return redirect("library_workshops:index")
+
+
+@login_required
+@mediatheque_member_required
+@require_POST
+def reactivate_workshop(request, workshop_id):
+    workshop = get_object_or_404(
+        filter_owned(Workshop.objects.all(), request.user), id=workshop_id
+    )
+    workshop.status = "active"
+    workshop.cancellation_reason = None
+    workshop.save()
+    workshop.participants.filter(status="cancelled").update(status="confirmed")
+    messages.success(request, f"L'atelier '{workshop.title}' a été réactivé.")
+    return redirect("library_workshops:workshop_detail", workshop_id=workshop.id)
+
+
+@login_required
+@mediatheque_member_required
 def delete_workshop(request, workshop_id):
     workshop = get_object_or_404(
         filter_owned(Workshop.objects.all(), request.user), id=workshop_id
     )
-
-    if request.method == "POST":
-        workshop_title = workshop.title
-        workshop.delete()
-        messages.success(request, f"L'atelier '{workshop_title}' a été supprimé.")
-        return redirect("library_workshops:index")
-
     return render(
         request,
         "library_workshops/workshop_confirm_delete.html",
@@ -915,14 +944,12 @@ def workshop_statistics(request):
 @login_required
 @mediatheque_member_required
 def workshop_archives(request):
-    years = list(
-        filter_owned(
-            Workshop.objects.annotate(year=ExtractYear("start_date")), request.user
-        )
-        .values_list("year", flat=True)
-        .distinct()
-        .order_by("-year")
+    show_cancelled = request.GET.get("show_cancelled") == "1"
+
+    base_qs = filter_owned(
+        Workshop.objects.annotate(year=ExtractYear("start_date")), request.user
     )
+    years = list(base_qs.values_list("year", flat=True).distinct().order_by("-year"))
 
     selected_year = request.GET.get("year")
     if selected_year:
@@ -934,21 +961,22 @@ def workshop_archives(request):
     year_stats = {}
 
     if years:
-        all_workshops = list(
-            filter_owned(
-                Workshop.objects.annotate(year=ExtractYear("start_date"))
-                .annotate(
-                    confirmed_count=Count(
-                        "participants", filter=Q(participants__status="confirmed")
-                    ),
-                    waiting_count=Count(
-                        "participants", filter=Q(participants__status="waiting")
-                    ),
-                )
-                .select_related("location"),
-                request.user,
-            ).order_by("start_date", "start_time")
+        workshop_qs = filter_owned(
+            Workshop.objects.annotate(year=ExtractYear("start_date"))
+            .annotate(
+                confirmed_count=Count(
+                    "participants", filter=Q(participants__status="confirmed")
+                ),
+                waiting_count=Count(
+                    "participants", filter=Q(participants__status="waiting")
+                ),
+            )
+            .select_related("location"),
+            request.user,
         )
+        if not show_cancelled:
+            workshop_qs = workshop_qs.filter(status="active")
+        all_workshops = list(workshop_qs.order_by("start_date", "start_time"))
 
         for workshop in all_workshops:
             workshop.participant_count = workshop.confirmed_count
@@ -994,6 +1022,7 @@ def workshop_archives(request):
         "workshops_by_year": workshops_by_year,
         "year_stats": year_stats,
         "title": "Archives des ateliers",
+        "show_cancelled": show_cancelled,
     }
 
     return render(request, "library_workshops/archives.html", context)
@@ -1101,7 +1130,7 @@ def workshop_calendar_events(request):
     end_str = request.GET.get("end")
 
     workshops = filter_owned(
-        Workshop.objects.all()
+        Workshop.objects.filter(status="active")
         .select_related("location")
         .annotate(
             confirmed_count=Count(

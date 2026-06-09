@@ -110,6 +110,22 @@ class Workshop(models.Model):
         db_index=True,
     )
 
+    # Statut et annulation
+    status = models.CharField(
+        max_length=20,
+        choices=[("active", "Actif"), ("cancelled", "Annulé")],
+        default="active",
+        db_index=True,
+        verbose_name="Statut",
+    )
+
+    cancellation_reason = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="Motif d'annulation",
+        help_text="Raison de l'annulation de l'atelier",
+    )
+
     # Informations de création
     created_by = models.ForeignKey(
         User,
