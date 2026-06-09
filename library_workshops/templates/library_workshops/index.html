@@ -28,7 +28,7 @@
         opacity: 0;
         transition: opacity 0.15s ease, transform 0.15s ease;
         transform: translateX(-50%) translateY(4px);
-        z-index: 100;
+        z-index: 9999;
     }
     [data-tooltip]::before {
         content: '';
@@ -123,7 +123,7 @@
         <div class="p-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {% for workshop in workshops %}
-                <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+                <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm hover:shadow-md transition-all duration-200">
                     {% if workshop.poster %}
                     <div class="h-36 bg-[#f8f9fc] overflow-hidden">
                         <img src="{{ workshop.poster.url }}" alt="{{ workshop.title }}" class="w-full h-full object-cover" />
