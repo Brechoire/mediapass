@@ -549,16 +549,16 @@ class RecurrenceForm(forms.ModelForm):
         freq = cleaned.get("frequency")
         days = cleaned.get("days_of_week")
 
-        if freq in ("weekly", "biweekly"):
+        weekly_freqs = ("weekly", "biweekly", "every_3_weeks")
+        if freq in weekly_freqs:
             if not days:
                 raise forms.ValidationError(
                     "Sélectionnez au moins un jour de la semaine."
                 )
-            if freq == "biweekly" and not cleaned.get("interval"):
-                cleaned["interval"] = 2
 
-        if freq == "monthly" and not cleaned.get("month_day"):
-            raise forms.ValidationError("Indiquez le jour du mois (1-31).")
+        if freq in ("monthly", "every_2_months"):
+            if not cleaned.get("month_day"):
+                raise forms.ValidationError("Indiquez le jour du mois (1-31).")
 
         if not cleaned.get("period_start"):
             raise forms.ValidationError("La date de début est requise.")

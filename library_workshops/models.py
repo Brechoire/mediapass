@@ -444,9 +444,13 @@ class RecurrencePattern(models.Model):
     """Paramètres de récurrence pour générer des séries d'ateliers"""
 
     FREQUENCY_CHOICES = [
+        ("daily", "Tous les jours"),
+        ("every_2_days", "Tous les 2 jours"),
         ("weekly", "Toutes les semaines"),
         ("biweekly", "Toutes les 2 semaines"),
+        ("every_3_weeks", "Toutes les 3 semaines"),
         ("monthly", "Tous les mois"),
+        ("every_2_months", "Tous les 2 mois"),
     ]
 
     group = models.UUIDField(
