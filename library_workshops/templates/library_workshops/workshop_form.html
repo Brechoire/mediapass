@@ -398,6 +398,42 @@
                 </div>
             </div>
 
+            {% if recurrence_info %}
+            <div class="mx-6 mt-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-amber-800 text-sm">
+                <div class="flex items-start gap-3">
+                    <i class="bx bx-calendar-repeat text-xl mt-0.5"></i>
+                    <div>
+                        <p class="font-medium">Cet atelier fait partie d'une série de {{ recurrence_info.total }} ateliers.</p>
+                        <div class="flex gap-2 mt-2">
+                            <a href="?mode=single" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-700 text-xs font-medium hover:bg-amber-100 transition-colors {% if request.GET.mode != 'all_future' %}ring-2 ring-amber-400{% endif %}">
+                                Modifier cette occurrence
+                            </a>
+                            <a href="?mode=all_future" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-700 text-xs font-medium hover:bg-amber-100 transition-colors {% if request.GET.mode == 'all_future' %}ring-2 ring-amber-400{% endif %}">
+                                Modifier toutes les occurrences futures
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if not form.instance.pk or editing_recurrence %}
+            <div class="mx-6 mt-6">
+                <div class="bg-[#f8f9fc] rounded-xl p-5 border border-[#dce3ef]">
+                    <label class="inline-flex items-center gap-2.5 cursor-pointer">
+                        <input type="checkbox" id="is_recurring" name="is_recurring"
+                               {% if recurrence_form.instance.pk %}checked{% endif %}
+                               class="w-4 h-4 rounded border-gray-300 text-[#4a6fa5] focus:ring-[#4a6fa5]">
+                        <span class="text-sm font-medium text-[#1e293b">Planifier sur plusieurs dates</span>
+                    </label>
+
+                    <div id="recurrence-block" class="mt-4 space-y-4 {% if not recurrence_form.instance.pk %}hidden{% endif %}">
+                        {% include "library_workshops/partials/recurrence_form.html" %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <div class="px-6 py-4 border-t border-[#dce3ef] bg-[#f8f9fc]">
                 <div class="flex flex-col sm:flex-row gap-3 justify-between items-center">
                     <a href="{% url 'library_workshops:index' %}"
@@ -753,6 +789,110 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (minAgeInput && minAgeInput.value && maxAgeInput && maxAgeInput.value) {
         setSliderValues(parseInt(minAgeInput.value), parseInt(maxAgeInput.value));
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const isRecurring = document.getElementById('is_recurring');
+    const recurrenceBlock = document.getElementById('recurrence-block');
+    if (isRecurring && recurrenceBlock) {
+        isRecurring.addEventListener('change', function() {
+            recurrenceBlock.classList.toggle('hidden', !this.checked);
+        });
+    }
+
+    const freqSelect = document.getElementById('frequency');
+    const weeklyDays = document.getElementById('weekly-days');
+    const monthlyDay = document.getElementById('monthly-day');
+    function toggleFrequency() {
+        if (!freqSelect) return;
+        var val = freqSelect.value;
+        if (weeklyDays) weeklyDays.style.display = (val === 'monthly') ? 'none' : 'block';
+        if (monthlyDay) monthlyDay.style.display = (val === 'monthly') ? 'block' : 'none';
+    }
+    if (freqSelect) {
+        toggleFrequency();
+        freqSelect.addEventListener('change', toggleFrequency);
+    }
+
+    // Day checkboxes
+    const dayInputs = document.querySelectorAll('.day-input');
+    dayInputs.forEach(function(cb) {
+        cb.addEventListener('change', function() { updateDaysOfWeek(); updatePreview(); });
+    });
+
+    function updateDaysOfWeek() {
+        var vals = [];
+        dayInputs.forEach(function(cb) { if (cb.checked) vals.push(parseInt(cb.value)); });
+        document.getElementById('days_of_week').value = JSON.stringify(vals);
+    }
+
+    // Preview
+    const periodStart = document.getElementById('period_start');
+    const periodEnd = document.getElementById('period_end');
+    const excludeHolidays = document.getElementById('exclude_holidays');
+
+    function updatePreview() {
+        var freq = freqSelect ? freqSelect.value : 'biweekly';
+        var days = [];
+        dayInputs.forEach(function(cb) { if (cb.checked) days.push(parseInt(cb.value)); });
+        var ps = periodStart ? periodStart.value : '';
+        var pe = periodEnd ? periodEnd.value : '';
+        var md = document.getElementById('month_day') ? document.getElementById('month_day').value : '';
+
+        if (!ps || !pe) return;
+
+        var formData = new FormData();
+        formData.append('frequency', freq);
+        formData.append('days_of_week', JSON.stringify(days));
+        formData.append('period_start', ps);
+        formData.append('period_end', pe);
+        formData.append('month_day', md);
+        formData.append('exclude_holidays', excludeHolidays && excludeHolidays.checked ? 'B' : '');
+
+        fetch('{% url "library_workshops:recurrence_preview" %}', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            body: formData
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var container = document.getElementById('recurrence-dates');
+            var preview = document.getElementById('recurrence-preview');
+            var countEl = document.getElementById('recurrence-count');
+            if (!container) return;
+            if (data.count > 0) {
+                container.innerHTML = data.html;
+                if (preview) preview.classList.remove('hidden');
+                if (countEl) countEl.textContent = data.count + ' date' + (data.count > 1 ? 's' : '');
+            } else {
+                container.innerHTML = '<span class="text-xs text-[#b0bedb]">Aucune date g&eacute;n&eacute;r&eacute;e</span>';
+                if (preview) preview.classList.remove('hidden');
+                if (countEl) countEl.textContent = '0 date';
+            }
+        });
+    }
+
+    if (periodStart) periodStart.addEventListener('change', updatePreview);
+    if (periodEnd) periodEnd.addEventListener('change', updatePreview);
+    if (freqSelect) freqSelect.addEventListener('change', updatePreview);
+    if (excludeHolidays) excludeHolidays.addEventListener('change', updatePreview);
+    var monthDayInput = document.getElementById('month_day');
+    if (monthDayInput) monthDayInput.addEventListener('change', updatePreview);
+
+    // Trigger initial load if editing recurrence
+    if (document.getElementById('recurrence-block') && !document.getElementById('recurrence-block').classList.contains('hidden')) {
+        // restore day checkboxes from hidden field
+        var daysVal = document.getElementById('days_of_week').value;
+        if (daysVal && daysVal !== '[]') {
+            try {
+                var daysArr = JSON.parse(daysVal);
+                dayInputs.forEach(function(cb) {
+                    cb.checked = daysArr.indexOf(parseInt(cb.value)) !== -1;
+                });
+            } catch(e) {}
+        }
+        setTimeout(updatePreview, 300);
     }
 });
 </script>

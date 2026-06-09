@@ -87,6 +87,30 @@ L'application nécessite que l'utilisateur soit :
 3. Créez un groupe "mediatheque" si nécessaire
 4. Ajoutez les URLs dans le fichier principal `urls.py`
 
+## Génération de données de démonstration
+
+Une commande de gestion permet de générer 69 ateliers avec participants pour couvrir tous les cas de figure :
+
+```bash
+python manage.py generate_seed_data
+```
+
+### Ce que génère la commande
+
+- **69 ateliers** répartis sur 6 mois (février à juillet 2026)
+- **Participants** : ~500+ inscrits avec différents statuts (confirmé, liste d'attente, annulé)
+- **Cas de figure couverts** :
+  - Ateliers passés et à venir
+  - Ateliers complets et surbookés
+  - Ateliers tout public et par tranche d'âge (3-6, 7-12, 13-17, etc.)
+  - Ateliers multi-jours
+  - Ateliers avec newsletter
+  - Accueil de classe
+  - Participants individuels et en groupe
+  - Tous les lieux actifs
+
+> **Note** : Les ateliers existants créés par l'utilisateur "anor" sont supprimés avant la génération.
+
 ## Utilisation
 
 ### Pour les administrateurs

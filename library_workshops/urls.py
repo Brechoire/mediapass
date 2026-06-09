@@ -76,4 +76,7 @@ urlpatterns = [
     ),
     # Newsletter
     path("newsletter/", views.newsletter_view, name="newsletter"),
+    # Récurrence
+    path("recurrence/preview/", views.recurrence_preview, name="recurrence_preview"),
+    path("recurrence/holidays/", views.recurrence_holidays, name="recurrence_holidays"),
 ]

@@ -11,14 +11,17 @@ from django.db.models.functions import ExtractYear
 from django.template.loader import render_to_string
 import time
 import logging
-from .models import Workshop, WorkshopParticipant
+
+from .models import Workshop, WorkshopParticipant, RecurrencePattern
 from .forms import (
     WorkshopForm,
     WorkshopParticipantForm,
     WorkshopGroupReservationForm,
     QuickLocationForm,
+    RecurrenceForm,
 )
 from .services import WorkshopStatisticsService, NewsletterService
+from .recurrence import RecurrenceService
 from .decorators import mediatheque_member_required, mediatheque_member_required_json
 from .utils import filter_owned, filter_location_owned
 from visitor_tracking.models import Location as VisitorLocation
@@ -55,25 +58,55 @@ def index(request):
 def create_workshop(request):
     if request.method == "POST":
         form = WorkshopForm(request.POST, request.FILES)
+        recurrence_form = RecurrenceForm(request.POST)
+
         if form.is_valid():
-            workshop = form.save(commit=False)
-            workshop.created_by = request.user
-            workshop.save()
+            is_recurring = (
+                request.POST.get("is_recurring") == "on" and recurrence_form.is_valid()
+            )
 
-            check_workshop_conflicts(workshop, request)
-            check_duplicate_title(workshop, request)
+            if is_recurring:
+                pattern = recurrence_form.save(commit=False)
+                dates = RecurrenceService.generate_dates(pattern)
+                if not dates:
+                    messages.error(
+                        request,
+                        "Aucune date générée. Vérifiez les paramètres de récurrence.",
+                    )
+                    return render(
+                        request,
+                        "library_workshops/workshop_form.html",
+                        {
+                            "form": form,
+                            "recurrence_form": recurrence_form,
+                            "title": "Créer un nouvel atelier",
+                        },
+                    )
+                RecurrenceService.create_workshops(request, pattern, dates)
+                messages.success(request, f"{len(dates)} ateliers créés avec succès !")
+            else:
+                workshop = form.save(commit=False)
+                workshop.created_by = request.user
+                workshop.save()
+                check_workshop_conflicts(workshop, request)
+                check_duplicate_title(workshop, request)
+                messages.success(request, "L'atelier a été créé avec succès !")
 
-            messages.success(request, "L'atelier a été créé avec succès !")
             return redirect("library_workshops:index")
         else:
             messages.error(request, "Veuillez corriger les erreurs dans le formulaire.")
     else:
         form = WorkshopForm()
+        recurrence_form = RecurrenceForm()
 
     return render(
         request,
         "library_workshops/workshop_form.html",
-        {"form": form, "title": "Créer un nouvel atelier"},
+        {
+            "form": form,
+            "recurrence_form": recurrence_form,
+            "title": "Créer un nouvel atelier",
+        },
     )
 
 
@@ -119,6 +152,163 @@ def check_duplicate_title(workshop, request):
         )
 
 
+def _edit_recurrence_pattern(request, pattern):
+    """Édition de tous les ateliers futurs d'un pattern de récurrence."""
+    if request.method == "POST":
+        form = WorkshopForm(request.POST, request.FILES)
+        recurrence_form = RecurrenceForm(request.POST, instance=pattern)
+        edit_action = request.POST.get("edit_action", "all_future")
+
+        if form.is_valid() and recurrence_form.is_valid():
+            cd = form.cleaned_data
+            new_data = {
+                "title": cd["title"],
+                "description": cd["description"],
+                "start_time": cd["start_time"],
+                "end_time": cd["end_time"],
+                "location": cd["location"],
+                "max_participants": cd["max_participants"],
+                "is_all_ages": cd["is_all_ages"],
+                "min_age": cd["min_age"],
+                "max_age": cd["max_age"],
+                "newsletter": cd["newsletter"],
+                "is_class_welcome": cd["is_class_welcome"],
+            }
+            recd = recurrence_form.cleaned_data
+            new_data.update(
+                {
+                    "frequency": recd.get("frequency"),
+                    "interval": recd.get("interval"),
+                    "days_of_week": recd.get("days_of_week", []),
+                    "period_start": recd.get("period_start"),
+                    "period_end": recd.get("period_end"),
+                    "excluded_dates": recd.get("excluded_dates", []),
+                    "month_day": recd.get("month_day"),
+                }
+            )
+
+            if edit_action == "all":
+                Workshop.objects.filter(
+                    recurrence_group=pattern, recurrence_modified=False
+                ).delete()
+                pattern.workshops.exclude(recurrence_modified=True).delete()
+
+            RecurrenceService.update_future_workshops(request, pattern, new_data)
+            messages.success(request, "La série d'ateliers a été mise à jour.")
+            return redirect("library_workshops:index")
+    else:
+        data = {
+            "title": pattern.title,
+            "description": pattern.description,
+            "start_time": pattern.start_time,
+            "end_time": pattern.end_time,
+            "location": pattern.location,
+            "max_participants": pattern.max_participants,
+            "is_all_ages": pattern.is_all_ages,
+            "min_age": pattern.min_age,
+            "max_age": pattern.max_age,
+            "newsletter": pattern.newsletter,
+            "is_class_welcome": pattern.is_class_welcome,
+        }
+        form = WorkshopForm(initial=data)
+        recurrence_form = RecurrenceForm(instance=pattern)
+
+    return render(
+        request,
+        "library_workshops/workshop_form.html",
+        {
+            "form": form,
+            "recurrence_form": recurrence_form,
+            "title": f"Modifier la série : {pattern.title}",
+            "editing_recurrence": True,
+        },
+    )
+
+
+@login_required
+@mediatheque_member_required
+def recurrence_preview(request):
+    """Endpoint HTMX : retourne l'aperçu des dates générées."""
+    from .recurrence import RecurrenceService
+    from .models import SchoolHoliday
+
+    if request.method == "POST":
+        freq = request.POST.get("frequency")
+        interval = request.POST.get("interval", 1)
+        days_raw = request.POST.get("days_of_week", "[]")
+        period_start = request.POST.get("period_start")
+        period_end = request.POST.get("period_end")
+        month_day = request.POST.get("month_day")
+        exclude_holidays = request.POST.get("exclude_holidays")
+
+        import json
+
+        try:
+            days = json.loads(days_raw)
+        except (json.JSONDecodeError, TypeError):
+            days = []
+
+        if not period_start or not period_end:
+            return JsonResponse({"dates": [], "count": 0, "html": ""})
+
+        pattern = RecurrencePattern(
+            frequency=freq,
+            interval=int(interval) if interval else 1,
+            days_of_week=days,
+            period_start=date_type.fromisoformat(period_start),
+            period_end=date_type.fromisoformat(period_end),
+            month_day=int(month_day) if month_day else None,
+            excluded_dates=[],
+        )
+
+        dates = RecurrenceService.generate_dates(pattern)
+
+        # Exclure les vacances si demandé
+        excluded_by_holidays = []
+        if exclude_holidays == "B":
+            holidays = SchoolHoliday.objects.filter(zone="B")
+            filtered = []
+            for d in dates:
+                is_holiday = any(h.start_date <= d <= h.end_date for h in holidays)
+                if is_holiday:
+                    excluded_by_holidays.append(d.isoformat())
+                else:
+                    filtered.append(d)
+            dates = filtered
+
+        html = "".join(
+            f'<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium '
+            f'bg-green-50 text-green-700 border border-green-200" '
+            f'data-date="{d.isoformat()}">'
+            f'{d.strftime("%d/%m/%Y")} {d.strftime("%a")}</span> '
+            for d in dates[:100]
+        )
+        if len(dates) > 100:
+            html += f'<span class="text-xs text-[#b0bedb]">… et {len(dates) - 100} autres</span>'
+
+        return JsonResponse(
+            {
+                "dates": [d.isoformat() for d in dates],
+                "excluded_by_holidays": excluded_by_holidays,
+                "count": len(dates),
+                "html": html,
+            }
+        )
+
+    return JsonResponse({"dates": [], "count": 0, "html": ""})
+
+
+@login_required
+@mediatheque_member_required
+def recurrence_holidays(request):
+    """Endpoint JSON : retourne les dates de vacances pour une zone."""
+    zone = request.GET.get("zone", "B")
+    holidays = SchoolHoliday.objects.filter(zone=zone).values(
+        "name", "start_date", "end_date"
+    )
+    return JsonResponse(list(holidays), safe=False)
+
+
 @login_required
 @mediatheque_member_required
 def search_workshop_titles(request):
@@ -147,12 +337,21 @@ def edit_workshop(request, workshop_id):
         id=workshop_id,
     )
 
+    edit_mode = request.GET.get("mode", "single")
+    pattern = workshop.recurrence_group
+
+    if pattern and edit_mode == "all_future":
+        return _edit_recurrence_pattern(request, pattern)
+
     if request.method == "POST":
         form = WorkshopForm(request.POST, request.FILES, instance=workshop)
         if form.is_valid():
-            form.save()
-            check_workshop_conflicts(workshop, request)
-            check_duplicate_title(workshop, request)
+            ws = form.save(commit=False)
+            if pattern:
+                ws.recurrence_modified = True
+            ws.save()
+            check_workshop_conflicts(ws, request)
+            check_duplicate_title(ws, request)
             messages.success(request, "L'atelier a été modifié avec succès !")
             return redirect("library_workshops:index")
         else:
@@ -160,11 +359,11 @@ def edit_workshop(request, workshop_id):
     else:
         form = WorkshopForm(instance=workshop)
 
-    return render(
-        request,
-        "library_workshops/workshop_form.html",
-        {"form": form, "title": f"Modifier l'atelier : {workshop.title}"},
-    )
+    ctx = {"form": form, "title": f"Modifier l'atelier : {workshop.title}"}
+    if pattern:
+        total = pattern.workshops.count()
+        ctx["recurrence_info"] = {"pattern": pattern, "total": total}
+    return render(request, "library_workshops/workshop_form.html", ctx)
 
 
 @login_required

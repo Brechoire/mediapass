@@ -1,7 +1,9 @@
+import json
+
 from django import forms
 from django.utils import timezone
 from django.db.models import Q
-from .models import Workshop, WorkshopParticipant
+from .models import Workshop, WorkshopParticipant, RecurrencePattern
 from visitor_tracking.models import Location as VisitorLocation
 
 
@@ -469,3 +471,106 @@ class WorkshopSearchForm(forms.Form):
         ),
         label="Jusqu'au",
     )
+
+
+class RecurrenceForm(forms.ModelForm):
+    """Formulaire de configuration de la récurrence"""
+
+    class Meta:
+        model = RecurrencePattern
+        fields = [
+            "frequency",
+            "interval",
+            "days_of_week",
+            "period_start",
+            "period_end",
+            "excluded_dates",
+            "month_day",
+        ]
+        widgets = {
+            "period_start": forms.DateInput(
+                attrs={
+                    "type": "date",
+                    "class": "w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm",
+                }
+            ),
+            "period_end": forms.DateInput(
+                attrs={
+                    "type": "date",
+                    "class": "w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm",
+                }
+            ),
+            "days_of_week": forms.HiddenInput(),
+            "excluded_dates": forms.HiddenInput(),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["frequency"].label = "Fréquence"
+        self.fields["frequency"].widget.attrs = {
+            "class": "w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm"
+        }
+        self.fields["interval"].label = "Toutes les X semaines"
+        self.fields["interval"].initial = 2
+        self.fields["interval"].widget.attrs = {
+            "class": "w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm w-20",
+            "min": 1,
+            "max": 12,
+        }
+        self.fields["period_start"].label = "Date de début"
+        self.fields["period_end"].label = "Date de fin"
+        self.fields["month_day"].label = "Jour du mois"
+        self.fields["month_day"].widget.attrs = {
+            "class": "w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm w-20",
+            "min": 1,
+            "max": 31,
+        }
+
+    def clean_days_of_week(self):
+        val = self.cleaned_data.get("days_of_week")
+        if isinstance(val, str):
+            try:
+                return json.loads(val)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return val or []
+
+    def clean_excluded_dates(self):
+        val = self.cleaned_data.get("excluded_dates")
+        if isinstance(val, str):
+            try:
+                return json.loads(val)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return val or []
+
+    def clean(self):
+        cleaned = super().clean()
+        freq = cleaned.get("frequency")
+        days = cleaned.get("days_of_week")
+
+        if freq in ("weekly", "biweekly"):
+            if not days:
+                raise forms.ValidationError(
+                    "Sélectionnez au moins un jour de la semaine."
+                )
+            if freq == "biweekly" and not cleaned.get("interval"):
+                cleaned["interval"] = 2
+
+        if freq == "monthly" and not cleaned.get("month_day"):
+            raise forms.ValidationError("Indiquez le jour du mois (1-31).")
+
+        if not cleaned.get("period_start"):
+            raise forms.ValidationError("La date de début est requise.")
+        if not cleaned.get("period_end"):
+            raise forms.ValidationError("La date de fin est requise.")
+        if (
+            cleaned.get("period_start")
+            and cleaned.get("period_end")
+            and cleaned["period_end"] < cleaned["period_start"]
+        ):
+            raise forms.ValidationError(
+                "La date de fin doit être postérieure à la date de début."
+            )
+
+        return cleaned

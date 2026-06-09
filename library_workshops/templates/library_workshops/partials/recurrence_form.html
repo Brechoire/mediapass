@@ -1,0 +1,77 @@
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div>
+        <label class="block text-xs font-semibold text-[#4a6fa5] mb-1">Date de d&#233;but</label>
+        <input type="date" name="period_start" id="period_start"
+               value="{% if recurrence_form.period_start.value %}{{ recurrence_form.period_start.value|date:'Y-m-d' }}{% endif %}"
+               class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm">
+    </div>
+    <div>
+        <label class="block text-xs font-semibold text-[#4a6fa5] mb-1">Date de fin</label>
+        <input type="date" name="period_end" id="period_end"
+               value="{% if recurrence_form.period_end.value %}{{ recurrence_form.period_end.value|date:'Y-m-d' }}{% endif %}"
+               class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm">
+    </div>
+    <div>
+        <label class="block text-xs font-semibold text-[#4a6fa5] mb-1">Fr&#233;quence</label>
+        <select name="frequency" id="frequency"
+                class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm">
+            <option value="weekly" {% if recurrence_form.frequency.value == 'weekly' %}selected{% endif %}>Toutes les semaines</option>
+            <option value="biweekly" {% if recurrence_form.frequency.value == 'biweekly' or not recurrence_form.frequency.value %}selected{% endif %}>Toutes les 2 semaines</option>
+            <option value="monthly" {% if recurrence_form.frequency.value == 'monthly' %}selected{% endif %}>Tous les mois</option>
+        </select>
+    </div>
+</div>
+
+<div id="weekly-days" class="mt-3">
+    <label class="block text-xs font-semibold text-[#4a6fa5] mb-1.5">Jours de la semaine</label>
+    <div class="flex flex-wrap gap-2">
+        <label class="day-checkbox inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-xs font-medium transition-colors border-[#dce3ef] text-[#5a6f80] hover:border-[#4a6fa5]" data-day="0">
+            <input type="checkbox" value="0" class="sr-only day-input"> Lundi
+        </label>
+        <label class="day-checkbox inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-xs font-medium transition-colors border-[#dce3ef] text-[#5a6f80] hover:border-[#4a6fa5]" data-day="1">
+            <input type="checkbox" value="1" class="sr-only day-input"> Mardi
+        </label>
+        <label class="day-checkbox inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-xs font-medium transition-colors border-[#dce3ef] text-[#5a6f80] hover:border-[#4a6fa5]" data-day="2">
+            <input type="checkbox" value="2" class="sr-only day-input"> Mercredi
+        </label>
+        <label class="day-checkbox inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-xs font-medium transition-colors border-[#dce3ef] text-[#5a6f80] hover:border-[#4a6fa5]" data-day="3">
+            <input type="checkbox" value="3" class="sr-only day-input"> Jeudi
+        </label>
+        <label class="day-checkbox inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-xs font-medium transition-colors border-[#dce3ef] text-[#5a6f80] hover:border-[#4a6fa5]" data-day="4">
+            <input type="checkbox" value="4" class="sr-only day-input"> Vendredi
+        </label>
+        <label class="day-checkbox inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-xs font-medium transition-colors border-[#dce3ef] text-[#5a6f80] hover:border-[#4a6fa5]" data-day="5">
+            <input type="checkbox" value="5" class="sr-only day-input"> Samedi
+        </label>
+    </div>
+</div>
+
+<div id="monthly-day" class="mt-3 hidden">
+    <label class="block text-xs font-semibold text-[#4a6fa5] mb-1">Jour du mois</label>
+    <input type="number" name="month_day" id="month_day" min="1" max="31"
+           value="{{ recurrence_form.month_day.value|default:'15' }}"
+           class="w-20 px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm">
+    <p class="text-xs text-[#b0bedb] mt-1">Ex: 15 = le 15 de chaque mois</p>
+</div>
+
+<div class="mt-4">
+    <label class="inline-flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="exclude_holidays" value="B"
+               class="w-4 h-4 rounded border-gray-300 text-[#4a6fa5]">
+        <span class="text-xs font-medium text-[#5a6f80]">Exclure les vacances scolaires (Zone B)</span>
+    </label>
+</div>
+
+<div id="recurrence-preview" class="mt-4 hidden">
+    <div class="flex items-center gap-2 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-2">
+        <i class="bx bx-calendar-check text-[#4a6fa5]"></i>
+        Aper&#231;u des dates g&#233;n&#233;r&#233;es
+        <span id="recurrence-count" class="ml-auto text-xs font-normal text-[#7a8fa0] normal-case"></span>
+    </div>
+    <div id="recurrence-dates" class="flex flex-wrap gap-1.5"></div>
+</div>
+
+<input type="hidden" name="days_of_week" id="days_of_week" value="{{ recurrence_form.days_of_week.value|default:'[]' }}">
+<input type="hidden" name="excluded_dates" id="excluded_dates" value="{{ recurrence_form.excluded_dates.value|default:'[]' }}">
+<input type="hidden" name="interval" id="interval" value="{{ recurrence_form.interval.value|default:'2' }}">
+<input type="hidden" name="exclude_holidays" id="exclude_holidays_val" value="">
