@@ -992,10 +992,12 @@ def workshop_archives(request):
 def create_location_modal(request):
     """Vue HTMX : retourne le fragment HTML du modal de création de lieu"""
     form = QuickLocationForm()
+    existing_locations = VisitorLocation.objects.filter(is_active=True).order_by("order", "name")
     html = render_to_string(
         "library_workshops/partials/location_modal.html",
         {
             "form": form,
+            "existing_locations": existing_locations,
         },
         request=request,
     )

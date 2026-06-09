@@ -414,9 +414,8 @@ class LocationHTMXTest(TestCase):
         """Vérifie que le modal HTMX est accessible"""
         response = self.client.get(reverse("library_workshops:create_location_modal"))
         self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertIn("html", data)
-        self.assertIn("Nouveau lieu", data["html"])
+        self.assertIn("Ajouter un lieu", response.content.decode())
+        self.assertIn("quick-location-form", response.content.decode())
 
     def test_create_location_valid(self):
         """Vérifie la création d'un lieu via HTMX"""
