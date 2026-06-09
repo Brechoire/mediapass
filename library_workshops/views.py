@@ -61,6 +61,7 @@ def index(request):
 def create_workshop(request):
     if request.method == "POST":
         form = WorkshopForm(request.POST, request.FILES, user=request.user)
+        recurrence_form = RecurrenceForm(request.POST)
 
         if form.is_valid():
             cd = form.cleaned_data
@@ -82,7 +83,6 @@ def create_workshop(request):
                 )
                 conflicts = check_workshop_conflicts(dummy)
 
-            recurrence_form = RecurrenceForm(request.POST)
             is_recurring = (
                 request.POST.get("is_recurring") == "on" and recurrence_form.is_valid()
             )
