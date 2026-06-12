@@ -9,11 +9,7 @@ from django.contrib.auth.forms import AuthenticationForm
 
 
 class LoginForm(AuthenticationForm):
-    """Formulaire de connexion personnalisé.
-
-    Ce formulaire étend le formulaire d'authentification de Django en
-    ajoutant des classes CSS Bootstrap pour le style des champs.
-    """
+    """Formulaire de connexion personnalisé avec option 'Rester connecté'."""
 
     username = forms.CharField(
         widget=forms.TextInput(attrs={"class": "form-control"}),
@@ -22,4 +18,10 @@ class LoginForm(AuthenticationForm):
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={"class": "form-control"}),
         label="Mot de passe",
+    )
+    remember_me = forms.BooleanField(
+        required=False,
+        initial=False,
+        label="Rester connecté",
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
     )

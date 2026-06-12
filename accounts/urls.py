@@ -1,18 +1,12 @@
-"""Configuration des URLs pour l'application accounts.
-
-Ce module définit les routes URL pour l'authentification des utilisateurs,
-notamment la connexion et la déconnexion.
-"""
-
+"""Configuration des URLs pour l'application accounts."""
 from django.urls import path
-from django.contrib.auth import views as auth_views
 
-from .views import logout_view
+from .views import CustomLoginView, logout_view
 
 urlpatterns = [
     path(
         "connexion/",
-        auth_views.LoginView.as_view(template_name="accounts/login.html"),
+        CustomLoginView.as_view(),
         name="login",
     ),
     path("deconnexion/", logout_view, name="logout"),
