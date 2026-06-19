@@ -7,6 +7,7 @@ from .models import EmailTemplate, NotificationRecipient, NotificationSettings
 
 class EmailTemplateModelTests(TestCase):
     def setUp(self):
+        EmailTemplate.objects.filter(notification_type="new_reservation").delete()
         self.template = EmailTemplate.objects.create(
             notification_type="new_reservation",
             subject="Nouvelle r\u00e9servation: {{ product.name }}",
@@ -135,3 +136,34 @@ class NewReservationRecipientsMigrationTests(TestCase):
             ).values_list("notification_type", flat=True)
         )
         self.assertEqual(types, {"new_reservation"})
+
+
+class DefaultEmailTemplatesMigrationTests(TestCase):
+    """Verifie que la migration 0008 a cree tous les templates par defaut."""
+
+    EXPECTED_TYPES = {
+        "new_reservation",
+        "reservation_approved",
+        "reservation_disapproved",
+        "structure_validated",
+        "poster_request",
+        "poster_validated",
+        "poster_rejected",
+        "poster_image_uploaded",
+        "reservation_reminder",
+        "workshop_reminder",
+    }
+
+    def test_all_default_templates_exist(self):
+        existing = set(
+            EmailTemplate.objects.filter(is_active=True).values_list(
+                "notification_type", flat=True
+            )
+        )
+        missing = self.EXPECTED_TYPES - existing
+        self.assertEqual(missing, set(), f"Templates manquants : {missing}")
+
+    def test_new_reservation_template_is_active(self):
+        tpl = EmailTemplate.objects.get(notification_type="new_reservation")
+        self.assertTrue(tpl.is_active)
+        self.assertIn("{{ product.name }}", tpl.subject)
