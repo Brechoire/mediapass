@@ -21,10 +21,16 @@ class EmailTemplateModelTests(TestCase):
     def test_notification_types_exist(self):
         types = [t[0] for t in EmailTemplate.NOTIFICATION_TYPES]
         expected = [
-            "new_reservation", "reservation_approved", "reservation_disapproved",
-            "structure_validated", "poster_request", "poster_validated",
-            "poster_rejected", "poster_image_uploaded",
-            "reservation_reminder", "workshop_reminder",
+            "new_reservation",
+            "reservation_approved",
+            "reservation_disapproved",
+            "structure_validated",
+            "poster_request",
+            "poster_validated",
+            "poster_rejected",
+            "poster_image_uploaded",
+            "reservation_reminder",
+            "workshop_reminder",
         ]
         for t in expected:
             self.assertIn(t, types)
@@ -65,7 +71,9 @@ class NotificationSettingsModelTests(TestCase):
     def test_get_send_time(self):
         settings = NotificationSettings.get_settings()
         send_time = settings.get_send_time()
-        expected = f"{settings.reminder_send_hour:02d}:{settings.reminder_send_minute:02d}"
+        expected = (
+            f"{settings.reminder_send_hour:02d}:{settings.reminder_send_minute:02d}"
+        )
         self.assertEqual(send_time, expected)
 
     def test_delete_is_noop(self):
@@ -96,7 +104,34 @@ class NotificationAdminViewTests(TestCase):
 
     def test_recipient_add_superuser(self):
         self.client.login(username="admin", password="admin123")
-        response = self.client.get(
-            reverse("notifications:recipient_add")
-        )
+        response = self.client.get(reverse("notifications:recipient_add"))
         self.assertEqual(response.status_code, 200)
+
+
+class NewReservationRecipientsMigrationTests(TestCase):
+    """Verifie que les destinataires prevus par la migration 0007 existent
+    et sont strictement limites au type new_reservation."""
+
+    MIGRATION_RECIPIENTS = (
+        "q.simon@cc-sudavesnois.fr",
+        "j.brechoire@cc-sudavesnois.fr",
+    )
+
+    def test_recipients_for_new_reservation_exist(self):
+        for email in self.MIGRATION_RECIPIENTS:
+            self.assertTrue(
+                NotificationRecipient.objects.filter(
+                    email=email,
+                    notification_type="new_reservation",
+                    is_active=True,
+                ).exists(),
+                f"Destinataire manquant: {email}",
+            )
+
+    def test_recipients_do_not_receive_other_types(self):
+        types = set(
+            NotificationRecipient.objects.filter(
+                email__in=self.MIGRATION_RECIPIENTS
+            ).values_list("notification_type", flat=True)
+        )
+        self.assertEqual(types, {"new_reservation"})
