@@ -334,3 +334,84 @@ class HeatmapViewTests(TestCase):
         response = self.client.get("/mediatheque/visiteurs/heatmap/2020/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["max_count"], 0)
+
+
+class AnnualReportViewTests(TestCase):
+    """Tests pour la vue rapport annuel."""
+
+    def setUp(self):
+        self.group, _ = Group.objects.get_or_create(name="mediatheque")
+        self.user = User.objects.create_user(username="mediat", password="pass")
+        self.user.groups.add(self.group)
+        self.today = timezone.now().date()
+        self.year = self.today.year
+
+        self.loc1 = Location.objects.create(
+            name="Médiathèque", color="#4a6fa5", icon="bx-building", is_active=True, order=1, user=self.user
+        )
+        self.loc2 = Location.objects.create(
+            name="Ludothèque", color="#10b981", icon="bx-game", is_active=True, order=2, user=self.user
+        )
+
+        for m in range(1, 13):
+            d = date(self.year, m, 1)
+            VisitorCount.objects.create(location=self.loc1, date=d, count=m * 10, created_by=self.user)
+            VisitorCount.objects.create(location=self.loc2, date=d, count=m * 5, created_by=self.user)
+
+        # Données N-1
+        for m in range(1, 13):
+            d = date(self.year - 1, m, 1)
+            VisitorCount.objects.create(location=self.loc1, date=d, count=m * 8, created_by=self.user)
+
+    def login(self):
+        self.client.login(username="mediat", password="pass")
+
+    def test_redirects_without_login(self):
+        response = self.client.get(f"/mediatheque/visiteurs/report/{self.year}/")
+        self.assertEqual(response.status_code, 302)
+
+    def test_returns_200(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/report/{self.year}/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_context_year(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/report/{self.year}/")
+        self.assertEqual(response.context["year"], self.year)
+
+    def test_contains_yearly_total(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/report/{self.year}/")
+        self.assertContains(response, f"{self.loc1.name}")
+        self.assertContains(response, f"{self.loc2.name}")
+
+    def test_custom_year(self):
+        self.login()
+        response = self.client.get("/mediatheque/visiteurs/report/2024/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["year"], 2024)
+
+    def test_has_monthly_data(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/report/{self.year}/")
+        monthly = response.context["monthly"]
+        self.assertEqual(len(monthly), 12)
+        self.assertEqual(monthly[0]["total"], 15)
+
+    def test_top_locations_present(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/report/{self.year}/")
+        self.assertIn("yearly_top", response.context)
+
+    def test_prev_next_year_in_context(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/report/{self.year}/")
+        self.assertEqual(response.context["prev_year"], self.year - 1)
+        self.assertEqual(response.context["next_year"], self.year + 1)
+
+    def test_mediatheque_required(self):
+        other = User.objects.create_user(username="other", password="pass")
+        self.client.login(username="other", password="pass")
+        response = self.client.get(f"/mediatheque/visiteurs/report/{self.year}/")
+        self.assertEqual(response.status_code, 302)
