@@ -292,6 +292,39 @@
     </div>
     {% endif %}
 
+    {% if weather_data_available %}
+    <div class="bg-white border border-[#dce3ef] rounded-2xl shadow-sm overflow-hidden mb-8">
+      <div class="px-6 py-4 border-b border-[#dce3ef]">
+        <h5 class="font-semibold text-[#1e293b] flex items-center gap-2">
+          <i class="bx bx-cloud text-[#4a6fa5]"></i>
+          Corrélation météo <span class="text-xs text-[#b0bedb] font-normal">(source: Open-Meteo)</span>
+        </h5>
+      </div>
+      <div class="p-6">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+          <div class="bg-sky-50 rounded-xl p-4 text-center">
+            <p class="text-xs font-semibold text-sky-700 uppercase tracking-wider">Jours de pluie</p>
+            <p class="text-2xl font-bold text-sky-800 mt-1">{{ rainy_days }}/{{ total_days_weather }}</p>
+          </div>
+          <div class="bg-amber-50 rounded-xl p-4 text-center">
+            <p class="text-xs font-semibold text-amber-700 uppercase tracking-wider">Jours secs</p>
+            <p class="text-2xl font-bold text-amber-800 mt-1">{{ sunny_days }}/{{ total_days_weather }}</p>
+          </div>
+          <div class="bg-white border border-[#dce3ef] rounded-xl p-4 text-center">
+            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Impact pluie</p>
+            <p class="text-2xl font-bold mt-1 {% if rain_impact and rain_impact < 0 %}text-red-600{% elif rain_impact %}text-emerald-600{% else %}text-[#7a8fa0]{% endif %}">
+              {% if rain_impact is not None %}{% if rain_impact > 0 %}+{% endif %}{{ rain_impact }}%{% else %}—{% endif %}
+            </p>
+            {% if rain_impact is not None %}
+            <p class="text-xs text-[#b0bedb] mt-0.5">fréquentation jours de pluie</p>
+            {% endif %}
+          </div>
+        </div>
+        <div class="h-48"><canvas id="weatherChart"></canvas></div>
+      </div>
+    </div>
+    {% endif %}
+
     {% if top_locations %}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div class="lg:col-span-2 bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
@@ -420,6 +453,10 @@
 {% if cumulative %}{{ cumulative|json_script:"cumulative-data" }}{% endif %}
 {% if week_labels %}{{ week_labels|json_script:"week-labels" }}{% endif %}
 {% if week_values %}{{ week_values|json_script:"week-values" }}{% endif %}
+{% if weather_data_available %}
+{{ weather_temps|json_script:"weather-temps" }}
+{{ weather_rain|json_script:"weather-rain" }}
+{% endif %}
 
 <style>
 @media print {
@@ -608,6 +645,58 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         } else {
             wc.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-[#b0bedb] text-sm">Aucune donnée pour cette période</div>';
+        }
+    }
+
+    // Corrélation météo
+    const wcCanvas = document.getElementById('weatherChart');
+    if (wcCanvas) {
+        const temps = JSON.parse(document.getElementById('weather-temps')?.textContent || '[]');
+        const rain = JSON.parse(document.getElementById('weather-rain')?.textContent || '[]');
+        if (temps.length && rain.length) {
+            new Chart(wcCanvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Précipitations (mm)',
+                            data: rain,
+                            backgroundColor: 'rgba(56, 189, 248, 0.6)',
+                            borderColor: 'rgba(56, 189, 248, 1)',
+                            borderWidth: 1,
+                            order: 2,
+                            yAxisID: 'y1',
+                        },
+                        {
+                            label: 'Température max (°C)',
+                            data: temps,
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            order: 1,
+                            yAxisID: 'y',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11 }, usePointStyle: true } },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#7a8fa0', maxTicksLimit: 15 } },
+                        y: { beginAtZero: true, position: 'left', grid: { color: '#dce3ef' }, ticks: { color: '#7a8fa0', font: { size: 10 } }, title: { display: true, text: '°C', color: '#7a8fa0' } },
+                        y1: { beginAtZero: true, position: 'right', grid: { display: false }, ticks: { color: '#7a8fa0', font: { size: 10 } }, title: { display: true, text: 'mm', color: '#7a8fa0' } }
+                    }
+                }
+            });
+        } else {
+            wcCanvas.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-[#b0bedb] text-sm">Aucune donnée météo</div>';
         }
     }
 });

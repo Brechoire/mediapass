@@ -16,7 +16,7 @@ from library_workshops.decorators import (
     mediatheque_member_required_json,
 )
 from library_workshops.utils import filter_owned, filter_location_owned
-from .models import Location, VisitorCount
+from .models import Location, VisitorCount, WeatherData
 from .forms import BulkVisitorCountForm, DateRangeForm, LocationForm
 from .services import SuperadminStatisticsService
 
@@ -677,6 +677,53 @@ def statistics(request):
         .order_by("total")[:3]
     )
 
+    # ---- 7. Corrélation météo ----
+    weather_qs = WeatherData.objects.filter(
+        date__gte=start_date, date__lte=end_date
+    ).order_by("date")
+
+    weather_dates = []
+    weather_temps = []
+    weather_rain = []
+    weather_labels = []
+    rainy_days = 0
+    sunny_days = 0
+    total_days_weather = 0
+    rain_days_total_visitors = 0
+    sunny_days_total_visitors = 0
+    rain_days_count = 0
+    sunny_days_count = 0
+
+    daily_map = {d["date"]: d["total"] for d in daily_data}
+
+    for w in weather_qs:
+        label = w.date.strftime("%d/%m")
+        weather_dates.append(label)
+        weather_temps.append(round(w.temp_max, 1) if w.temp_max is not None else None)
+        weather_rain.append(w.precipitation if w.precipitation is not None else 0)
+        weather_labels.append(label)
+
+        visitor_count = daily_map.get(w.date, 0)
+
+        if w.precipitation and w.precipitation > 0.5:
+            rainy_days += 1
+            rain_days_total_visitors += visitor_count
+            rain_days_count += 1 if visitor_count > 0 else 0
+        elif w.precipitation is not None:
+            sunny_days += 1
+            sunny_days_total_visitors += visitor_count
+            sunny_days_count += 1 if visitor_count > 0 else 0
+
+        total_days_weather += 1
+
+    rain_impact = None
+    if sunny_days_count > 0 and rain_days_count > 0:
+        sunny_avg = sunny_days_total_visitors / sunny_days_count
+        rainy_avg = rain_days_total_visitors / rain_days_count
+        rain_impact = round(((rainy_avg - sunny_avg) / sunny_avg * 100), 1)
+
+    weather_data_available = total_days_weather > 0
+
     context = {
         "form": form,
         "start_date": start_date,
@@ -720,6 +767,12 @@ def statistics(request):
         "best_week": best_week,
         "worst_week": worst_week,
         "bottom_locations": bottom_locations,
+        "weather_data_available": weather_data_available,
+        "weather_temps": weather_temps,
+        "weather_rain": weather_rain,
+        "rain_impact": rain_impact,
+        "rainy_days": rainy_days,
+        "sunny_days": sunny_days,
         "title": "Statistiques visiteurs",
     }
 

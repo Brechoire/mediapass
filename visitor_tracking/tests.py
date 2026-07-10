@@ -4,7 +4,7 @@ from django.contrib.auth.models import Group, User
 from django.test import TestCase
 from django.utils import timezone
 
-from .models import Location, VisitorCount
+from .models import Location, VisitorCount, WeatherData
 
 
 def create_mediatheque_group():
@@ -415,3 +415,39 @@ class AnnualReportViewTests(TestCase):
         self.client.login(username="other", password="pass")
         response = self.client.get(f"/mediatheque/visiteurs/report/{self.year}/")
         self.assertEqual(response.status_code, 302)
+
+
+class WeatherModelTests(TestCase):
+    """Tests pour le modèle WeatherData."""
+
+    def setUp(self):
+        self.weather = WeatherData.objects.create(
+            date=date(2025, 6, 15),
+            temp_max=28.5,
+            temp_min=15.2,
+            precipitation=0.0,
+            weather_code=0,
+        )
+
+    def test_create_weather(self):
+        self.assertEqual(WeatherData.objects.count(), 1)
+        self.assertEqual(self.weather.temp_max, 28.5)
+
+    def test_string_representation(self):
+        self.assertIn("Météo", str(self.weather))
+        self.assertIn("2025", str(self.weather))
+
+    def test_unique_date_constraint(self):
+        with self.assertRaises(Exception):
+            WeatherData.objects.create(date=date(2025, 6, 15))
+
+    def test_nullable_fields(self):
+        w = WeatherData.objects.create(date=date(2025, 1, 1))
+        self.assertIsNone(w.temp_max)
+        self.assertIsNone(w.temp_min)
+        self.assertIsNone(w.precipitation)
+
+    def test_ordering(self):
+        WeatherData.objects.create(date=date(2025, 1, 1))
+        latest = WeatherData.objects.first()
+        self.assertEqual(latest.date, date(2025, 6, 15))
