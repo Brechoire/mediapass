@@ -241,3 +241,96 @@ class SpaceEditViewTests(TestCase):
         self.login()
         response = self.client.get(f"/mediatheque/visiteurs/spaces/edit/{self.other_location.id}/")
         self.assertEqual(response.status_code, 404)
+
+
+class HeatmapViewTests(TestCase):
+    """Tests pour la vue heatmap."""
+
+    def setUp(self):
+        self.group, _ = Group.objects.get_or_create(name="mediatheque")
+        self.user = User.objects.create_user(username="mediat", password="pass")
+        self.user.groups.add(self.group)
+        self.today = timezone.now().date()
+        self.year = self.today.year
+
+        self.loc = Location.objects.create(
+            name="Médiathèque", color="#4a6fa5", icon="bx-building", is_active=True, order=1, user=self.user
+        )
+
+        # Un jour avec données pour chaque mois de l'année courante
+        for m in range(1, 13):
+            d = date(self.year, m, 1)
+            VisitorCount.objects.create(location=self.loc, date=d, count=m * 10, created_by=self.user)
+
+    def login(self):
+        self.client.login(username="mediat", password="pass")
+
+    def test_redirects_without_login(self):
+        response = self.client.get(f"/mediatheque/visiteurs/heatmap/{self.year}/")
+        self.assertEqual(response.status_code, 302)
+
+    def test_returns_200(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/heatmap/{self.year}/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_contains_months(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/heatmap/{self.year}/")
+        self.assertContains(response, "Janvier")
+        self.assertContains(response, "Décembre")
+
+    def test_contains_year_title(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/heatmap/{self.year}/")
+        self.assertContains(response, str(self.year))
+
+    def test_custom_year_parameter(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/heatmap/2024/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "2024")
+
+    def test_has_location_filter(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/heatmap/{self.year}/")
+        self.assertContains(response, "Tous")
+        self.assertContains(response, "Médiathèque")
+
+    def test_location_filter_works(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/heatmap/{self.year}/?location={self.loc.id}")
+        self.assertEqual(response.status_code, 200)
+
+    def test_context_year(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/heatmap/{self.year}/")
+        self.assertEqual(response.context["year"], self.year)
+
+    def test_context_months_count(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/heatmap/{self.year}/")
+        self.assertEqual(len(response.context["months"]), 12)
+
+    def test_context_max_count(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/heatmap/{self.year}/")
+        self.assertGreater(response.context["max_count"], 0)
+
+    def test_prev_next_year_links(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/heatmap/{self.year}/")
+        self.assertEqual(response.context["prev_year"], self.year - 1)
+        self.assertEqual(response.context["next_year"], self.year + 1)
+
+    def test_mediatheque_required(self):
+        other_user = User.objects.create_user(username="other", password="pass")
+        self.client.login(username="other", password="pass")
+        response = self.client.get(f"/mediatheque/visiteurs/heatmap/{self.year}/")
+        self.assertEqual(response.status_code, 302)
+
+    def test_no_data_returns_200(self):
+        self.login()
+        response = self.client.get("/mediatheque/visiteurs/heatmap/2020/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["max_count"], 0)

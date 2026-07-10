@@ -1,5 +1,5 @@
 import csv
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils import timezone
@@ -932,6 +932,88 @@ def history(request):
     }
 
     return render(request, "visitor_tracking/history.html", context)
+
+
+@mediatheque_member_required
+def heatmap(request, year=None):
+    """Calendrier heatmap annuel de fréquentation."""
+    if not year:
+        try:
+            year = int(request.GET.get("year", timezone.now().year))
+        except (ValueError, TypeError):
+            year = timezone.now().year
+
+    start_date = date(year, 1, 1)
+    end_date = date(year, 12, 31)
+
+    location_filter = request.GET.get("location")
+
+    qs = filter_owned(
+        VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date),
+        request.user, field="location__user",
+    )
+    if location_filter:
+        qs = qs.filter(location_id=location_filter)
+
+    daily_data = qs.values("date").annotate(total=Sum("count")).order_by("date")
+    count_map = {d["date"]: d["total"] for d in daily_data}
+    max_count = max(count_map.values()) if count_map else 0
+
+    month_names = [
+        "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+        "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+    ]
+
+    months = []
+    for m in range(1, 13):
+        first_day = date(year, m, 1)
+        if m == 12:
+            last_day = date(year, 12, 31)
+        else:
+            last_day = date(year, m + 1, 1) - timedelta(days=1)
+
+        # Lundi de la semaine contenant le 1er
+        start = first_day - timedelta(days=first_day.weekday())
+        # Samedi de la semaine contenant le dernier jour
+        end = last_day + timedelta(days=5 - last_day.weekday())
+
+        cells = []
+        d = start
+        while d <= end:
+            if d.weekday() != 6:
+                if first_day <= d <= last_day:
+                    cnt = count_map.get(d, 0)
+                    opacity = cnt / max_count if max_count > 0 else 0
+                    cells.append({
+                        "day": d.day,
+                        "count": cnt,
+                        "date": d,
+                        "opacity": opacity,
+                    })
+                else:
+                    cells.append(None)
+            d += timedelta(days=1)
+
+        weeks = [cells[i:i + 6] for i in range(0, len(cells), 6)]
+
+        months.append({"name": month_names[m - 1], "weeks": weeks})
+
+    locations = filter_location_owned(
+        Location.objects.filter(is_active=True), request.user
+    ).order_by("order", "name")
+
+    context = {
+        "year": year,
+        "prev_year": year - 1,
+        "next_year": year + 1,
+        "months": months,
+        "max_count": max_count,
+        "locations": locations,
+        "location_filter": location_filter,
+        "title": f"Calendrier {year}",
+    }
+
+    return render(request, "visitor_tracking/heatmap.html", context)
 
 
 @mediatheque_member_required
