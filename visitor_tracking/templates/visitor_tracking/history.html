@@ -141,6 +141,7 @@
     {% if location_filter and chart_values %}
     {{ chart_labels|json_script:"chart-labels" }}
     {{ chart_values|json_script:"chart-values" }}
+    {% if chart_weekdays %}{{ chart_weekdays|json_script:"chart-weekdays" }}{% endif %}
     <div class="bg-white border border-[#dce3ef] rounded-2xl shadow-sm overflow-hidden mb-8">
       <div class="px-6 py-4 border-b border-[#dce3ef]">
         <h5 class="font-semibold text-[#1e293b] flex items-center gap-2">
@@ -301,6 +302,8 @@
 document.addEventListener('DOMContentLoaded', function() {
     const labels = JSON.parse(document.getElementById('chart-labels').textContent);
     const values = JSON.parse(document.getElementById('chart-values').textContent);
+    const wdEl = document.getElementById('chart-weekdays');
+    const weekdays = wdEl ? JSON.parse(wdEl.textContent) : [];
 
     const ctx = document.getElementById('attendanceChart');
     if (!ctx) return;
@@ -340,7 +343,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     displayColors: false,
                     callbacks: {
                         title: function(items) {
-                            return items[0].label;
+                            const i = items[0].dataIndex;
+                            const day = weekdays[i] || '';
+                            const label = items[0].label;
+                            return day ? day + ' ' + label : label;
                         },
                         label: function(item) {
                             return item.raw + ' visiteur' + (item.raw > 1 ? 's' : '');

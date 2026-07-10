@@ -525,6 +525,8 @@ def statistics(request):
     # Préparer les données Chart.js
     chart_labels = [d["date"].strftime("%d/%m") for d in daily_data]
     chart_values = [d["total"] for d in daily_data]
+    day_names_fr = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+    chart_weekdays = [day_names_fr[d["date"].weekday()] for d in daily_data]
 
     # Construire les datasets pour les barres empilées
     stacked_datasets = []
@@ -687,6 +689,7 @@ def statistics(request):
         "days_with_data": days_with_data,
         "chart_labels": chart_labels,
         "chart_values": chart_values,
+        "chart_weekdays": chart_weekdays,
         "chart_prev_values": chart_prev_values,
         "stacked_datasets": stacked_datasets,
         "stacked_locations": stacked_locations,
@@ -853,6 +856,7 @@ def history(request):
     selected_location_name = ""
     chart_labels = []
     chart_values = []
+    chart_weekdays = []
 
     if location_filter:
         selected_location = locations.filter(id=location_filter).first()
@@ -889,9 +893,11 @@ def history(request):
 
         data_map = {d["date"]: d["total"] for d in chart_qs}
         if any(data_map.values()):
+            day_names_fr = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
             d = chart_start
             while d <= chart_end:
                 chart_labels.append(d.strftime("%d/%m"))
+                chart_weekdays.append(day_names_fr[d.weekday()])
                 chart_values.append(data_map.get(d, 0))
                 d += timedelta(days=1)
 
@@ -921,6 +927,7 @@ def history(request):
         "selected_location_name": selected_location_name,
         "chart_labels": chart_labels,
         "chart_values": chart_values,
+        "chart_weekdays": chart_weekdays,
         "title": "Historique des pointages",
     }
 
