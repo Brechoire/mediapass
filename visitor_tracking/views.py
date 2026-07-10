@@ -7,6 +7,7 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from django.db.models import Sum, Count, Max
 from django.db.models.functions import TruncDate
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 from django.contrib.auth.decorators import login_required, user_passes_test
 
@@ -592,6 +593,88 @@ def statistics(request):
     # Top 5 records
     top_days = daily_totals[:5]
 
+    # ---- 1. Espaces pour le filtre dropdown ----
+    locations = filter_location_owned(
+        Location.objects.filter(is_active=True), request.user
+    ).order_by("order", "name")
+
+    # ---- 2. Comparaison N-1 (même période, année précédente) ----
+    n1_start_date = start_date.replace(year=start_date.year - 1)
+    n1_end_date = end_date.replace(year=end_date.year - 1)
+    n1_qs = filter_owned(
+        VisitorCount.objects.filter(
+            date__gte=n1_start_date, date__lte=n1_end_date
+        ).exclude(date__week_day=1),
+        request.user, field="location__user",
+    )
+    if selected_location:
+        n1_qs = n1_qs.filter(location=selected_location)
+    n1_total = n1_qs.aggregate(total=Sum("count"))["total"] or 0
+    n1_variation = round(
+        ((total_visitors - n1_total) / n1_total * 100) if n1_total > 0 else 0, 1,
+    )
+
+    # ---- 3. Totaux par semaine ----
+    from collections import defaultdict
+    weekly_buckets = defaultdict(int)
+    for d in daily_data:
+        iso = d["date"].isocalendar()
+        weekly_buckets[(iso[0], iso[1])] += d["total"]
+    sorted_weeks = sorted(weekly_buckets)
+    week_labels = [f"S{num}" for _, num in sorted_weeks]
+    week_values = [weekly_buckets[k] for k in sorted_weeks]
+
+    # ---- 5. Meilleure et pire semaine (7 jours consécutifs) ----
+    best_week = None
+    worst_week = None
+    if chart_values:
+        daily_map = {d["date"]: d["total"] for d in daily_data}
+        full_values = []
+        cur = start_date
+        while cur <= end_date:
+            full_values.append(daily_map.get(cur, 0))
+            cur += timedelta(days=1)
+
+        if len(full_values) >= 7:
+            best_total = -1
+            best_ix = 0
+            worst_total = float("inf")
+            worst_ix = 0
+            for i in range(len(full_values) - 6):
+                window = sum(full_values[i:i + 7])
+                if window > best_total:
+                    best_total = window
+                    best_ix = i
+                if window < worst_total:
+                    worst_total = window
+                    worst_ix = i
+
+            best_week = {
+                "start": start_date + timedelta(days=best_ix),
+                "end": start_date + timedelta(days=best_ix + 6),
+                "total": best_total,
+            }
+            worst_week = {
+                "start": start_date + timedelta(days=worst_ix),
+                "end": start_date + timedelta(days=worst_ix + 6),
+                "total": worst_total,
+            }
+
+    # ---- 6. Flop 3 espaces (les moins fréquentés) ----
+    bottom_locations = list(
+        filter_owned(
+            VisitorCount.objects.filter(
+                date__gte=start_date, date__lte=end_date
+            ),
+            request.user,
+            field="location__user",
+        )
+        .exclude(date__week_day=1)
+        .values("location__name", "location__color")
+        .annotate(total=Sum("count"))
+        .order_by("total")[:3]
+    )
+
     context = {
         "form": form,
         "start_date": start_date,
@@ -626,6 +709,14 @@ def statistics(request):
         "trend": trend,
         "trend_pct": trend_pct,
         "top_days": top_days,
+        "locations": locations,
+        "n1_total": n1_total,
+        "n1_variation": n1_variation,
+        "week_labels": week_labels,
+        "week_values": week_values,
+        "best_week": best_week,
+        "worst_week": worst_week,
+        "bottom_locations": bottom_locations,
         "title": "Statistiques visiteurs",
     }
 
@@ -635,22 +726,35 @@ def statistics(request):
 @mediatheque_member_required
 def export_csv(request):
     """Exporter les données en CSV"""
-    period = request.GET.get("period", "30_days")
+    date_from = request.GET.get("date_from")
+    date_to = request.GET.get("date_to")
     location_id = request.GET.get("location")
 
     today = timezone.now().date()
 
-    # Calculer les dates selon la période
-    if period == "7_days":
-        start_date = today - timedelta(days=7)
-    elif period == "this_month":
-        start_date = today.replace(day=1)
-    elif period == "this_year":
-        start_date = today.replace(month=1, day=1)
+    if date_from:
+        try:
+            start_date = datetime.strptime(date_from, "%Y-%m-%d").date()
+        except ValueError:
+            start_date = today - timedelta(days=30)
     else:
-        start_date = today - timedelta(days=30)
+        period = request.GET.get("period", "30_days")
+        if period == "7_days":
+            start_date = today - timedelta(days=7)
+        elif period == "this_month":
+            start_date = today.replace(day=1)
+        elif period == "this_year":
+            start_date = today.replace(month=1, day=1)
+        else:
+            start_date = today - timedelta(days=30)
 
-    end_date = today
+    if date_to:
+        try:
+            end_date = datetime.strptime(date_to, "%Y-%m-%d").date()
+        except ValueError:
+            end_date = today
+    else:
+        end_date = today
 
     # Requête
     queryset = filter_owned(
@@ -687,41 +791,136 @@ def export_csv(request):
 @mediatheque_member_required
 def history(request):
     """Historique des pointages avec possibilité de modification"""
-    # Filtres
-    date_filter = request.GET.get("date")
+    date_from = request.GET.get("date_from")
+    date_to = request.GET.get("date_to")
     location_filter = request.GET.get("location")
+
+    sort = request.GET.get("sort", "date")
+    order = request.GET.get("order", "desc")
+
+    SORT_MAP = {
+        "date": "date",
+        "location": "location__name",
+        "count": "count",
+        "updated_at": "updated_at",
+    }
+    if sort not in SORT_MAP:
+        sort = "date"
+
+    order_field = SORT_MAP[sort]
+    current_order = order
+    if order == "desc":
+        order_field = f"-{order_field}"
 
     queryset = filter_owned(
         VisitorCount.objects.select_related("location", "created_by", "updated_by"),
         request.user,
         field="location__user",
-    ).order_by("-date", "location__order")
+    )
 
-    if date_filter:
-        from datetime import datetime
-
+    if date_from:
         try:
-            date_obj = datetime.strptime(date_filter, "%Y-%m-%d").date()
-            queryset = queryset.filter(date=date_obj)
+            date_from_obj = datetime.strptime(date_from, "%Y-%m-%d").date()
+            queryset = queryset.filter(date__gte=date_from_obj)
         except ValueError:
-            pass
+            date_from = None
+
+    if date_to:
+        try:
+            date_to_obj = datetime.strptime(date_to, "%Y-%m-%d").date()
+            queryset = queryset.filter(date__lte=date_to_obj)
+        except ValueError:
+            date_to = None
 
     if location_filter:
         queryset = queryset.filter(location_id=location_filter)
 
-    # Limiter aux 100 dernières entrées
-    entries = queryset[:100]
+    stats_agg = queryset.aggregate(
+        total_visitors=Sum("count"),
+        total_days=Count("date", distinct=True),
+    )
+    total_visitors = stats_agg["total_visitors"] or 0
+    total_days = stats_agg["total_days"] or 0
+    avg_per_day = round(total_visitors / total_days) if total_days > 0 else 0
+    best_day = queryset.order_by("-count").first()
 
-    # Listes pour les filtres
+    # Listes pour les filtres (déclarées ici pour être utilisées par le graphique)
     locations = filter_location_owned(
         Location.objects.filter(is_active=True), request.user
     ).order_by("order", "name")
 
+    # Données du graphique (uniquement si un lieu est sélectionné)
+    selected_location_name = ""
+    chart_labels = []
+    chart_values = []
+
+    if location_filter:
+        selected_location = locations.filter(id=location_filter).first()
+        if selected_location:
+            selected_location_name = selected_location.name
+
+        today = timezone.now().date()
+
+        try:
+            chart_start = (
+                datetime.strptime(date_from, "%Y-%m-%d").date()
+                if date_from else today - timedelta(days=30)
+            )
+        except ValueError:
+            chart_start = today - timedelta(days=30)
+
+        try:
+            chart_end = (
+                datetime.strptime(date_to, "%Y-%m-%d").date()
+                if date_to else today
+            )
+        except ValueError:
+            chart_end = today
+
+        chart_qs = filter_owned(
+            VisitorCount.objects.filter(
+                date__gte=chart_start,
+                date__lte=chart_end,
+                location_id=location_filter,
+            ),
+            request.user,
+            field="location__user",
+        ).values("date").annotate(total=Sum("count")).order_by("date")
+
+        data_map = {d["date"]: d["total"] for d in chart_qs}
+        if any(data_map.values()):
+            d = chart_start
+            while d <= chart_end:
+                chart_labels.append(d.strftime("%d/%m"))
+                chart_values.append(data_map.get(d, 0))
+                d += timedelta(days=1)
+
+    queryset = queryset.order_by(order_field, "location__order")
+
+    paginator = Paginator(queryset, 50)
+    page = request.GET.get("page", 1)
+    try:
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
     context = {
-        "entries": entries,
+        "page_obj": page_obj,
         "locations": locations,
-        "date_filter": date_filter,
+        "date_from": date_from,
+        "date_to": date_to,
         "location_filter": location_filter,
+        "sort": sort,
+        "order": current_order,
+        "total_visitors": total_visitors,
+        "total_days": total_days,
+        "avg_per_day": avg_per_day,
+        "best_day": best_day,
+        "selected_location_name": selected_location_name,
+        "chart_labels": chart_labels,
+        "chart_values": chart_values,
         "title": "Historique des pointages",
     }
 
