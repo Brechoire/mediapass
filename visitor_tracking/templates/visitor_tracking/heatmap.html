@@ -77,8 +77,13 @@
           {% for week in month.weeks %}
             {% for cell in week %}
               {% if cell %}
-              <div class="heatmap-cell aspect-square flex items-center justify-center text-xs font-medium"
-                   style="background: rgba(74, 111, 165, {{ cell.opacity }}); color: {% if cell.opacity > 0.5 %}#fff{% else %}#4a6fa5{% endif %};"
+              <div class="heatmap-cell aspect-square flex items-center justify-center text-xs font-medium
+                          {% if cell.opacity == 0 %}bg-[#f0f2f6] text-[#b0bedb] border border-[#dce3ef]{% endif %}
+                          {% if cell.opacity > 0 and cell.opacity <= 0.33 %}bg-[#a7b8d6] text-[#1e293b]{% endif %}
+                          {% if cell.opacity > 0.33 and cell.opacity <= 0.55 %}bg-[#4a6fa5] text-white{% endif %}
+                          {% if cell.opacity > 0.55 and cell.opacity <= 0.78 %}bg-[#355478] text-white{% endif %}
+                          {% if cell.opacity > 0.78 %}bg-[#243b58] text-white{% endif %}
+                          {% if cell.date == today %}ring-2 ring-offset-1 ring-[#d46a78] font-bold{% endif %}"
                    title="{{ cell.date|date:'l d F Y' }} — {{ cell.count }} visiteur{{ cell.count|pluralize }}">
                 {{ cell.day }}
               </div>
@@ -96,11 +101,11 @@
     <div class="mt-8 flex flex-wrap items-center justify-center gap-2 text-xs text-[#7a8fa0]">
       <span>Moins</span>
       <div class="heatmap-legend">
-        <div class="heatmap-legend-item" style="background: rgba(74, 111, 165, 0); border: 1px solid #dce3ef;"></div>
-        <div class="heatmap-legend-item" style="background: rgba(74, 111, 165, 0.25);"></div>
-        <div class="heatmap-legend-item" style="background: rgba(74, 111, 165, 0.5);"></div>
-        <div class="heatmap-legend-item" style="background: rgba(74, 111, 165, 0.75);"></div>
-        <div class="heatmap-legend-item" style="background: rgba(74, 111, 165, 1);"></div>
+        <div class="heatmap-legend-item bg-[#f0f2f6] border border-[#dce3ef]"></div>
+        <div class="heatmap-legend-item bg-[#a7b8d6]"></div>
+        <div class="heatmap-legend-item bg-[#4a6fa5]"></div>
+        <div class="heatmap-legend-item bg-[#355478]"></div>
+        <div class="heatmap-legend-item bg-[#243b58]"></div>
       </div>
       <span>Plus</span>
     </div>

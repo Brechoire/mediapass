@@ -110,22 +110,3 @@ class VisitorCount(models.Model):
     def __str__(self):
         return f"{self.location.name} - {self.date}: {self.count} visiteurs"
 
-
-class WeatherData(models.Model):
-    """Données météo journalières (cache de l'API Open-Meteo)."""
-
-    date = models.DateField(unique=True, verbose_name="Date")
-    temp_max = models.FloatField(null=True, blank=True, verbose_name="Température max")
-    temp_min = models.FloatField(null=True, blank=True, verbose_name="Température min")
-    precipitation = models.FloatField(null=True, blank=True, verbose_name="Précipitations (mm)")
-    weather_code = models.IntegerField(null=True, blank=True, verbose_name="Code météo WMO")
-    fetched_at = models.DateTimeField(auto_now=True, verbose_name="Dernière mise à jour")
-
-    class Meta:
-        verbose_name = "Donnée météo"
-        verbose_name_plural = "Données météo"
-        ordering = ["-date"]
-
-    def __str__(self):
-        return f"Météo du {self.date}"
-
