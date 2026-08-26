@@ -1,4 +1,5 @@
 import csv
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
@@ -949,10 +950,20 @@ def heatmap(request, year=None):
 
     location_filter = request.GET.get("location")
 
+    # Filtre par commune (superusers uniquement, username = nom de la commune)
+    available_communes = []
+    if request.user.is_superuser:
+        available_communes = SuperadminStatisticsService.get_available_communes()
+    commune = (request.GET.get("commune") or "").strip()
+    if commune not in {u.username for u in available_communes}:
+        commune = ""
+
     qs = filter_owned(
         VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date),
         request.user, field="location__user",
     )
+    if commune:
+        qs = qs.filter(location__user__username=commune)
     if location_filter:
         qs = qs.filter(location_id=location_filter)
 
@@ -960,48 +971,25 @@ def heatmap(request, year=None):
     count_map = {d["date"]: d["total"] for d in daily_data}
     max_count = max(count_map.values()) if count_map else 0
 
-    month_names = [
-        "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-        "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
-    ]
-
-    months = []
-    for m in range(1, 13):
-        first_day = date(year, m, 1)
-        if m == 12:
-            last_day = date(year, 12, 31)
-        else:
-            last_day = date(year, m + 1, 1) - timedelta(days=1)
-
-        # Lundi de la semaine contenant le 1er
-        start = first_day - timedelta(days=first_day.weekday())
-        # Samedi de la semaine contenant le dernier jour
-        end = last_day + timedelta(days=5 - last_day.weekday())
-
-        cells = []
-        d = start
-        while d <= end:
-            if d.weekday() != 6:
-                if first_day <= d <= last_day:
-                    cnt = count_map.get(d, 0)
-                    opacity = cnt / max_count if max_count > 0 else 0
-                    cells.append({
-                        "day": d.day,
-                        "count": cnt,
-                        "date": d,
-                        "opacity": opacity,
-                    })
-                else:
-                    cells.append(None)
-            d += timedelta(days=1)
-
-        weeks = [cells[i:i + 6] for i in range(0, len(cells), 6)]
-
-        months.append({"name": month_names[m - 1], "weeks": weeks})
+    months = SuperadminStatisticsService.build_calendar_months(
+        year, count_map, max_count
+    )
+    breakdown = SuperadminStatisticsService.get_breakdown_by_date(
+        start_date,
+        end_date,
+        commune=commune or None,
+        location_filter=location_filter,
+    )
+    SuperadminStatisticsService.attach_tooltips(
+        months, breakdown, request.user.is_superuser and not commune
+    )
 
     locations = filter_location_owned(
         Location.objects.filter(is_active=True), request.user
-    ).order_by("order", "name")
+    ).select_related("user")
+    if commune:
+        locations = locations.filter(user__username=commune)
+    locations = locations.order_by("order", "name")
 
     context = {
         "year": year,
@@ -1011,11 +999,82 @@ def heatmap(request, year=None):
         "max_count": max_count,
         "locations": locations,
         "location_filter": location_filter,
+        "commune": commune,
+        "available_communes": available_communes,
+        "show_commune_prefix": request.user.is_superuser and not commune,
         "today": timezone.now().date(),
         "title": f"Calendrier {year}",
     }
 
     return render(request, "visitor_tracking/heatmap.html", context)
+
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def superadmin_heatmap(request, year=None):
+    """Calendrier de fréquentation annuel — réservé aux superadmins."""
+    if not year:
+        try:
+            year = int(request.GET.get("year", timezone.now().year))
+        except (ValueError, TypeError):
+            year = timezone.now().year
+
+    start_date = date(year, 1, 1)
+    end_date = date(year, 12, 31)
+
+    available_communes = SuperadminStatisticsService.get_available_communes()
+    commune = (request.GET.get("commune") or "").strip()
+    if commune not in {u.username for u in available_communes}:
+        commune = ""
+
+    location_filter = request.GET.get("location")
+
+    qs = VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date)
+    if commune:
+        qs = qs.filter(location__user__username=commune)
+    if location_filter:
+        qs = qs.filter(location_id=location_filter)
+
+    daily_data = qs.values("date").annotate(total=Sum("count")).order_by("date")
+    count_map = {d["date"]: d["total"] for d in daily_data}
+    max_count = max(count_map.values()) if count_map else 0
+
+    months = SuperadminStatisticsService.build_calendar_months(
+        year, count_map, max_count
+    )
+    breakdown = SuperadminStatisticsService.get_breakdown_by_date(
+        start_date,
+        end_date,
+        commune=commune or None,
+        location_filter=location_filter,
+    )
+    SuperadminStatisticsService.attach_tooltips(months, breakdown, not commune)
+
+    locations = Location.objects.filter(is_active=True).select_related("user")
+    if commune:
+        locations = locations.filter(user__username=commune)
+    locations = locations.order_by("order", "name")
+
+    data_years = [d.year for d in VisitorCount.objects.dates("date", "year")]
+    years = sorted(set(data_years) | {timezone.now().year})
+
+    context = {
+        "year": year,
+        "years": years,
+        "prev_year": year - 1,
+        "next_year": year + 1,
+        "months": months,
+        "max_count": max_count,
+        "locations": locations,
+        "location_filter": location_filter,
+        "commune": commune,
+        "available_communes": available_communes,
+        "show_commune_prefix": not commune,
+        "today": timezone.now().date(),
+        "title": f"Calendrier {year}",
+    }
+
+    return render(request, "visitor_tracking/superadmin_heatmap.html", context)
 
 
 @mediatheque_member_required
@@ -1286,47 +1345,79 @@ def delete_space(request, location_id):
 def superadmin_statistics(request):
     """Page superadmin : stats globales + comparaison par médiathèque"""
     period = request.GET.get("period", "30_days")
-    start_date, end_date = SuperadminStatisticsService.compute_period(period)
 
-    global_stats = SuperadminStatisticsService.get_global_stats(start_date, end_date)
+    def parse_get_date(key):
+        raw = request.GET.get(key)
+        if not raw:
+            return None
+        try:
+            return datetime.strptime(raw, "%Y-%m-%d").date()
+        except ValueError:
+            return None
+
+    start_date, end_date = SuperadminStatisticsService.compute_period(
+        period,
+        custom_start=parse_get_date("start_date"),
+        custom_end=parse_get_date("end_date"),
+    )
+
+    available_communes = SuperadminStatisticsService.get_available_communes()
+
+    # Filtre par commune (username = nom de la commune)
+    commune = (request.GET.get("commune") or "").strip()
+    if commune not in {u.username for u in available_communes}:
+        commune = ""
+
+    global_stats = SuperadminStatisticsService.get_global_stats(
+        start_date, end_date, commune=commune or None
+    )
     locations, grand_total = SuperadminStatisticsService.get_locations_comparison(
-        start_date, end_date
+        start_date, end_date, commune=commune or None
     )
     stacked_data = SuperadminStatisticsService.get_stacked_chart_data(
-        start_date, end_date
+        start_date, end_date, commune=commune or None
     )
 
-    # Utilisateurs disponibles pour le filtre
-    available_users = SuperadminStatisticsService.get_available_users(
-        start_date, end_date
-    )
-
-    # Comparaison par utilisateur
-    selected_usernames = request.GET.getlist("users") or None
-    users_comparison = SuperadminStatisticsService.get_users_comparison(
-        start_date, end_date, selected_usernames
-    )
-
-    # Mode duel: si 2 users sélectionnés, ajouter % de différence
+    # Sections de comparaison entre médiathèques : uniquement en vue globale
+    available_users = []
+    selected_usernames = None
+    users_comparison = []
     duel = None
-    if len(users_comparison) == 2:
-        u1, u2 = users_comparison[0], users_comparison[1]
+    if not commune:
+        # Utilisateurs disponibles pour le filtre
+        available_users = SuperadminStatisticsService.get_available_users(
+            start_date, end_date
+        )
 
-        def pct_diff(a, b):
-            if b == 0:
-                return 100 if a > 0 else 0
-            return round(((a - b) / b) * 100, 1)
+        # Comparaison par utilisateur
+        selected_usernames = request.GET.getlist("users") or None
+        users_comparison = SuperadminStatisticsService.get_users_comparison(
+            start_date, end_date, selected_usernames
+        )
 
-        duel = {
-            "total_diff": pct_diff(u1["total"], u2["total"]),
-            "avg_diff": pct_diff(u1["avg_per_day"], u2["avg_per_day"]),
-            "max_diff": pct_diff(u1["max_count"], u2["max_count"]),
-        }
+        # Mode duel: si 2 users sélectionnés, ajouter % de différence
+        if len(users_comparison) == 2:
+            u1, u2 = users_comparison[0], users_comparison[1]
+
+            def pct_diff(a, b):
+                if b == 0:
+                    return 100 if a > 0 else 0
+                return round(((a - b) / b) * 100, 1)
+
+            duel = {
+                "total_diff": pct_diff(u1["total"], u2["total"]),
+                "avg_diff": pct_diff(u1["avg_per_day"], u2["avg_per_day"]),
+                "max_diff": pct_diff(u1["max_count"], u2["max_count"]),
+            }
 
     # Données journalières par utilisateur (graphique multi-lignes)
+    daily_by_user_qs = VisitorCount.objects.filter(
+        date__gte=start_date, date__lte=end_date
+    )
+    if commune:
+        daily_by_user_qs = daily_by_user_qs.filter(location__user__username=commune)
     daily_by_user = list(
-        VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date)
-        .values("date", "location__user__username")
+        daily_by_user_qs.values("date", "location__user__username")
         .annotate(total=Sum("count"))
         .order_by("date")
     )
@@ -1387,20 +1478,121 @@ def superadmin_statistics(request):
         running += daily_global.get(d, 0)
         cumulative.append(running)
 
+    period_length = (end_date - start_date).days or 1
+    all_dates_objs = [date.fromisoformat(d) for d in all_dates]
+    daily_totals = [daily_global.get(d, 0) for d in all_dates]
+
+    # Comparaison période précédente (alignée jour par jour, ligne globale)
+    prev_daily_map = SuperadminStatisticsService.get_prev_period_daily(
+        start_date, end_date, commune=commune or None
+    )
+    chart_prev_values = [
+        prev_daily_map.get(d - timedelta(days=period_length), 0) for d in all_dates_objs
+    ]
+
+    # Noms des jours (tooltips du graphique journalier)
+    day_names_fr = [
+        "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche",
+    ]
+    chart_weekdays = [day_names_fr[d.weekday()] for d in all_dates_objs]
+
+    # Totaux par semaine (buckets ISO)
+    weekly_buckets = defaultdict(int)
+    for d_obj in all_dates_objs:
+        iso = d_obj.isocalendar()
+        weekly_buckets[(iso[0], iso[1])] += daily_global.get(d_obj.isoformat(), 0)
+    sorted_weeks = sorted(weekly_buckets)
+    week_labels = [f"S{num}" for _, num in sorted_weeks]
+    week_values = [weekly_buckets[k] for k in sorted_weeks]
+
+    # Meilleure et pire semaine (7 jours consécutifs, série zéro-fillée)
+    best_week = None
+    worst_week = None
+    if all_dates_objs:
+        data_map = {d: daily_global.get(d.isoformat(), 0) for d in all_dates_objs}
+        full_values = []
+        cur = start_date
+        while cur <= end_date:
+            full_values.append(data_map.get(cur, 0))
+            cur += timedelta(days=1)
+
+        if len(full_values) >= 7:
+            best_total = -1
+            best_ix = 0
+            worst_total = float("inf")
+            worst_ix = 0
+            for i in range(len(full_values) - 6):
+                window = sum(full_values[i : i + 7])
+                if window > best_total:
+                    best_total = window
+                    best_ix = i
+                if window < worst_total:
+                    worst_total = window
+                    worst_ix = i
+
+            best_week = {
+                "start": start_date + timedelta(days=best_ix),
+                "end": start_date + timedelta(days=best_ix + 6),
+                "total": best_total,
+            }
+            worst_week = {
+                "start": start_date + timedelta(days=worst_ix),
+                "end": start_date + timedelta(days=worst_ix + 6),
+                "total": worst_total,
+            }
+
+    # vs Année N-1
+    n1_stats = SuperadminStatisticsService.get_n1_stats(
+        start_date, end_date, commune=commune or None
+    )
+    n1_total = n1_stats["total"]
+    n1_variation = (
+        round(((global_stats["total"] - n1_total) / n1_total * 100), 1)
+        if n1_total > 0
+        else 0
+    )
+
+    # Projection fin de mois (uniquement pour this_month)
+    projection = None
+    if period == "this_month" and daily_totals:
+        days_done = len(daily_totals)
+        month_days = (end_date - start_date).days + 1
+        days_left = month_days - days_done
+        total_so_far = sum(daily_totals)
+        daily_avg_proj = total_so_far / days_done if days_done > 0 else 0
+        projection = (
+            round(total_so_far + daily_avg_proj * days_left)
+            if days_left > 0
+            else round(total_so_far)
+        )
+
     context = {
         "period": period,
         "start_date": start_date,
         "end_date": end_date,
-        "period_length": (end_date - start_date).days or 1,
+        "period_length": period_length,
+        "commune": commune,
+        "available_communes": available_communes,
         "global_stats": global_stats,
         "locations": locations,
         "stacked_datasets": stacked_data["datasets"],
         "chart_labels": chart_labels,
         "chart_datasets": chart_datasets,
+        "chart_prev_values": chart_prev_values,
+        "chart_weekdays": chart_weekdays,
+        "daily_totals": daily_totals,
         "cumulative": cumulative,
+        "week_labels": week_labels,
+        "week_values": week_values,
+        "best_week": best_week,
+        "worst_week": worst_week,
+        "n1_total": n1_total,
+        "n1_variation": n1_variation,
+        "projection": projection,
         "available_users": available_users,
         "selected_usernames": selected_usernames or [],
         "users_comparison": users_comparison,
         "duel": duel,
+        "current_year": timezone.now().year,
     }
     return render(request, "visitor_tracking/superadmin_statistics.html", context)

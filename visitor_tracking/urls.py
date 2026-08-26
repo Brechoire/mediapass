@@ -34,6 +34,14 @@ urlpatterns = [
     path("heatmap/", views.heatmap, name="heatmap"),
     path("heatmap/<int:year>/", views.heatmap, name="heatmap_year"),
 
+    # Calendrier superadmin
+    path("admin-heatmap/", views.superadmin_heatmap, name="superadmin_heatmap"),
+    path(
+        "admin-heatmap/<int:year>/",
+        views.superadmin_heatmap,
+        name="superadmin_heatmap_year",
+    ),
+
     # Rapport annuel
     path("report/", views.annual_report, name="annual_report"),
     path("report/<int:year>/", views.annual_report, name="annual_report_year"),

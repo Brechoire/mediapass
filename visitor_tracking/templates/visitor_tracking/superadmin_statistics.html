@@ -9,18 +9,30 @@
     <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-                <a href="{% url 'visitor_tracking:index' %}" class="inline-flex items-center gap-1 text-white/60 hover:text-white text-sm transition-colors mb-3">
-                    <i class="bx bx-arrow-back"></i> Retour au pointage
-                </a>
                 <div class="flex items-center gap-3">
                     <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                         <i class="bx bx-bar-chart-alt-2 text-2xl text-white"></i>
                     </div>
                     <div>
                         <h1 class="text-3xl sm:text-4xl font-bold text-white">Statistiques — Superadmin</h1>
-                        <p class="text-white/70 text-sm">Du {{ start_date|date:"d/m/Y" }} au {{ end_date|date:"d/m/Y" }} · {{ global_stats.period_length }} jours</p>
+                        <p class="text-white/70 text-sm">
+                            Du {{ start_date|date:"d/m/Y" }} au {{ end_date|date:"d/m/Y" }} · {{ global_stats.period_length }} jours
+                            {% if commune %}
+                            · <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/20 text-white text-xs font-medium align-middle"><i class="bx bx-map"></i> {{ commune|capfirst }}</span>
+                            {% endif %}
+                        </p>
                     </div>
                 </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <a href="{% url 'visitor_tracking:superadmin_heatmap_year' current_year %}"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    <i class="bx bx-calendar-heart"></i> Heatmap
+                </a>
+                <a href="{% url 'visitor_tracking:annual_report_year' current_year %}"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    <i class="bx bx-bar-chart-alt-2"></i> Rapport
+                </a>
             </div>
         </div>
     </div>
@@ -31,21 +43,53 @@
         <form method="get" class="flex flex-wrap gap-4 items-end">
             <div>
                 <label class="block text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Période</label>
-                <select name="period" onchange="this.form.submit()"
+                <select name="period" id="periodSelect"
                     class="px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20">
                     <option value="7_days" {% if period == '7_days' %}selected{% endif %}>7 derniers jours</option>
                     <option value="30_days" {% if period == '30_days' %}selected{% endif %}>30 derniers jours</option>
                     <option value="this_month" {% if period == 'this_month' %}selected{% endif %}>Ce mois-ci</option>
                     <option value="last_month" {% if period == 'last_month' %}selected{% endif %}>Mois dernier</option>
                     <option value="this_year" {% if period == 'this_year' %}selected{% endif %}>Cette année</option>
+                    <option value="custom" {% if period == 'custom' %}selected{% endif %}>Personnalisée</option>
                 </select>
             </div>
+            <div id="customDates" class="flex gap-2 items-end {% if period != 'custom' %}hidden{% endif %}">
+                <div>
+                    <label class="block text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Du</label>
+                    <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}"
+                        class="px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20" />
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Au</label>
+                    <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}"
+                        class="px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20" />
+                </div>
+                <button type="submit"
+                    class="px-4 py-2.5 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-colors"><i class="bx bx-check"></i></button>
+            </div>
+            {% if available_communes %}
+            <div>
+                <label class="block text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Commune</label>
+                <select name="commune" onchange="this.form.submit()"
+                    class="px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20">
+                    <option value="">Toutes les communes</option>
+                    {% for c in available_communes %}
+                    <option value="{{ c.username }}" {% if commune == c.username %}selected{% endif %}>{{ c.username|capfirst }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            {% if commune %}
+            <a href="?period={{ period }}" class="text-xs text-[#7a8fa0] hover:text-[#d46a78] transition-colors pb-2.5">
+                <i class="bx bx-x align-middle"></i> Effacer le filtre commune
+            </a>
+            {% endif %}
         </form>
     </div>
 
     {% if global_stats.total > 0 %}
 
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 mb-8">
         <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
             <div class="flex items-center justify-between">
                 <div>
@@ -96,6 +140,38 @@
             <div class="mt-2"><span class="text-xs text-[#b0bedb]">le {{ global_stats.record_day.date|date:"d/m/Y" }}</span></div>
             {% endif %}
         </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">vs Année N-1</p>
+                    <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ n1_total }}</p>
+                    <p class="text-[10px] text-[#b0bedb] mt-0.5">même période</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-calendar-alt text-2xl text-[#4a6fa5]"></i></div>
+            </div>
+            {% if global_stats.total > 0 and n1_total > 0 %}
+            <div class="mt-2">
+                <span class="inline-flex items-center gap-1 text-xs font-medium {% if n1_variation > 0 %}text-emerald-600{% elif n1_variation < 0 %}text-red-600{% else %}text-[#b0bedb]{% endif %}">
+                    <i class="bx {% if n1_variation > 0 %}bx-trending-up{% elif n1_variation < 0 %}bx-trending-down{% else %}bx-minus{% endif %}"></i>
+                    {% if n1_variation > 0 %}+{% endif %}{{ n1_variation }}%
+                </span>
+            </div>
+            {% elif n1_total == 0 %}
+            <div class="mt-2"><span class="text-xs text-[#b0bedb]">Aucune donnée N-1</span></div>
+            {% endif %}
+        </div>
+        {% if projection %}
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Projection fin de mois</p>
+                    <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ projection }}</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-line-chart text-2xl text-[#4a6fa5]"></i></div>
+            </div>
+            <div class="mt-2"><span class="text-xs text-[#b0bedb]">si la tendance actuelle se maintient</span></div>
+        </div>
+        {% endif %}
     </div>
 
     {% if global_stats.best_day and global_stats.worst_day %}
@@ -115,6 +191,29 @@
                 <div>
                     <p class="text-xs font-semibold text-red-700 uppercase tracking-wider">Pire jour</p>
                     <p class="text-lg font-bold text-red-800">{{ global_stats.worst_day.date|date:"l d F Y" }} · <span class="text-2xl">{{ global_stats.worst_day.total }}</span> visiteurs</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if best_week %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+        <div class="bg-emerald-50 rounded-2xl border border-emerald-200 p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center"><i class="bx bx-calendar-week text-xl text-emerald-600"></i></div>
+                <div>
+                    <p class="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Meilleure semaine</p>
+                    <p class="text-lg font-bold text-emerald-800">du {{ best_week.start|date:"d/m" }} au {{ best_week.end|date:"d/m" }} · <span class="text-2xl">{{ best_week.total }}</span> visiteurs</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-red-50 rounded-2xl border border-red-200 p-5">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center"><i class="bx bx-calendar-week text-xl text-red-600"></i></div>
+                <div>
+                    <p class="text-xs font-semibold text-red-700 uppercase tracking-wider">Pire semaine</p>
+                    <p class="text-lg font-bold text-red-800">du {{ worst_week.start|date:"d/m" }} au {{ worst_week.end|date:"d/m" }} · <span class="text-2xl">{{ worst_week.total }}</span> visiteurs</p>
                 </div>
             </div>
         </div>
@@ -174,6 +273,17 @@
         </div>
         <div class="p-6">
             <div class="h-48"><canvas id="cumulChart"></canvas></div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if week_labels %}
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-bar-chart-alt-2 mr-1.5 text-[#4a6fa5]"></i> Totaux par semaine</h5>
+        </div>
+        <div class="p-6">
+            <div class="h-64"><canvas id="weeklyChart"></canvas></div>
         </div>
     </div>
     {% endif %}
@@ -411,7 +521,11 @@
         </div>
         <h3 class="text-lg font-bold text-[#1e293b] mb-2">Aucune donnée de fréquentation</h3>
         <p class="text-[#7a8fa0] text-sm max-w-md mx-auto">
+            {% if commune %}
+            Aucun pointage de visiteurs n'a été enregistré pour {{ commune|capfirst }} sur la période sélectionnée.
+            {% else %}
             Aucun pointage de visiteurs n'a été enregistré pour la période sélectionnée.
+            {% endif %}
         </p>
     </div>
     {% endif %}
@@ -422,17 +536,38 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
 
 {{ chart_labels|json_script:"chart-labels" }}
-
+{{ chart_weekdays|json_script:"chart-weekdays" }}
+{{ daily_totals|json_script:"daily-totals" }}
+{% if chart_prev_values %}{{ chart_prev_values|json_script:"chart-prev-values" }}{% endif %}
 {% if cumulative %}{{ cumulative|json_script:"cumulative-data" }}{% endif %}
+{% if week_labels %}{{ week_labels|json_script:"week-labels" }}{{ week_values|json_script:"week-values" }}{% endif %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const labels = JSON.parse(document.getElementById('chart-labels').textContent || '[]');
 
+    // Toggle dates personnalisées
+    const periodSelect = document.getElementById('periodSelect');
+    const customDates = document.getElementById('customDates');
+    if (periodSelect && customDates) {
+        periodSelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                customDates.classList.remove('hidden');
+            } else {
+                customDates.classList.add('hidden');
+                this.closest('form').submit();
+            }
+        });
+    }
+
     // Graphique journalier — multi-lignes par médiathèque
     const dc = document.getElementById('dailyChart');
     if (dc) {
         const chartDatasets = {{ chart_datasets|safe }};
+        const weekdaysEl = document.getElementById('chart-weekdays');
+        const weekdays = weekdaysEl ? JSON.parse(weekdaysEl.textContent || '[]') : [];
+        const totalsEl = document.getElementById('daily-totals');
+        const totals = totalsEl ? JSON.parse(totalsEl.textContent || '[]') : [];
         if (labels.length && chartDatasets.length) {
             const datasets = chartDatasets.map(function(ds) {
                 return {
@@ -446,6 +581,52 @@ document.addEventListener('DOMContentLoaded', function() {
                     pointHoverRadius: 4,
                 };
             });
+
+            // Moyenne mobile 7 jours sur le total journalier
+            function computeSMA7(arr) {
+                const result = [];
+                for (let i = 0; i < arr.length; i++) {
+                    if (i < 6) { result.push(null); }
+                    else {
+                        const sum = arr.slice(i - 6, i + 1).reduce((a, b) => a + b, 0);
+                        result.push(Math.round(sum / 7 * 10) / 10);
+                    }
+                }
+                return result;
+            }
+
+            if (totals.length) {
+                datasets.push({
+                    label: 'Moy. mobile 7j',
+                    data: computeSMA7(totals),
+                    borderColor: '#d46a78',
+                    backgroundColor: 'rgba(212,106,120,0.05)',
+                    borderWidth: 2,
+                    borderDash: [5, 3],
+                    fill: false,
+                    tension: .4,
+                    pointRadius: 0
+                });
+            }
+
+            // Période précédente (total global, ligne pointillée grise)
+            {% if chart_prev_values %}
+            const prevEl = document.getElementById('chart-prev-values');
+            const prevVals = prevEl ? JSON.parse(prevEl.textContent || '[]') : [];
+            if (prevVals.length && prevVals.some(function(v) { return v > 0; })) {
+                datasets.push({
+                    label: 'Période précédente',
+                    data: prevVals,
+                    borderColor: '#b0bedb',
+                    backgroundColor: 'rgba(176,190,219,0.1)',
+                    fill: true,
+                    tension: .4,
+                    borderDash: [5, 5],
+                    pointRadius: 0
+                });
+            }
+            {% endif %}
+
             new Chart(dc, {
                 type: 'line',
                 data: { labels: labels, datasets: datasets },
@@ -457,6 +638,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         legend: {
                             position: 'top',
                             labels: { boxWidth: 14, padding: 12, font: { size: 12 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(items) {
+                                    const day = weekdays[items[0].dataIndex] || '';
+                                    const label = items[0].label;
+                                    return day ? day + ' ' + label : label;
+                                }
+                            }
                         }
                     },
                     scales: {
@@ -514,6 +704,42 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         } else {
             cc.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-[#b0bedb] text-sm">Aucune donnée</div>';
+        }
+    }
+
+    // Totaux par semaine
+    const wc = document.getElementById('weeklyChart');
+    if (wc) {
+        const weekLabelsEl = document.getElementById('week-labels');
+        const weekValuesEl = document.getElementById('week-values');
+        const weekLabels = weekLabelsEl ? JSON.parse(weekLabelsEl.textContent || '[]') : [];
+        const weekValues = weekValuesEl ? JSON.parse(weekValuesEl.textContent || '[]') : [];
+        if (weekLabels.length && weekValues.length) {
+            new Chart(wc, {
+                type: 'bar',
+                data: {
+                    labels: weekLabels,
+                    datasets: [{
+                        label: 'Visiteurs',
+                        data: weekValues,
+                        backgroundColor: 'rgba(74,111,165,0.7)',
+                        borderColor: '#4a6fa5',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#7a8fa0' } },
+                        y: { beginAtZero: true, grid: { color: '#dce3ef' }, ticks: { precision: 0, font: { size: 11 }, color: '#7a8fa0' } }
+                    }
+                }
+            });
+        } else {
+            wc.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-[#b0bedb] text-sm">Aucune donnée pour cette période</div>';
         }
     }
 });
