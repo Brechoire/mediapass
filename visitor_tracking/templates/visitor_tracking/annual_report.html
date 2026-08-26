@@ -1,0 +1,228 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- En-tête -->
+    <div class="mb-8">
+      <div class="flex items-center gap-4 mb-4">
+        <a href="{% url 'visitor_tracking:index' %}"
+           class="inline-flex items-center gap-2 text-[#7a8fa0] hover:text-[#4a6fa5] transition-colors">
+          <i class="bx bx-arrow-back"></i>
+          Retour au pointage
+        </a>
+      </div>
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold text-[#1e293b] flex items-center gap-3">
+            <i class="bx bx-bar-chart-alt-2 text-[#4a6fa5]"></i>
+            Rapport d'activité {{ year }}
+          </h1>
+          <p class="text-[#7a8fa0] mt-1">Récapitulatif annuel de la fréquentation.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <a href="{% url 'visitor_tracking:annual_report_year' prev_year %}"
+             class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#dce3ef] text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
+            <i class="bx bx-chevron-left"></i> {{ prev_year }}
+          </a>
+          <span class="text-sm font-semibold text-[#1e293b] min-w-[4rem] text-center">{{ year }}</span>
+          <a href="{% url 'visitor_tracking:annual_report_year' next_year %}"
+             class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#dce3ef] text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
+            {{ next_year }} <i class="bx bx-chevron-right"></i>
+          </a>
+          <a href="javascript:window.print()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#dce3ef] text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2 no-print">
+            <i class="bx bx-printer"></i> Imprimer
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Total visiteurs</p>
+            <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ total_year }}</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-user text-2xl text-[#4a6fa5]"></i></div>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Moyenne / jour</p>
+            <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ avg_per_day }}</p>
+            <p class="text-[10px] text-[#b0bedb] mt-0.5">sur {{ days_count }} jours</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-trending-up text-2xl text-[#4a6fa5]"></i></div>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Année N-1</p>
+            <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ n1_total }}</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-calendar-alt text-2xl text-[#4a6fa5]"></i></div>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Variation vs N-1</p>
+            <p class="text-3xl font-bold {% if variation > 0 %}text-emerald-600{% elif variation < 0 %}text-red-600{% else %}text-[#4a6fa5]{% endif %} mt-1">
+              {% if variation > 0 %}+{% endif %}{{ variation }}%
+            </p>
+          </div>
+          <div class="w-12 h-12 rounded-xl {% if variation > 0 %}bg-emerald-50{% elif variation < 0 %}bg-red-50{% else %}bg-[#e8eef7]{% endif %} flex items-center justify-center">
+            <i class="bx {% if variation > 0 %}bx-trending-up{% elif variation < 0 %}bx-trending-down{% else %}bx-minus{% endif %} text-2xl {% if variation > 0 %}text-emerald-600{% elif variation < 0 %}text-red-600{% else %}text-[#4a6fa5]{% endif %}"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mensuel + Trimestriel -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div class="lg:col-span-2 bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+          <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-bar-chart mr-1.5 text-[#4a6fa5]"></i> Évolution mensuelle</h5>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-[#dce3ef]">
+            <thead class="bg-[#f8f9fc]">
+              <tr>
+                <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Mois</th>
+                <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Total</th>
+                <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">N-1</th>
+                <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Variation</th>
+                <th class="px-6 py-3.5"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#dce3ef]">
+              {% for m in monthly %}
+              <tr class="hover:bg-[#f8f9fc] transition-colors">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1e293b]">{{ m.month }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-[#1e293b]">{{ m.total }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-[#7a8fa0]">{{ m.n1|default:0 }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium {% if m.variation > 0 %}text-emerald-600{% elif m.variation < 0 %}text-red-600{% else %}text-[#7a8fa0]{% endif %}">
+                  {% if m.n1 > 0 %}{% if m.variation > 0 %}+{% endif %}{{ m.variation }}%{% else %}—{% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="h-2 rounded-full bg-[#e8eef7] w-24 ml-auto">
+                    <div class="h-2 rounded-full bg-[#4a6fa5]" style="width: {% widthratio m.total total_year 100 %}%"></div>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="space-y-4">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+          <h5 class="text-sm font-semibold text-[#1e293b] mb-4"><i class="bx bx-pie-chart-alt mr-1.5 text-[#4a6fa5]"></i> Par trimestre</h5>
+          <div class="space-y-3">
+            {% for qname, qtot in quarterly.items %}
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-[#5a6f80] w-6 font-semibold">{{ qname }}</span>
+              <div class="flex-1 mx-3">
+                <div class="h-2.5 rounded-full bg-[#e8eef7]">
+                  <div class="h-2.5 rounded-full bg-[#4a6fa5]" style="width: {% widthratio qtot total_year 100 %}%"></div>
+                </div>
+              </div>
+              <span class="font-semibold text-[#4a6fa5] w-16 text-right">{{ qtot }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+          <h5 class="text-sm font-semibold text-[#1e293b] mb-4"><i class="bx bx-calendar-week mr-1.5 text-[#4a6fa5]"></i> Moyenne par jour</h5>
+          <div class="space-y-2">
+            {% for w in weekday_avg %}
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-[#5a6f80] w-16">{{ w.name }}</span>
+              <div class="flex-1 mx-3">
+                <div class="h-2 rounded-full bg-[#e8eef7]">
+                  <div class="h-2 rounded-full bg-[#4a6fa5]" style="width: {% widthratio w.avg avg_per_day 100 %}%"></div>
+                </div>
+              </div>
+              <span class="font-semibold text-[#4a6fa5] w-8 text-right">{{ w.avg }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top 5 espaces + Best days -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+          <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-trophy mr-1.5 text-amber-500"></i> Top 5 espaces</h5>
+        </div>
+        <table class="min-w-full divide-y divide-[#dce3ef]">
+          <thead class="bg-[#f8f9fc]">
+            <tr>
+              <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">#</th>
+              <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Espace</th>
+              <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Total</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#dce3ef]">
+            {% for loc in yearly_top %}
+            <tr class="hover:bg-[#f8f9fc] transition-colors">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="flex items-center justify-center w-7 h-7 rounded-full {% if forloop.counter == 1 %}bg-amber-100 text-amber-700{% elif forloop.counter == 2 %}bg-gray-100 text-gray-600{% else %}bg-[#e8eef7] text-[#4a6fa5]{% endif %} text-xs font-bold">{{ forloop.counter }}</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1e293b]">{{ loc.location__name }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-[#4a6fa5]">{{ loc.total }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+          <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-star mr-1.5 text-amber-500"></i> Meilleurs jours</h5>
+        </div>
+        <table class="min-w-full divide-y divide-[#dce3ef]">
+          <thead class="bg-[#f8f9fc]">
+            <tr>
+              <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">#</th>
+              <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Date</th>
+              <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Espace</th>
+              <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Visiteurs</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#dce3ef]">
+            {% for d in best_days %}
+            <tr class="hover:bg-[#f8f9fc] transition-colors">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="flex items-center justify-center w-7 h-7 rounded-full {% if forloop.counter == 1 %}bg-amber-100 text-amber-700{% else %}bg-[#e8eef7] text-[#4a6fa5]{% endif %} text-xs font-bold">{{ forloop.counter }}</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#1e293b]">{{ d.date|date:"d/m/Y" }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#7a8fa0]">{{ d.location__name }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-[#4a6fa5]">{{ d.total }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<style>
+@media print {
+  body { background: white !important; }
+  header, footer, .no-print { display: none !important; }
+}
+</style>
+{% endblock %}

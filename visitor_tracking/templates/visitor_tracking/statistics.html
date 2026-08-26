@@ -22,7 +22,15 @@
                     </div>
                 </div>
             </div>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
+                <a href="{% url 'visitor_tracking:heatmap_year' current_year %}"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    <i class="bx bx-calendar-heart"></i> Heatmap
+                </a>
+                <a href="{% url 'visitor_tracking:annual_report_year' current_year %}"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    <i class="bx bx-bar-chart-alt-2"></i> Rapport
+                </a>
                 <a href="{% url 'visitor_tracking:export_csv' %}?period={{ period }}{% if period == 'custom' %}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}{% endif %}"
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
                     <i class="bx bx-download"></i> CSV
@@ -603,6 +611,58 @@ document.addEventListener('DOMContentLoaded', function() {
                     scales: {
                         x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#7a8fa0' } },
                         y: { beginAtZero: true, grid: { color: '#dce3ef' }, ticks: { precision: 0, font: { size: 11 }, color: '#7a8fa0' } }
+                    }
+                }
+            });
+        } else {
+            wc.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-[#b0bedb] text-sm">Aucune donnée pour cette période</div>';
+        }
+    }
+
+    // Corrélation météo
+    const wcCanvas = document.getElementById('weatherChart');
+    if (wcCanvas) {
+        const temps = JSON.parse(document.getElementById('weather-temps')?.textContent || '[]');
+        const rain = JSON.parse(document.getElementById('weather-rain')?.textContent || '[]');
+        if (temps.length && rain.length) {
+            new Chart(wcCanvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Précipitations (mm)',
+                            data: rain,
+                            backgroundColor: 'rgba(56, 189, 248, 0.6)',
+                            borderColor: 'rgba(56, 189, 248, 1)',
+                            borderWidth: 1,
+                            order: 2,
+                            yAxisID: 'y1',
+                        },
+                        {
+                            label: 'Température max (°C)',
+                            data: temps,
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            order: 1,
+                            yAxisID: 'y',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11 }, usePointStyle: true } },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#7a8fa0', maxTicksLimit: 15 } },
+                        y: { beginAtZero: true, position: 'left', grid: { color: '#dce3ef' }, ticks: { color: '#7a8fa0', font: { size: 10 } }, title: { display: true, text: '°C', color: '#7a8fa0' } },
+                        y1: { beginAtZero: true, position: 'right', grid: { display: false }, ticks: { color: '#7a8fa0', font: { size: 10 } }, title: { display: true, text: 'mm', color: '#7a8fa0' } }
                     }
                 }
             });

@@ -1,12 +1,12 @@
 import csv
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from django.db.models import Sum, Count, Max
-from django.db.models.functions import TruncDate
+from django.db.models.functions import ExtractMonth, TruncDate
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -720,6 +720,7 @@ def statistics(request):
         "best_week": best_week,
         "worst_week": worst_week,
         "bottom_locations": bottom_locations,
+        "current_year": timezone.now().year,
         "title": "Statistiques visiteurs",
     }
 
@@ -932,6 +933,206 @@ def history(request):
     }
 
     return render(request, "visitor_tracking/history.html", context)
+
+
+@mediatheque_member_required
+def heatmap(request, year=None):
+    """Calendrier heatmap annuel de fréquentation."""
+    if not year:
+        try:
+            year = int(request.GET.get("year", timezone.now().year))
+        except (ValueError, TypeError):
+            year = timezone.now().year
+
+    start_date = date(year, 1, 1)
+    end_date = date(year, 12, 31)
+
+    location_filter = request.GET.get("location")
+
+    qs = filter_owned(
+        VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date),
+        request.user, field="location__user",
+    )
+    if location_filter:
+        qs = qs.filter(location_id=location_filter)
+
+    daily_data = qs.values("date").annotate(total=Sum("count")).order_by("date")
+    count_map = {d["date"]: d["total"] for d in daily_data}
+    max_count = max(count_map.values()) if count_map else 0
+
+    month_names = [
+        "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+        "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+    ]
+
+    months = []
+    for m in range(1, 13):
+        first_day = date(year, m, 1)
+        if m == 12:
+            last_day = date(year, 12, 31)
+        else:
+            last_day = date(year, m + 1, 1) - timedelta(days=1)
+
+        # Lundi de la semaine contenant le 1er
+        start = first_day - timedelta(days=first_day.weekday())
+        # Samedi de la semaine contenant le dernier jour
+        end = last_day + timedelta(days=5 - last_day.weekday())
+
+        cells = []
+        d = start
+        while d <= end:
+            if d.weekday() != 6:
+                if first_day <= d <= last_day:
+                    cnt = count_map.get(d, 0)
+                    opacity = cnt / max_count if max_count > 0 else 0
+                    cells.append({
+                        "day": d.day,
+                        "count": cnt,
+                        "date": d,
+                        "opacity": opacity,
+                    })
+                else:
+                    cells.append(None)
+            d += timedelta(days=1)
+
+        weeks = [cells[i:i + 6] for i in range(0, len(cells), 6)]
+
+        months.append({"name": month_names[m - 1], "weeks": weeks})
+
+    locations = filter_location_owned(
+        Location.objects.filter(is_active=True), request.user
+    ).order_by("order", "name")
+
+    context = {
+        "year": year,
+        "prev_year": year - 1,
+        "next_year": year + 1,
+        "months": months,
+        "max_count": max_count,
+        "locations": locations,
+        "location_filter": location_filter,
+        "today": timezone.now().date(),
+        "title": f"Calendrier {year}",
+    }
+
+    return render(request, "visitor_tracking/heatmap.html", context)
+
+
+@mediatheque_member_required
+def annual_report(request, year=None):
+    """Rapport annuel de fréquentation."""
+    if not year:
+        try:
+            year = int(request.GET.get("year", timezone.now().year))
+        except (ValueError, TypeError):
+            year = timezone.now().year
+
+    start_date = date(year, 1, 1)
+    end_date = date(year, 12, 31)
+    n1_start = start_date.replace(year=year - 1)
+    n1_end = end_date.replace(year=year - 1)
+
+    qs = filter_owned(
+        VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date),
+        request.user, field="location__user",
+    )
+    n1_qs = filter_owned(
+        VisitorCount.objects.filter(date__gte=n1_start, date__lte=n1_end),
+        request.user, field="location__user",
+    )
+
+    total_year = qs.aggregate(total=Sum("count"))["total"] or 0
+    n1_total = n1_qs.aggregate(total=Sum("count"))["total"] or 0
+    variation = round(((total_year - n1_total) / n1_total * 100), 1) if n1_total > 0 else 0
+
+    days_count = qs.values("date").distinct().count()
+    avg_per_day = round(total_year / days_count, 1) if days_count > 0 else 0
+
+    monthly = (
+        qs.annotate(month_num=ExtractMonth("date"))
+        .values("month_num")
+        .annotate(month_total=Sum("count"))
+        .order_by("month_num")
+    )
+    month_map = {m["month_num"]: m["month_total"] for m in monthly}
+
+    n1_month_map = {}
+    if n1_total:
+        n1_monthly = (
+            n1_qs.annotate(month_num=ExtractMonth("date"))
+            .values("month_num")
+            .annotate(month_total=Sum("count"))
+            .order_by("month_num")
+        )
+        n1_month_map = {m["month_num"]: m["month_total"] for m in n1_monthly}
+
+    month_names = [
+        "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+        "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+    ]
+    monthly_list = []
+    for i in range(1, 13):
+        cur = month_map.get(i, 0)
+        prev = n1_month_map.get(i, 0)
+        var = round(((cur - prev) / prev * 100), 1) if prev > 0 else 0
+        monthly_list.append({
+            "month": month_names[i - 1],
+            "total": cur,
+            "n1": prev,
+            "variation": var,
+        })
+
+    yearly_top = (
+        qs.values("location__name").annotate(total=Sum("count"))
+        .order_by("-total")[:5]
+    )
+
+    best_days = (
+        qs.values("date", "location__name")
+        .annotate(total=Sum("count"))
+        .order_by("-total")[:5]
+    )
+
+    weekday_data = qs.values("date").annotate(total=Sum("count")).order_by("date")
+    weekday_sums = {}
+    weekday_counts = {}
+    for d in weekday_data:
+        wd = d["date"].weekday()
+        if wd != 6:
+            weekday_sums[wd] = weekday_sums.get(wd, 0) + d["total"]
+            weekday_counts[wd] = weekday_counts.get(wd, 0) + 1
+
+    weekday_names = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
+    weekday_avg = []
+    for i in range(6):
+        val = round(weekday_sums.get(i, 0) / weekday_counts.get(i, 1), 1) if weekday_counts.get(i, 0) > 0 else 0
+        weekday_avg.append({"name": weekday_names[i], "avg": val})
+
+    quarterly = {
+        "T1": sum(m["total"] for m in monthly_list[:3]),
+        "T2": sum(m["total"] for m in monthly_list[3:6]),
+        "T3": sum(m["total"] for m in monthly_list[6:9]),
+        "T4": sum(m["total"] for m in monthly_list[9:12]),
+    }
+
+    context = {
+        "year": year,
+        "prev_year": year - 1,
+        "next_year": year + 1,
+        "total_year": total_year,
+        "n1_total": n1_total,
+        "variation": variation,
+        "avg_per_day": avg_per_day,
+        "days_count": days_count,
+        "monthly": monthly_list,
+        "yearly_top": yearly_top,
+        "best_days": best_days,
+        "weekday_avg": weekday_avg,
+        "quarterly": quarterly,
+        "title": f"Rapport annuel {year}",
+    }
+
+    return render(request, "visitor_tracking/annual_report.html", context)
 
 
 @mediatheque_member_required

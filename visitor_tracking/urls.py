@@ -29,5 +29,13 @@ urlpatterns = [
     path("history/", views.history, name="history"),
     path("edit/<int:entry_id>/", views.edit_entry, name="edit_entry"),
     path("delete/<int:entry_id>/", views.delete_entry, name="delete_entry"),
+
+    # Heatmap
+    path("heatmap/", views.heatmap, name="heatmap"),
+    path("heatmap/<int:year>/", views.heatmap, name="heatmap_year"),
+
+    # Rapport annuel
+    path("report/", views.annual_report, name="annual_report"),
+    path("report/<int:year>/", views.annual_report, name="annual_report_year"),
 ]
 
