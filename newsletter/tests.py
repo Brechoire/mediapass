@@ -365,7 +365,10 @@ class RenderAndExportTests(BaseNewsletterTestCase):
         response = self.client.get(
             reverse("newsletter:contacts_csv", args=[newsletter.pk])
         )
-        body = response.content.decode("utf-8-sig")
+        if hasattr(response, "streaming_content"):
+            body = b"".join(response.streaming_content).decode("utf-8-sig")
+        else:
+            body = response.content.decode("utf-8-sig")
         lines = body.strip().splitlines()
         self.assertEqual(lines[0], "Nom;Prénom;Email")
         self.assertEqual(
@@ -505,3 +508,60 @@ class SettingsTests(BaseNewsletterTestCase):
         self.assertEqual(copy.status, Newsletter.Status.DRAFT)
         self.assertEqual(copy.sender_campaign_id, "")
         self.assertEqual(copy.blocks.count(), 1)
+
+
+class QueryCountTests(BaseNewsletterTestCase):
+    """Non-régression N+1 et pagination."""
+
+    def test_builder_query_count_stable(self):
+        newsletter = self.make_newsletter()
+        # 2 sections + 4 blocs dont 2 avec image
+        from newsletter.models import Section
+
+        sec1 = Section.objects.create(newsletter=newsletter, position=0, title="Anor")
+        sec2 = Section.objects.create(newsletter=newsletter, position=1, title="Trélon")
+        img = NewsletterImage.objects.create(image=tiny_png(), alt="x")
+        for sec in (sec1, sec2):
+            for i in range(2):
+                Block.objects.create(
+                    newsletter=newsletter,
+                    section=sec,
+                    position=i,
+                    block_type="image",
+                    content={"image_id": img.pk},
+                )
+        self.client.force_login(self.comm_user)
+        with self.assertNumQueries(32):
+            self.client.get(reverse("newsletter:builder", args=[newsletter.pk]))
+
+    def test_render_email_no_n_plus_1_images(self):
+        newsletter = self.make_newsletter()
+        img = NewsletterImage.objects.create(image=tiny_png(), alt="x")
+        for i in range(5):
+            Block.objects.create(
+                newsletter=newsletter,
+                position=i,
+                block_type="image",
+                content={"image_id": img.pk},
+            )
+        with self.assertNumQueries(3):
+            html = render_newsletter_email(newsletter)
+            self.assertIn("img", html)
+
+    def test_dashboard_pagination(self):
+        # Crée 25 newsletters → 2 pages (20 + 5)
+        for i in range(25):
+            Newsletter.objects.create(
+                title=f"NL {i}",
+                period_start=datetime.date(2030, 9, 1),
+                period_end=datetime.date(2030, 9, 30),
+                created_by=self.comm_user,
+            )
+        self.client.force_login(self.comm_user)
+        resp = self.client.get(reverse("newsletter:index"))
+        self.assertEqual(resp.status_code, 200)
+        # Pagination : 20 sur page 1
+        self.assertContains(resp, "Page 1 sur")
+        resp2 = self.client.get(reverse("newsletter:index") + "?page=2")
+        self.assertEqual(resp2.status_code, 200)
+        self.assertContains(resp2, "Page 2 sur")

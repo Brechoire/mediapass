@@ -8,6 +8,9 @@ class LibraryProfileAdmin(admin.ModelAdmin):
     list_display = ("name", "user", "phone", "updated_at")
     search_fields = ("name", "user__username", "user__last_name")
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("user")
+
 
 class SectionInline(admin.TabularInline):
     model = Section
@@ -20,6 +23,9 @@ class SectionAdmin(admin.ModelAdmin):
     list_display = ("__str__", "newsletter", "position", "library_profile")
     list_filter = ("newsletter",)
     raw_id_fields = ("newsletter", "library_profile")
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("newsletter", "library_profile", "library_profile__user")
 
 
 class BlockInline(admin.TabularInline):
@@ -49,6 +55,9 @@ class BlockAdmin(admin.ModelAdmin):
     list_display = ("__str__", "newsletter", "section", "position", "block_type")
     list_filter = ("block_type",)
     raw_id_fields = ("newsletter", "section")
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("newsletter", "section", "section__newsletter")
 
 
 @admin.register(NewsletterImage)

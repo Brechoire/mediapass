@@ -75,13 +75,17 @@ def get_candidate_workshops(period_start, period_end):
         .order_by("start_date", "start_time")
     )
 
+    # Précharge tous les profils en 1 requête pour éviter N+1
+    user_ids = {w.created_by_id for w in workshops}
+    profiles_by_user = {
+        p.user_id: p for p in LibraryProfile.objects.filter(user_id__in=user_ids).select_related("user")
+    }
     grouped = OrderedDict()
     for workshop in workshops:
         key = workshop.created_by_id
         if key not in grouped:
-            profile = LibraryProfile.objects.filter(user=workshop.created_by).first()
             grouped[key] = {
-                "profile": profile,
+                "profile": profiles_by_user.get(key),
                 "user": workshop.created_by,
                 "workshops": [],
             }
@@ -145,12 +149,26 @@ def build_library_snapshot(profile):
 
 def get_block_image(block):
     """Récupère l'objet NewsletterImage référencé par un bloc, s'il existe."""
+    if hasattr(block, "_cached_image_obj"):
+        return block._cached_image_obj
     from .models import NewsletterImage
 
     image_id = block.content.get("image_id")
     if not image_id:
         return None
     return NewsletterImage.objects.filter(pk=image_id).first()
+
+
+def prefetch_block_images(blocks):
+    """Précharge en 1 requête les NewsletterImage référencées par une liste de blocs (évite N+1)."""
+    from .models import NewsletterImage
+
+    ids = {b.content.get("image_id") for b in blocks if b.content.get("image_id")}
+    if not ids:
+        return
+    images = NewsletterImage.objects.in_bulk(ids)
+    for b in blocks:
+        b.set_cached_image(images.get(b.content.get("image_id")))
 
 
 def _style_of(block):
@@ -160,11 +178,24 @@ def _style_of(block):
 def render_newsletter_email(newsletter):
     """Rend le HTML complet de l'email (table-based, styles inline)."""
     from django.template.loader import render_to_string
+    from django.db.models import Prefetch
+
+    from .models import Block
+
+    # Précharge sections + library_profile + blocks avec newsletter/section pour variantes/couleurs
+    sections = newsletter.sections.select_related("library_profile").prefetch_related(
+        Prefetch("blocks", queryset=Block.objects.select_related("newsletter", "section"))
+    )
+    all_blocks = list(newsletter.blocks.filter(section__isnull=True).select_related("newsletter", "section"))
+    # Collecte tous les blocs pour prefetch images en une seule requête
+    flat_blocks = []
+    for sec in sections:
+        flat_blocks.extend(list(sec.blocks.all()))
+    flat_blocks.extend(all_blocks)
+    prefetch_block_images(flat_blocks)
 
     rendered_blocks = []
-    # Sections d'abord (fond uniforme), avec header + blocs dedans
-    for section in newsletter.sections.all().prefetch_related("blocks"):
-        # header de section
+    for section in sections:
         rendered_blocks.append(
             render_to_string(
                 "newsletter/partials/section_header.html",
@@ -188,8 +219,7 @@ def render_newsletter_email(newsletter):
                     },
                 )
             )
-    # Blocs orphelins (compatibilité legacy, hors sections)
-    for block in newsletter.blocks.filter(section__isnull=True):
+    for block in all_blocks:
         rendered_blocks.append(
             render_to_string(
                 f"newsletter/partials/blocks/{block.block_type}.html",
@@ -215,6 +245,7 @@ def export_contacts_csv(newsletter):
     """Contacts (nom, prénom, email) des inscrits aux ateliers de la période.
 
     Emails dédupliqués (insensible à la casse), triés par nom.
+    Utilise iterator() pour éviter de charger toute la table en mémoire.
     """
     participants = (
         WorkshopParticipant.objects.filter(
@@ -226,6 +257,7 @@ def export_contacts_csv(newsletter):
         )
         .select_related("workshop")
         .order_by("last_name", "first_name")
+        .iterator(chunk_size=2000)
     )
 
     seen = set()
@@ -241,6 +273,30 @@ def export_contacts_csv(newsletter):
     for last_name, first_name, email in rows:
         lines.append(_csv_line(last_name, first_name, email))
     return "\r\n".join(lines) + "\r\n"
+
+
+def iter_contacts_csv(newsletter):
+    """Générateur streaming pour export CSV volumineux (évite OOM)."""
+    participants = (
+        WorkshopParticipant.objects.filter(
+            status="confirmed",
+            email__isnull=False,
+            workshop__status="active",
+            workshop__start_date__gte=newsletter.period_start,
+            workshop__start_date__lte=newsletter.period_end,
+        )
+        .select_related("workshop")
+        .order_by("last_name", "first_name")
+        .iterator(chunk_size=2000)
+    )
+    seen = set()
+    yield "Nom;Prénom;Email\r\n"
+    for p in participants:
+        key = p.email.strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        yield _csv_line(p.last_name, p.first_name, p.email) + "\r\n"
 
 
 def _csv_line(*values):

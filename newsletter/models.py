@@ -308,19 +308,26 @@ class Section(models.Model):
 
     def move(self, direction):
         delta = {"up": -1, "down": 1}[direction]
-        neighbor = Section.objects.filter(
-            newsletter=self.newsletter, position=self.position + delta
-        ).first()
-        if neighbor is None:
-            return False
-        old_pos, old_neighbor = self.position, neighbor.position
         with transaction.atomic():
-            self.position = old_pos + 10**6
-            self.save(update_fields=["position"])
+            # Verrouille les 2 lignes pour éviter race
+            neighbor = (
+                Section.objects.select_for_update()
+                .filter(newsletter=self.newsletter, position=self.position + delta)
+                .first()
+            )
+            if neighbor is None:
+                return False
+            # Recharge self avec lock
+            locked_self = Section.objects.select_for_update().get(pk=self.pk)
+            old_pos, old_neighbor = locked_self.position, neighbor.position
+            locked_self.position = old_pos + 10**6
+            locked_self.save(update_fields=["position"])
             neighbor.position = old_pos
             neighbor.save(update_fields=["position"])
+            locked_self.position = old_neighbor
+            locked_self.save(update_fields=["position"])
+            # Met à jour l'instance courante
             self.position = old_neighbor
-            self.save(update_fields=["position"])
         return True
 
     def delete(self, *args, **kwargs):
@@ -349,6 +356,10 @@ class Block(models.Model):
     block_type = models.CharField("Type", max_length=20, choices=BLOCK_TYPE_CHOICES)
     content = models.JSONField("Contenu", default=dict, blank=True)
     style = models.JSONField("Style", default=dict, blank=True)
+    # Dénormalisation pour éviter le scan JSONField sur content__workshop_id (indexé)
+    cached_workshop_id = models.PositiveIntegerField(
+        null=True, blank=True, db_index=True, verbose_name="Atelier source (cache)"
+    )
 
     class Meta:
         verbose_name = "bloc"
@@ -358,6 +369,9 @@ class Block(models.Model):
                 fields=["newsletter", "section", "position"],
                 name="unique_block_position_per_section",
             )
+        ]
+        indexes = [
+            models.Index(fields=["newsletter", "block_type", "cached_workshop_id"], name="idx_block_nl_type_ws"),
         ]
 
     def __str__(self):
@@ -374,11 +388,17 @@ class Block(models.Model):
 
     @property
     def image_obj(self):
-        """NewsletterImage référencée par le bloc, le cas échéant."""
+        """NewsletterImage référencée par le bloc, le cas échéant. Supporte prefetch via _cached_image_obj."""
+        if hasattr(self, "_cached_image_obj"):
+            return self._cached_image_obj
         image_id = (self.content or {}).get("image_id")
         if not image_id:
             return None
         return NewsletterImage.objects.filter(pk=image_id).first()
+
+    def set_cached_image(self, image_obj):
+        """Utilisé par le prefetch bulk pour éviter N+1."""
+        self._cached_image_obj = image_obj
 
     @property
     def workshop_variant(self):
@@ -430,14 +450,6 @@ class Block(models.Model):
     def section_content_text_color(self):
         return self.section.content_text_color if self.section else ""
 
-    @property
-    def section_content_title_color(self):
-        return self.section.content_title_color if self.section else ""
-
-    @property
-    def section_content_text_color(self):
-        return self.section.content_text_color if self.section else ""
-
     @classmethod
     def next_position(cls, newsletter, section=None):
         qs = cls.objects.filter(newsletter=newsletter, section=section)
@@ -447,21 +459,23 @@ class Block(models.Model):
     def move(self, direction):
         """Déplace le bloc d'une position en permutant avec son voisin (même section)."""
         delta = {"up": -1, "down": 1}[direction]
-        neighbor = Block.objects.filter(
-            newsletter=self.newsletter,
-            section=self.section,
-            position=self.position + delta,
-        ).first()
-        if neighbor is None:
-            return False
-        old_pos, old_neighbor_pos = self.position, neighbor.position
         with transaction.atomic():
-            self.position = old_pos + 10**6
-            self.save(update_fields=["position"])
+            neighbor = (
+                Block.objects.select_for_update()
+                .filter(newsletter=self.newsletter, section=self.section, position=self.position + delta)
+                .first()
+            )
+            if neighbor is None:
+                return False
+            locked_self = Block.objects.select_for_update().get(pk=self.pk)
+            old_pos, old_neighbor_pos = locked_self.position, neighbor.position
+            locked_self.position = old_pos + 10**6
+            locked_self.save(update_fields=["position"])
             neighbor.position = old_pos
             neighbor.save(update_fields=["position"])
+            locked_self.position = old_neighbor_pos
+            locked_self.save(update_fields=["position"])
             self.position = old_neighbor_pos
-            self.save(update_fields=["position"])
         return True
 
     def duplicate(self):

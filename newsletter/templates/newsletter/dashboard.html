@@ -91,6 +91,17 @@
     </div>
     {% endfor %}
   </div>
+  {% if newsletters.has_other_pages %}
+  <div class="mt-8 flex items-center justify-center gap-2 text-sm">
+    {% if newsletters.has_previous %}
+    <a href="?page={{ newsletters.previous_page_number }}" class="px-3 py-1.5 rounded-lg border border-[#dce3ef] bg-white hover:bg-[#f1f5fb]">‹ Précédent</a>
+    {% endif %}
+    <span class="px-3 py-1.5 text-[#7a8fa0]">Page {{ newsletters.number }} sur {{ newsletters.paginator.num_pages }} — {{ newsletters.paginator.count }} newsletters</span>
+    {% if newsletters.has_next %}
+    <a href="?page={{ newsletters.next_page_number }}" class="px-3 py-1.5 rounded-lg border border-[#dce3ef] bg-white hover:bg-[#f1f5fb]">Suivant ›</a>
+    {% endif %}
+  </div>
+  {% endif %}
 
   <div class="mt-10 grid gap-3 sm:grid-cols-2">
     <a href="{% url 'newsletter:fiche_list' %}" class="group flex items-center gap-3 rounded-2xl border border-[#dce3ef] bg-white p-4 hover:border-[#4a6fa5]/60 hover:shadow-sm transition-all">

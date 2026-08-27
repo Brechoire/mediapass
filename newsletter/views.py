@@ -8,7 +8,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils.text import slugify
@@ -75,6 +75,38 @@ def _next_month_range(today=None):
 
 
 def _canvas_response(request, newsletter, toast=None):
+    # Précharge pour éviter N+1 sur sections/blocks/library_profile
+    from django.db.models import Prefetch
+
+    from .services import prefetch_block_images
+
+    # Recharge newsletter avec prefetch optimisé pour le canvas
+    newsletter = (
+        Newsletter.objects.filter(pk=newsletter.pk)
+        .prefetch_related(
+            Prefetch(
+                "sections",
+                queryset=Section.objects.select_related("library_profile").prefetch_related(
+                    Prefetch(
+                        "blocks",
+                        queryset=Block.objects.select_related("newsletter", "section"),
+                    )
+                ),
+            ),
+            Prefetch(
+                "blocks",
+                queryset=Block.objects.filter(section__isnull=True).select_related("newsletter", "section"),
+            ),
+        )
+        .first()
+    )
+    # Bulk prefetch images
+    all_blocks = list(newsletter.sections.all())
+    flat = []
+    for sec in newsletter.sections.all():
+        flat.extend(list(sec.blocks.all()))
+    flat.extend(list(newsletter.blocks.filter(section__isnull=True)))
+    prefetch_block_images(flat)
     html = render_to_string(
         "newsletter/partials/canvas.html",
         {"newsletter": newsletter, "site_url": settings.SITE_URL},
@@ -94,7 +126,11 @@ def _canvas_response(request, newsletter, toast=None):
 @login_required
 @communication_required
 def index(request):
-    newsletters = Newsletter.objects.prefetch_related("blocks")
+    from django.core.paginator import Paginator
+
+    base_qs = Newsletter.objects.prefetch_related(
+        "blocks", "sections"
+    ).select_related("created_by")
     if request.method == "POST":
         form = NewsletterForm(request.POST)
         if form.is_valid():
@@ -106,6 +142,9 @@ def index(request):
     else:
         start, end = _next_month_range()
         form = NewsletterForm(initial={"period_start": start, "period_end": end})
+    paginator = Paginator(base_qs, 20)
+    page_number = request.GET.get("page")
+    newsletters = paginator.get_page(page_number)
     return render(
         request, "newsletter/dashboard.html", {"newsletters": newsletters, "form": form}
     )
@@ -264,6 +303,12 @@ def _create_block(newsletter, block_type, content=None, section=None, style=None
     base_content = dict(DEFAULT_CONTENT.get(block_type, {}))
     if content:
         base_content.update(content)
+    cached_wid = None
+    if block_type == "workshop" and base_content.get("workshop_id") is not None:
+        try:
+            cached_wid = int(base_content["workshop_id"])
+        except (TypeError, ValueError):
+            cached_wid = None
     return Block.objects.create(
         newsletter=newsletter,
         section=section,
@@ -271,6 +316,7 @@ def _create_block(newsletter, block_type, content=None, section=None, style=None
         block_type=block_type,
         content=base_content,
         style=style or {},
+        cached_workshop_id=cached_wid,
     )
 
 
@@ -307,18 +353,11 @@ def add_block(request, pk):
         workshop = Workshop.objects.filter(pk=request.POST.get("workshop_id")).first()
         if workshop is None:
             return _canvas_response(request, newsletter, "Atelier introuvable")
-        already = (
-            Block.objects.filter(
-                newsletter=newsletter,
-                block_type="workshop",
-                content__workshop_id=str(workshop.pk),
-            ).exists()
-            or Block.objects.filter(
-                newsletter=newsletter,
-                block_type="workshop",
-                content__workshop_id=workshop.pk,
-            ).exists()
-        )
+        already = Block.objects.filter(
+            newsletter=newsletter, block_type="workshop", cached_workshop_id=workshop.pk
+        ).exists() or Block.objects.filter(
+            newsletter=newsletter, block_type="workshop", content__workshop_id=workshop.pk
+        ).exists()
         if already:
             return _canvas_response(
                 request, newsletter, "Cet atelier est déjà dans la newsletter"
@@ -375,21 +414,32 @@ def bulk_add_workshops(request, pk):
             request, newsletter, "Aucun atelier à ajouter pour cette période"
         )
 
-    # collecte des workshop_id déjà présents pour éviter doublons
-    existing_ids = set(
+    # Déduplication via champ indexé cached_workshop_id + fallback JSON pour anciennes données
+    cached_ids = set(
+        Block.objects.filter(newsletter=newsletter, block_type="workshop").values_list(
+            "cached_workshop_id", flat=True
+        )
+    )
+    json_ids = set(
         Block.objects.filter(newsletter=newsletter, block_type="workshop").values_list(
             "content__workshop_id", flat=True
         )
     )
-    # content__workshop_id peut être str ou int selon snapshot — normalise en str
-    existing_str = {str(x) for x in existing_ids if x is not None}
+    existing_str = {str(x) for x in (cached_ids | json_ids) if x is not None}
 
     added = 0
-    # map médiathèque -> Section existante (par library_profile ou titre) pour réutiliser
     existing_sections = {}
     for sec in newsletter.sections.all():
         key = sec.library_profile_id or sec.title.lower()
         existing_sections[key] = sec
+    # Prépare bulk_create : on collecte les instances sans les sauver une par une
+    pending_blocks = []
+    # Position courante par section
+    next_pos_by_section = {}
+    for sec in newsletter.sections.all():
+        next_pos_by_section[sec.pk] = Block.objects.filter(newsletter=newsletter, section=sec).count()
+    next_pos_by_section[None] = Block.objects.filter(newsletter=newsletter, section__isnull=True).count()
+
     with transaction.atomic():
         for g, item in ordered:
             ws = item["workshop"]
@@ -401,11 +451,9 @@ def bulk_add_workshops(request, pk):
                 if prof and prof.name
                 else g["user"].get_full_name() or g["user"].username
             )
-            # section par médiathèque (une seule, fond blanc uniforme par défaut)
             sec_key = prof.pk if prof else heading_text.lower()
             section = existing_sections.get(sec_key)
             if section is None:
-                # cherche aussi par titre si profil manquant
                 section = (
                     Section.objects.filter(
                         newsletter=newsletter, library_profile=prof
@@ -424,11 +472,28 @@ def bulk_add_workshops(request, pk):
                 )
                 existing_sections[sec_key] = section
                 existing_sections[section.pk] = section
-            _create_block(
-                newsletter, "workshop", build_workshop_snapshot(ws), section=section
+                next_pos_by_section[section.pk] = 0
+            # Position bulk : incrémente en mémoire
+            pos = next_pos_by_section.get(section.pk, 0)
+            snap = build_workshop_snapshot(ws)
+            base_content = dict(DEFAULT_CONTENT.get("workshop", {}))
+            base_content.update(snap)
+            pending_blocks.append(
+                Block(
+                    newsletter=newsletter,
+                    section=section,
+                    position=pos,
+                    block_type="workshop",
+                    content=base_content,
+                    style={},
+                    cached_workshop_id=ws.pk,
+                )
             )
+            next_pos_by_section[section.pk] = pos + 1
             existing_str.add(str(ws.pk))
             added += 1
+        if pending_blocks:
+            Block.objects.bulk_create(pending_blocks)
 
     if added == 0:
         return _canvas_response(
@@ -787,9 +852,15 @@ def download(request, pk):
 def contacts_csv(request, pk):
     newsletter = get_object_or_404(Newsletter, pk=pk)
     filename = f"contacts_{slugify(newsletter.title) or 'newsletter'}.csv"
-    response = HttpResponse(content_type="text/csv; charset=utf-8")
+
+    from .services import iter_contacts_csv
+
+    def bom_iter():
+        yield "\ufeff"
+        yield from iter_contacts_csv(newsletter)
+
+    response = StreamingHttpResponse(bom_iter(), content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
-    response.write("\ufeff" + export_contacts_csv(newsletter))
     return response
 
 

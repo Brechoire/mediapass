@@ -165,6 +165,10 @@ class Workshop(models.Model):
             models.Index(
                 fields=["start_date", "start_time"], name="idx_workshop_start"
             ),
+            models.Index(
+                fields=["newsletter", "status", "start_date"],
+                name="idx_ws_news_stat_date",
+            ),
         ]
 
     def __str__(self):
