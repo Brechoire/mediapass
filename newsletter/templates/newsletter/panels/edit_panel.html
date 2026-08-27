@@ -1,0 +1,115 @@
+<div class="flex flex-col h-full" id="nl-panel-root" data-block-id="{{ block.pk }}">
+  <div class="flex items-center justify-between px-5 py-4 border-b border-[#e3e9f4] bg-white sticky top-0 z-10">
+    <div>
+      <p class="text-[11px] font-semibold uppercase tracking-wider text-[#93a3b3]">Modifier le bloc</p>
+      <h3 class="text-base font-bold text-[#1e293b]">{{ block.type_label }}</h3>
+    </div>
+    <button type="button" onclick="nlClosePanel()" class="nl-close-panel p-2 rounded-lg hover:bg-[#eef2f8] transition-colors cursor-pointer" aria-label="Fermer">
+      <i class='bx bx-x text-xl text-[#7a8fa0]'></i>
+    </button>
+  </div>
+
+  <form hx-post="{% url 'newsletter:update_block' newsletter.pk block.pk %}"
+        hx-target="#nl-canvas" hx-swap="outerHTML"
+        hx-encoding="multipart/form-data"
+        enctype="multipart/form-data"
+        class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+    {% if form %}
+      {% for field in form %}
+      <div>
+        <label for="{{ field.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<p class="mt-1 text-[11px] text-[#93a3b3]">{{ field.help_text }}</p>{% endif %}
+        {% for error in field.errors %}<p class="mt-1 text-[11px] text-[#d46a78]">{{ error }}</p>{% endfor %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="text-sm text-[#7a8fa0]">Ce bloc n'a pas d'options de contenu. Vous pouvez ajuster son apparence ci-dessous.</p>
+    {% endif %}
+
+    <div class="rounded-xl border border-[#e3e9f4] bg-[#f8fafc] p-4 space-y-3">
+      <p class="text-xs font-semibold uppercase tracking-wider text-[#93a3b3]">Apparence</p>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label for="style_bg_color" class="block text-xs font-medium text-[#33475e] mb-1">Fond du bloc</label>
+          <input type="color" id="style_bg_color" name="style_bg_color"
+                 value="{{ block.style.bg_color|default:'#ffffff' }}"
+                 class="w-full h-9 rounded-lg border border-[#dce3ef] cursor-pointer bg-white p-0.5" />
+          <label class="flex items-center gap-1.5 mt-1.5 cursor-pointer">
+            <input type="checkbox" id="style_bg_transparent" name="style_bg_transparent" value="1" {% if not block.style.bg_color %}checked{% endif %} class="rounded border-[#dce3ef] text-[#4a6fa5] focus:ring-[#4a6fa5] w-3.5 h-3.5">
+            <span class="text-[11px] text-[#64748b]">Fond transparent</span>
+          </label>
+        </div>
+        <div>
+          <label for="style_padding" class="block text-xs font-medium text-[#33475e] mb-1">Marge intérieure</label>
+          <select id="style_padding" name="style_padding" class="nl-input">
+            <option value="">Défaut</option>
+            <option value="4px 12px" {% if block.style.padding == '4px 12px' %}selected{% endif %}>Serrée</option>
+            <option value="16px 24px" {% if block.style.padding == '16px 24px' %}selected{% endif %}>Normale</option>
+            <option value="28px 28px" {% if block.style.padding == '28px 28px' %}selected{% endif %}>Aérée</option>
+          </select>
+        </div>
+      </div>
+      {% if block.block_type == "separator" or block.block_type == "heading" or block.block_type == "text" %}
+      <div>
+        <label for="style_text_color" class="block text-xs font-medium text-[#33475e] mb-1">Couleur du texte / trait</label>
+        <input type="color" id="style_text_color" name="style_text_color"
+               value="{{ block.style.text_color|default:'#333333' }}"
+               class="w-full h-9 rounded-lg border border-[#dce3ef] cursor-pointer bg-white p-0.5" />
+      </div>
+      {% endif %}
+      {% if block.block_type == "workshop" %}
+      <div class="pt-2 border-t border-[#e2e8f0] space-y-3">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-[#93a3b3]">Bordure & forme (surcharge)</p>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="style_border_style" class="block text-xs font-medium text-[#33475e] mb-1">Bordure</label>
+            <select id="style_border_style" name="style_border_style" class="nl-input">
+              <option value="">Hériter</option>
+              <option value="none" {% if block.style.border_style == "none" %}selected{% endif %}>Aucune</option>
+              <option value="solid" {% if block.style.border_style == "solid" %}selected{% endif %}>Pleine</option>
+              <option value="dashed" {% if block.style.border_style == "dashed" %}selected{% endif %}>Pointillée</option>
+              <option value="left-accent" {% if block.style.border_style == "left-accent" %}selected{% endif %}>Accent à gauche</option>
+            </select>
+          </div>
+          <div>
+            <label for="style_border_width" class="block text-xs font-medium text-[#33475e] mb-1">Épaisseur</label>
+            <select id="style_border_width" name="style_border_width" class="nl-input">
+              <option value="">Hériter</option>
+              <option value="1" {% if block.style.border_width == "1" %}selected{% endif %}>1px</option>
+              <option value="2" {% if block.style.border_width == "2" %}selected{% endif %}>2px</option>
+              <option value="3" {% if block.style.border_width == "3" %}selected{% endif %}>3px</option>
+              <option value="4" {% if block.style.border_width == "4" %}selected{% endif %}>4px</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="style_border_color" class="block text-xs font-medium text-[#33475e] mb-1">Couleur bordure</label>
+            <input type="color" id="style_border_color" name="style_border_color" value="{{ block.style.border_color|default:'#e3e9f4' }}" class="w-full h-9 rounded-lg border border-[#dce3ef] cursor-pointer bg-white p-0.5" />
+          </div>
+          <div>
+            <label for="style_border_radius" class="block text-xs font-medium text-[#33475e] mb-1">Forme</label>
+            <select id="style_border_radius" name="style_border_radius" class="nl-input">
+              <option value="">Hériter</option>
+              <option value="0" {% if block.style.border_radius == "0" %}selected{% endif %}>Carré</option>
+              <option value="6" {% if block.style.border_radius == "6" %}selected{% endif %}>Petit 6px</option>
+              <option value="8" {% if block.style.border_radius == "8" %}selected{% endif %}>Moyen 8px</option>
+              <option value="12" {% if block.style.border_radius == "12" %}selected{% endif %}>Grand 12px</option>
+              <option value="16" {% if block.style.border_radius == "16" %}selected{% endif %}>Très grand 16px</option>
+              <option value="9999" {% if block.style.border_radius == "9999" %}selected{% endif %}>Pill</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="sticky bottom-0 -mx-5 px-5 py-3 bg-gradient-to-t from-white via-white/95 to-transparent">
+      <button type="submit"
+              class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#4a6fa5] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#3d5f8f] active:scale-[.98] transition-all cursor-pointer">
+        <i class='bx bx-check text-lg'></i> Enregistrer
+      </button>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,13 @@
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{{ block.style.bg_color|default:'transparent' }};">
+  <tr>
+    <td align="{{ block.content.align|default:'center' }}" style="padding:{{ block.style.padding|default:'14px 24px' }};font-family:{{ newsletter.font_family }};">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td bgcolor="{{ block.style.bg_color|default:newsletter.primary_color }}" style="border-radius:9999px;background-color:{{ newsletter.primary_color }};">
+            <a href="{{ block.content.url }}" target="_blank" rel="noopener" style="display:inline-block;padding:12px 28px;font-family:{{ newsletter.font_family }};font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:9999px;">{{ block.content.label }}</a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>

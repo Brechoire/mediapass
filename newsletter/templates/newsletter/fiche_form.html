@@ -1,0 +1,53 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Ma fiche médiathèque — Médi@'pass{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+  <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%);"></div>
+  <div class="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <h1 class="text-3xl font-bold text-white">Fiche médiathèque</h1>
+    <p class="text-white/70 text-sm mt-1">
+      Ces informations alimentent le bloc « Fiche médiathèque » des newsletters.
+      {% if not created %}Elles sont actuellement visibles par l'équipe communication.{% endif %}
+    </p>
+  </div>
+</section>
+
+<section class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  {% if messages %}
+    {% for message in messages %}
+    <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 px-4 py-3 text-sm font-medium">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data"
+        class="rounded-2xl border border-[#dce3ef] bg-white shadow-sm p-6 space-y-5">
+    {% csrf_token %}
+    {% for field in form %}
+    <div>
+      <label for="{{ field.id_for_label }}" class="block text-sm font-semibold text-[#33475e] mb-1.5">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<p class="mt-1 text-xs text-[#93a3b3]">{{ field.help_text }}</p>{% endif %}
+      {% for error in field.errors %}<p class="mt-1 text-xs text-[#d46a78]">{{ error }}</p>{% endfor %}
+    </div>
+    {% endfor %}
+    <div class="pt-2 flex items-center justify-between gap-3">
+      <p class="text-xs text-[#93a3b3]">Formats image acceptés : JPG, PNG. Idéalement carrée.</p>
+      <button type="submit"
+              class="inline-flex items-center gap-2 rounded-xl bg-[#4a6fa5] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#3d5f8f] active:scale-[.98] transition-all cursor-pointer">
+        <i class='bx bx-check'></i> Enregistrer ma fiche
+      </button>
+    </div>
+  </form>
+
+  <div class="mt-4 rounded-xl border border-[#dce3ef] bg-white p-4 flex items-start gap-3">
+    <i class='bx bx-bulb text-lg text-[#b8860b] mt-0.5'></i>
+    <p class="text-xs text-[#7a8fa0] leading-relaxed">
+      Astuce : renseignez les fermetures exceptionnelles au fur et à mesure — elles apparaîtront
+      en rouge dans la newsletter pour prévenir vos lecteurs.
+    </p>
+  </div>
+</section>
+{% endblock %}

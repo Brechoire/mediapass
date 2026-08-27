@@ -20,7 +20,7 @@ from .forms import (
     QuickLocationForm,
     RecurrenceForm,
 )
-from .services import WorkshopStatisticsService, NewsletterService
+from .services import WorkshopStatisticsService
 from .recurrence import RecurrenceService
 from .decorators import mediatheque_member_required, mediatheque_member_required_json
 from .utils import filter_owned, filter_location_owned
@@ -1257,5 +1257,5 @@ def duplicate_workshop(request, workshop_id):
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
 def newsletter_view(request):
-    data = NewsletterService.get_newsletter_data()
-    return render(request, "library_workshops/newsletter.html", data)
+    """Redirige vers le nouveau builder de newsletters (app newsletter)."""
+    return redirect("newsletter:index")

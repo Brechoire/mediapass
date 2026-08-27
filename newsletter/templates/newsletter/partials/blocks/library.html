@@ -1,0 +1,44 @@
+{% with lib=block.content img=block.image_obj %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{{ block.style.bg_color|default:'transparent' }};">
+  <tr>
+    <td style="padding:{{ block.style.padding|default:'8px 16px' }};">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f6f9ff;border:1px dashed #b9cbe8;border-radius:12px;">
+        {% if lib.image_url %}
+        <tr><td align="center" style="padding:18px 18px 0 18px;"><img src="{{ site_url }}{{ lib.image_url }}" alt="{{ lib.name }}" style="display:block;max-height:110px;max-width:220px;height:auto;border:0;border-radius:8px;" /></td></tr>
+        {% elif img %}
+        <tr><td align="center" style="padding:18px 18px 0 18px;"><img src="{{ site_url }}{{ img.image.url }}" alt="{{ lib.name }}" style="display:block;max-height:110px;max-width:220px;height:auto;border:0;border-radius:8px;" /></td></tr>
+        {% endif %}
+        <tr>
+          <td align="center" style="padding:16px 20px 20px 20px;font-family:{{ newsletter.font_family }};">
+            <div style="font-size:19px;font-weight:700;color:#1e293b;">{{ lib.name }}</div>
+            {% if lib.description %}
+            <div style="font-size:14px;line-height:1.6;color:#5a6c80;margin-top:6px;">{{ lib.description }}</div>
+            {% endif %}
+            {% if lib.hours_lines %}
+            <div style="margin-top:12px;padding-top:10px;border-top:1px solid #d7e3f4;">
+              {% for line in lib.hours_lines %}
+              <div style="font-size:13px;color:#3f4c5e;line-height:1.8;">{{ line }}</div>
+              {% endfor %}
+            </div>
+            {% endif %}
+            {% if lib.closure_lines %}
+            <div style="margin-top:8px;">
+              {% for line in lib.closure_lines %}
+              <div style="font-size:12px;color:#b3413f;line-height:1.6;">Fermeture : {{ line }}</div>
+              {% endfor %}
+            </div>
+            {% endif %}
+            {% if lib.address or lib.phone %}
+            <div style="font-size:12px;color:#7a8fa0;margin-top:10px;">
+              {% if lib.address %}{{ lib.address }}{% endif %}
+              {% if lib.address and lib.phone %} &middot; {% endif %}
+              {% if lib.phone %}{{ lib.phone }}{% endif %}
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+{% endwith %}
