@@ -985,7 +985,7 @@ class NewsletterServiceTest(TestCase):
 
 
 class NewsletterViewTest(TestCase):
-    """Tests pour la vue newsletter"""
+    """Tests pour la vue newsletter (redirige vers le builder newsletter)."""
 
     def setUp(self):
         self.client = Client()
@@ -996,14 +996,6 @@ class NewsletterViewTest(TestCase):
         self.location = VisitorLocation.objects.create(
             name="Médiathèque A", icon="bx-building", color="#4F46E5", is_active=True
         )
-        self.today = timezone.now().date()
-
-    def _next_month_start(self):
-        year = self.today.year
-        month = self.today.month
-        if month == 12:
-            return date(year + 1, 1, 1)
-        return date(year, month + 1, 1)
 
     def test_requires_superuser(self):
         """Non-superuser est redirigé"""
@@ -1011,94 +1003,18 @@ class NewsletterViewTest(TestCase):
         response = self.client.get(reverse("library_workshops:newsletter"))
         self.assertEqual(response.status_code, 302)
 
-    def test_superuser_access(self):
-        """Superuser obtient 200"""
+    def test_superuser_access_redirects_to_builder(self):
+        """Superuser : redirection vers la nouvelle app newsletter"""
         self.client.login(username="superadmin", password="testpass123")
         response = self.client.get(reverse("library_workshops:newsletter"))
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("newsletter:index"))
 
     def test_unauthenticated_redirect(self):
         """Utilisateur non connecté est redirigé vers login"""
         response = self.client.get(reverse("library_workshops:newsletter"))
         self.assertEqual(response.status_code, 302)
         self.assertIn("connexion", response.headers.get("Location"))
-
-    def test_workshops_displayed_in_view(self):
-        """Les ateliers du mois suivant sont affichés"""
-        next_month = self._next_month_start()
-        Workshop.objects.create(
-            title="Atelier Newsletter",
-            description="Description test",
-            start_date=next_month.replace(day=10),
-            start_time=time(14, 0),
-            end_time=time(16, 0),
-            location=self.location,
-            max_participants=10,
-            newsletter=True,
-            created_by=self.superuser,
-        )
-        self.client.login(username="superadmin", password="testpass123")
-        response = self.client.get(reverse("library_workshops:newsletter"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Atelier Newsletter")
-        self.assertContains(response, "Description test")
-
-    def test_copy_buttons_present(self):
-        """Les boutons de copie sont présents dans le template"""
-        next_month = self._next_month_start()
-        Workshop.objects.create(
-            title="Atelier Copie",
-            description="Description copie",
-            start_date=next_month.replace(day=15),
-            start_time=time(14, 0),
-            end_time=time(16, 0),
-            location=self.location,
-            max_participants=10,
-            newsletter=True,
-            created_by=self.superuser,
-        )
-        self.client.login(username="superadmin", password="testpass123")
-        response = self.client.get(reverse("library_workshops:newsletter"))
-        self.assertContains(response, "data-copy")
-        self.assertContains(response, "Copier")
-        self.assertContains(response, "Tout copier")
-
-    def test_empty_state_message(self):
-        """Message approprié quand aucun atelier newsletter"""
-        self.client.login(username="superadmin", password="testpass123")
-        response = self.client.get(reverse("library_workshops:newsletter"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "aucun atelier")
-
-    def test_newsletter_true_displayed(self):
-        """Seuls les ateliers newsletter=True sont affichés"""
-        next_month = self._next_month_start()
-        Workshop.objects.create(
-            title="Visible",
-            description="Desc",
-            start_date=next_month.replace(day=5),
-            start_time=time(10, 0),
-            end_time=time(12, 0),
-            location=self.location,
-            max_participants=10,
-            newsletter=True,
-            created_by=self.superuser,
-        )
-        Workshop.objects.create(
-            title="Caché",
-            description="Desc",
-            start_date=next_month.replace(day=10),
-            start_time=time(10, 0),
-            end_time=time(12, 0),
-            location=self.location,
-            max_participants=10,
-            newsletter=False,
-            created_by=self.superuser,
-        )
-        self.client.login(username="superadmin", password="testpass123")
-        response = self.client.get(reverse("library_workshops:newsletter"))
-        self.assertContains(response, "Visible")
-        self.assertNotContains(response, "Caché")
 
 
 from .recurrence import RecurrenceService

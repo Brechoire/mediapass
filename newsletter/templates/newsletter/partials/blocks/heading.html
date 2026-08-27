@@ -1,0 +1,5 @@
+{% load static %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{% if block.style.bg_color and block.style.bg_color != 'transparent' %}{{ block.style.bg_color }}{% elif block.section_background_color and block.section_background_color != 'transparent' %}{{ block.section_background_color }}{% else %}transparent{% endif %};">
+  <tr>
+    <td style="padding:{{ block.style.padding|default:'10px 24px 4px 24px' }};font-family:{{ newsletter.font_family }};font-size:{{ block.content.size|default:28 }}px;font-weight:700;line-height:1.25;color:{{ block.style.text_color|default:block.section_content_title_color|default:block.content.color|default:newsletter.workshop_title_color|default:'#1e293b' }};text-align:{{ block.content.align|default:'left' }};mso-line-height-rule:exactly;">{{ block.content.text }}</td>
+  </tr>
+</table>

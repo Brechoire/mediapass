@@ -21,6 +21,7 @@ urlpatterns = [
     path("mediatheque/ateliers/", include("library_workshops.urls")),
     path("mediatheque/visiteurs/", include("visitor_tracking.urls")),
     path("distribution/", include("distribution.urls")),
+    path("newsletter/", include("newsletter.urls")),
     path("notifications/admin/", include("notifications.urls")),
 ]
 
@@ -31,9 +32,5 @@ if settings.DEBUG:
 
 # Sert les fichiers media/static en développement
 # En production, configurer Apache/Nginx pour les servir
-urlpatterns += static(
-    settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
-)
-urlpatterns += static(
-    settings.STATIC_URL, document_root=settings.STATIC_ROOT
-)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -1,0 +1,33 @@
+<div class="flex flex-col h-full">
+  <div class="flex items-center justify-between px-5 py-4 border-b border-[#e3e9f4] bg-white sticky top-0 z-10">
+    <div>
+      <p class="text-[11px] font-semibold uppercase tracking-wider text-[#93a3b3]">Nouveau bloc</p>
+      <h3 class="text-base font-bold text-[#1e293b]">Fiche médiathèque</h3>
+    </div>
+    <button type="button" onclick="nlClosePanel()" class="p-2 rounded-lg hover:bg-[#eef2f8] transition-colors cursor-pointer" aria-label="Fermer">
+      <i class='bx bx-x text-xl text-[#7a8fa0]'></i>
+    </button>
+  </div>
+
+  <form hx-post="{% url 'newsletter:add_block' newsletter.pk %}"
+        hx-target="#nl-canvas" hx-swap="outerHTML"
+        class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+    <input type="hidden" name="block_type" value="library" />
+    <p class="text-sm text-[#7a8fa0] leading-relaxed">
+      Insère la fiche d'une médiathèque : image, description, horaires et fermetures exceptionnelles.
+      Les fiches sont renseignées par chaque médiathèque.
+    </p>
+    {% for field in pick_form %}
+    <div>
+      <label for="{{ field.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ field.label }}</label>
+      {{ field }}
+    </div>
+    {% endfor %}
+    <div class="sticky bottom-0 -mx-5 px-5 py-3 bg-gradient-to-t from-white via-white/95 to-transparent">
+      <button type="submit"
+              class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#4a6fa5] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#3d5f8f] active:scale-[.98] transition-all cursor-pointer">
+        <i class='bx bx-plus'></i> Ajouter le bloc
+      </button>
+    </div>
+  </form>
+</div>

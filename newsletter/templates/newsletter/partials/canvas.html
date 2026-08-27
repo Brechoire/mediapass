@@ -1,0 +1,102 @@
+<div id="nl-canvas" class="mx-auto w-full max-w-[600px] space-y-4">
+{% for section in newsletter.sections.all %}
+  <div id="section-{{ section.pk }}" class="nl-section group relative overflow-hidden shadow-sm" style="{% if section.background_color and section.background_color != 'transparent' %}background-color: {{ section.background_color }};{% else %}background-color:transparent;{% endif %}{% if section.border_style and section.border_style != 'none' %}border:{{ section.border_width|default:1 }}px {{ section.border_style }} {{ section.border_color|default:'#dce3ef' }};{% else %}border:1px solid #dce3ef;{% endif %}border-radius:{% if section.border_radius == '9999' %}9999px{% elif section.border_radius %}{{ section.border_radius }}px{% else %}16px{% endif %};" data-section-id="{{ section.pk }}">
+    {# Toolbar section — fixe à l'intérieur, reste visible au survol #}
+    <div class="nl-section-toolbar absolute top-2 right-2 z-20 flex items-center gap-0.5 rounded-lg bg-[#1e293b]/90 backdrop-blur px-1 py-1 shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150">
+      <span class="drag-section-handle cursor-grab active:cursor-grabbing p-1 rounded hover:bg-white/10" title="Glisser pour réordonner la section"><i class='bx bx-move text-sm text-white/70'></i></span>
+      <span class="px-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#cbd5e1]">Section</span>
+      <button type="button" title="Monter la section" aria-label="Monter la section"
+              hx-post="{% url 'newsletter:move_section' newsletter.pk section.pk 'up' %}"
+              hx-target="#nl-canvas" hx-swap="outerHTML"
+              class="p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 cursor-pointer {% if forloop.first %}invisible pointer-events-none{% endif %}">
+        <i class='bx bx-chevron-up text-sm'></i>
+      </button>
+      <button type="button" title="Descendre la section" aria-label="Descendre la section"
+              hx-post="{% url 'newsletter:move_section' newsletter.pk section.pk 'down' %}"
+              hx-target="#nl-canvas" hx-swap="outerHTML"
+              class="p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 cursor-pointer {% if forloop.last %}invisible pointer-events-none{% endif %}">
+        <i class='bx bx-chevron-down text-sm'></i>
+      </button>
+      <button type="button" title="Modifier la section" aria-label="Modifier la section"
+              hx-get="{% url 'newsletter:edit_section' newsletter.pk section.pk %}"
+              hx-target="#nl-panel-content" hx-swap="innerHTML"
+              class="p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 cursor-pointer">
+        <i class='bx bx-edit-alt text-sm'></i>
+      </button>
+      <button type="button" title="Supprimer la section et son contenu" aria-label="Supprimer la section"
+              hx-post="{% url 'newsletter:delete_section' newsletter.pk section.pk %}"
+              hx-target="#nl-canvas" hx-swap="outerHTML" hx-confirm="Supprimer cette section et tous ses ateliers ?"
+              class="p-1.5 rounded-md text-[#f0a3aa] hover:text-white hover:bg-[#d46a78] cursor-pointer">
+        <i class='bx bx-trash text-sm'></i>
+      </button>
+    </div>
+
+    <div class="section-inner">
+      {% include "newsletter/partials/section_header.html" with section=section newsletter=newsletter site_url=site_url %}
+      <div class="section-blocks p-3 space-y-3" data-section-id="{{ section.pk }}">
+        {% for block in section.blocks.all %}
+          <div id="block-{{ block.pk }}" class="nl-block group relative min-h-[32px] rounded-xl ring-0 hover:ring-2 hover:ring-[#4a6fa5]/40 transition-all duration-200 animate-nl-enter" data-block-id="{{ block.pk }}">
+            <div class="nl-toolbar absolute top-2 right-2 z-10 flex items-center gap-0.5 rounded-lg bg-[#1e293b]/90 backdrop-blur px-1 py-1 shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150">
+              <span class="drag-block-handle cursor-grab active:cursor-grabbing p-1 rounded hover:bg-white/10" title="Glisser"><i class='bx bx-move text-sm text-white/60'></i></span>
+              <span class="px-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#cbd5e1]">{{ block.type_label }}</span>
+              <button type="button" title="Monter" hx-post="{% url 'newsletter:move_block' newsletter.pk block.pk 'up' %}" hx-target="#nl-canvas" hx-swap="outerHTML" class="p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 cursor-pointer {% if forloop.first %}invisible pointer-events-none{% endif %}"><i class='bx bx-chevron-up text-sm'></i></button>
+              <button type="button" title="Descendre" hx-post="{% url 'newsletter:move_block' newsletter.pk block.pk 'down' %}" hx-target="#nl-canvas" hx-swap="outerHTML" class="p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 cursor-pointer {% if forloop.last %}invisible pointer-events-none{% endif %}"><i class='bx bx-chevron-down text-sm'></i></button>
+              <button type="button" title="Dupliquer" hx-post="{% url 'newsletter:duplicate_block' newsletter.pk block.pk %}" hx-target="#nl-canvas" hx-swap="outerHTML" class="p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 cursor-pointer"><i class='bx bx-copy text-sm'></i></button>
+              {% if block.block_type != "separator" and block.block_type != "spacer" %}
+              <button type="button" title="Modifier" hx-get="{% url 'newsletter:edit_block' newsletter.pk block.pk %}" hx-target="#nl-panel-content" hx-swap="innerHTML" class="p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 cursor-pointer"><i class='bx bx-edit-alt text-sm'></i></button>
+              {% endif %}
+              <button type="button" title="Supprimer" hx-post="{% url 'newsletter:delete_block' newsletter.pk block.pk %}" hx-target="#nl-canvas" hx-swap="outerHTML" hx-confirm="Supprimer ce bloc ?" class="p-1.5 rounded-md text-[#f0a3aa] hover:text-white hover:bg-[#d46a78] cursor-pointer"><i class='bx bx-trash text-sm'></i></button>
+            </div>
+            <div class="rounded-xl overflow-hidden bg-white shadow-sm">
+              <div class="nl-render pointer-events-none select-none">{% include block.partial_name %}</div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="rounded-xl border border-dashed border-[#cbd5e1] bg-white/70 px-6 py-10 text-center">
+            <p class="text-sm font-medium text-[#64748b]">Aucun bloc dans cette section</p>
+            <p class="text-xs text-[#94a3b8] mt-1">Ajoutez des ateliers depuis l'onglet Ateliers ou glissez un bloc ici.</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+{% endfor %}
+
+{# Blocs orphelins (hors section) — pour compatibilité legacy #}
+<div class="orphan-blocks space-y-3">
+{% for block in newsletter.blocks.all %}
+  {% if not block.section %}
+  <div id="block-{{ block.pk }}" class="nl-block group relative min-h-[32px] rounded-xl ring-0 hover:ring-2 hover:ring-[#4a6fa5]/40 transition-all duration-200 animate-nl-enter" data-block-id="{{ block.pk }}">
+    <div class="nl-toolbar absolute top-2 right-2 z-20 flex items-center gap-0.5 rounded-lg bg-[#1e293b]/90 backdrop-blur px-1 py-1 shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150">
+      <span class="drag-block-handle cursor-grab active:cursor-grabbing p-1 rounded hover:bg-white/10" title="Glisser"><i class='bx bx-move text-sm text-white/60'></i></span>
+      <span class="px-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#cbd5e1]">{{ block.type_label }}</span>
+      <button type="button" title="Monter" hx-post="{% url 'newsletter:move_block' newsletter.pk block.pk 'up' %}" hx-target="#nl-canvas" hx-swap="outerHTML" class="p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 cursor-pointer {% if forloop.first %}invisible pointer-events-none{% endif %}"><i class='bx bx-chevron-up text-sm'></i></button>
+      <button type="button" title="Descendre" hx-post="{% url 'newsletter:move_block' newsletter.pk block.pk 'down' %}" hx-target="#nl-canvas" hx-swap="outerHTML" class="p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 cursor-pointer {% if forloop.last %}invisible pointer-events-none{% endif %}"><i class='bx bx-chevron-down text-sm'></i></button>
+      <button type="button" title="Dupliquer" hx-post="{% url 'newsletter:duplicate_block' newsletter.pk block.pk %}" hx-target="#nl-canvas" hx-swap="outerHTML" class="p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 cursor-pointer"><i class='bx bx-copy text-sm'></i></button>
+      {% if block.block_type != "separator" and block.block_type != "spacer" %}
+      <button type="button" title="Modifier" hx-get="{% url 'newsletter:edit_block' newsletter.pk block.pk %}" hx-target="#nl-panel-content" hx-swap="innerHTML" class="p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 cursor-pointer"><i class='bx bx-edit-alt text-sm'></i></button>
+      {% endif %}
+      <button type="button" title="Supprimer" hx-post="{% url 'newsletter:delete_block' newsletter.pk block.pk %}" hx-target="#nl-canvas" hx-swap="outerHTML" hx-confirm="Supprimer ce bloc ?" class="p-1.5 rounded-md text-[#f0a3aa] hover:text-white hover:bg-[#d46a78] cursor-pointer"><i class='bx bx-trash text-sm'></i></button>
+    </div>
+    <div class="rounded-xl overflow-hidden bg-white shadow-sm">
+      <div class="nl-render pointer-events-none select-none">{% include block.partial_name %}</div>
+    </div>
+  </div>
+  {% endif %}
+{% endfor %}
+</div>
+
+{% if newsletter.sections.count == 0 %}
+  {% with orphan_count=newsletter.blocks.all|length %}
+  {% if orphan_count == 0 %}
+  <div class="rounded-xl border-2 border-dashed border-[#cdd9ea] bg-white/60 px-8 py-16 text-center animate-nl-enter">
+    <div class="mx-auto w-14 h-14 rounded-2xl bg-[#e8eef7] flex items-center justify-center mb-4">
+      <i class='bx bx-layout text-3xl text-[#4a6fa5]'></i>
+    </div>
+    <h3 class="text-lg font-semibold text-[#33475e]">Votre newsletter est vide</h3>
+    <p class="mt-1 text-sm text-[#7a8fa0]">Créez une section ou ajoutez un bloc depuis la palette.<br />Le bouton « Générer » dans l'onglet Ateliers crée 3 sections (Anor, Trélon, Wignehies) d'un coup.</p>
+  </div>
+  {% endif %}
+  {% endwith %}
+{% endif %}
+</div>

@@ -1,0 +1,5 @@
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{% if block.style.bg_color and block.style.bg_color != 'transparent' %}{{ block.style.bg_color }}{% elif block.section_background_color and block.section_background_color != 'transparent' %}{{ block.section_background_color }}{% else %}transparent{% endif %};">
+  <tr>
+    <td style="padding:{{ block.style.padding|default:'6px 24px' }};font-family:{{ newsletter.font_family }};font-size:{{ block.content.font_size|default:15 }}px;line-height:1.65;color:{{ block.style.text_color|default:block.section_content_text_color|default:newsletter.workshop_text_color|default:'#3f4c5e' }};text-align:{{ block.content.align|default:'left' }};" class="nl-rich">{{ block.content.html|safe }}</td>
+  </tr>
+</table>

@@ -1,0 +1,116 @@
+{% with ws=block.content %}
+{% with variant=block.workshop_variant %}
+{% with img=block.image_obj %}
+{% with w=block.workshop_image_width %}
+{% with bg=block.style.bg_color|default:"" %}
+{% with sec_bg=block.section_background_color|default:"" %}
+{% with resolved_bg=bg|default:sec_bg|default:newsletter.workshop_bg_color|default:"#ffffff" %}
+{% with border_style=block.style.border_style|default:block.section_border_style|default:newsletter.workshop_border_style|default:"solid" %}
+{% with border_color=block.style.border_color|default:block.section_border_color|default:newsletter.workshop_border_color|default:"#e3e9f4" %}
+{% with border_width=block.style.border_width|default:block.section_border_width|default:newsletter.workshop_border_width|default:"1" %}
+{% with border_radius=block.style.border_radius|default:block.section_border_radius|default:newsletter.workshop_border_radius|default:"12" %}
+{% with title_color=block.style.title_color|default:block.section_content_title_color|default:newsletter.workshop_title_color|default:"" %}
+{% with text_color=block.style.text_color|default:block.section_content_text_color|default:newsletter.workshop_text_color|default:"" %}
+{% with outer_bg=resolved_bg %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="{% if outer_bg and outer_bg != 'transparent' and outer_bg != '' %}background-color:{{ outer_bg }};{% else %}background-color:transparent;{% endif %} padding:{{ block.style.padding|default:'8px 16px' }};">
+  <tr>
+    <td>
+      {% if variant == "side" or variant == "side-left" %}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{% if outer_bg and outer_bg != 'transparent' and outer_bg != '' %}{{ outer_bg }}{% else %}#ffffff{% endif %};{% if border_style != 'none' %}border:{{ border_width }}px {{ border_style }} {{ border_color }};{% else %}border:none;{% endif %}border-radius:{{ border_radius }}px;overflow:hidden;">
+        <tr>
+          <td width="{{ w }}" style="width:{{ w }}px;max-width:{{ w }}px;padding:10px 0 10px 10px;" valign="top" align="center">
+            {% if img %}
+              <img src="{{ site_url }}{{ img.image.url }}" alt="{{ ws.title }}" width="{{ w }}" style="display:block;width:{{ w }}px;max-width:100%;height:auto;border:0;border-radius:6px;" />
+            {% elif ws.image_url %}
+              <img src="{{ site_url }}{{ ws.image_url }}" alt="{{ ws.title }}" width="{{ w }}" style="display:block;width:{{ w }}px;max-width:100%;height:auto;border:0;border-radius:6px;" />
+            {% else %}
+              <div style="width:{{ w }}px;height:90px;background:#e8eef7;border:1px dashed #b9cbe8;border-radius:6px;text-align:center;line-height:90px;font-family:{{ newsletter.font_family }};font-size:11px;color:#7a8fa0;">Pas d'image</div>
+            {% endif %}
+          </td>
+          <td style="padding:12px 14px;font-family:{{ newsletter.font_family }};" valign="top">
+            <div style="font-size:14px;font-weight:700;color:{% if title_color %}{{ title_color }}{% else %}#0d7a3e{% endif %};line-height:1.3;">{{ ws.title }}</div>
+            <div style="font-size:13px;color:{% if title_color %}{{ title_color }}{% else %}#0d7a3e{% endif %};margin-top:2px;">{{ ws.date_text }}</div>
+            {% if ws.location %}<div style="font-size:12px;color:{% if text_color %}{{ text_color }}{% else %}#7a8fa0{% endif %};margin-top:2px;">{{ ws.location }}</div>{% endif %}
+            {% if ws.description %}{% if "<" in ws.description %}<div style="font-size:13px;line-height:1.55;color:{% if text_color %}{{ text_color }}{% else %}#3f4c5e{% endif %};margin-top:8px;">{{ ws.description|safe }}</div>{% else %}<div style="font-size:13px;line-height:1.55;color:{% if text_color %}{{ text_color }}{% else %}#3f4c5e{% endif %};margin-top:8px;">{{ ws.description|linebreaksbr }}</div>{% endif %}{% endif %}
+          </td>
+        </tr>
+      </table>
+      {% elif variant == "side-right" %}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{% if outer_bg and outer_bg != 'transparent' and outer_bg != '' %}{{ outer_bg }}{% else %}#ffffff{% endif %};{% if border_style != 'none' %}border:{{ border_width }}px {{ border_style }} {{ border_color }};{% else %}border:none;{% endif %}border-radius:{{ border_radius }}px;overflow:hidden;">
+        <tr>
+          <td style="padding:12px 14px;font-family:{{ newsletter.font_family }};" valign="top">
+            <div style="font-size:14px;font-weight:700;color:{% if title_color %}{{ title_color }}{% else %}#0d7a3e{% endif %};line-height:1.3;">{{ ws.title }}</div>
+            <div style="font-size:13px;color:{% if title_color %}{{ title_color }}{% else %}#0d7a3e{% endif %};margin-top:2px;">{{ ws.date_text }}</div>
+            {% if ws.location %}<div style="font-size:12px;color:{% if text_color %}{{ text_color }}{% else %}#7a8fa0{% endif %};margin-top:2px;">{{ ws.location }}</div>{% endif %}
+            {% if ws.description %}{% if "<" in ws.description %}<div style="font-size:13px;line-height:1.55;color:{% if text_color %}{{ text_color }}{% else %}#3f4c5e{% endif %};margin-top:8px;">{{ ws.description|safe }}</div>{% else %}<div style="font-size:13px;line-height:1.55;color:{% if text_color %}{{ text_color }}{% else %}#3f4c5e{% endif %};margin-top:8px;">{{ ws.description|linebreaksbr }}</div>{% endif %}{% endif %}
+          </td>
+          <td width="{{ w }}" style="width:{{ w }}px;max-width:{{ w }}px;padding:10px 10px 10px 0;" valign="top" align="center">
+            {% if img %}
+              <img src="{{ site_url }}{{ img.image.url }}" alt="{{ ws.title }}" width="{{ w }}" style="display:block;width:{{ w }}px;max-width:100%;height:auto;border:0;border-radius:6px;" />
+            {% elif ws.image_url %}
+              <img src="{{ site_url }}{{ ws.image_url }}" alt="{{ ws.title }}" width="{{ w }}" style="display:block;width:{{ w }}px;max-width:100%;height:auto;border:0;border-radius:6px;" />
+            {% else %}
+              <div style="width:{{ w }}px;height:90px;background:#e8eef7;border:1px dashed #b9cbe8;border-radius:6px;text-align:center;line-height:90px;font-family:{{ newsletter.font_family }};font-size:11px;color:#7a8fa0;">Pas d'image</div>
+            {% endif %}
+          </td>
+        </tr>
+      </table>
+      {% elif variant == "compact" %}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{% if outer_bg and outer_bg != 'transparent' and outer_bg != '' %}{{ outer_bg }}{% else %}#ffffff{% endif %};{% if border_style != 'none' %}border:{{ border_width }}px {{ border_style }} {{ border_color }};{% else %}border:none;{% endif %}border-radius:{{ border_radius }}px;">
+        <tr>
+          <td style="padding:10px 14px;font-family:{{ newsletter.font_family }};">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="font-size:14px;font-weight:700;color:{% if title_color %}{{ title_color }}{% else %}#1e293b{% endif %};">{{ ws.title }}</td>
+                <td align="right" style="font-size:12px;color:{% if title_color %}{{ title_color }}{% else %}{{ newsletter.primary_color }}{% endif %};white-space:nowrap;padding-left:10px;">{{ ws.date_text }}</td>
+              </tr>
+              {% if ws.location %}<tr><td colspan="2" style="font-size:12px;color:{% if text_color %}{{ text_color }}{% else %}#7a8fa0{% endif %};padding-top:2px;">{{ ws.location }}</td></tr>{% endif %}
+            </table>
+            {% if ws.description %}<div style="font-size:13px;color:{% if text_color %}{{ text_color }}{% else %}#475569{% endif %};margin-top:6px;">{% if "<" in ws.description %}{{ ws.description|safe }}{% else %}{{ ws.description|linebreaksbr }}{% endif %}</div>{% endif %}
+          </td>
+        </tr>
+      </table>
+      {% elif variant == "timeline" %}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td width="14" valign="top" style="padding-top:6px;" align="center">
+            <div style="width:10px;height:10px;border-radius:50%;background:{{ newsletter.primary_color }};margin:0 auto;"></div>
+            <div style="width:2px;height:100%;background:#e2e8f0;margin:2px auto 0 auto;min-height:60px;"></div>
+          </td>
+          <td style="padding-left:10px;" valign="top">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{% if outer_bg and outer_bg != 'transparent' and outer_bg != '' %}{{ outer_bg }}{% else %}#ffffff{% endif %};{% if border_style != 'none' %}border:{{ border_width }}px {{ border_style }} {{ border_color }};{% else %}border:none;{% endif %}border-radius:{{ border_radius }}px;">
+              <tr>
+                <td style="padding:12px 14px;font-family:{{ newsletter.font_family }};">
+                  <div style="font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:{% if title_color %}{{ title_color }}{% else %}{{ newsletter.primary_color }}{% endif %};">{{ ws.date_text }}</div>
+                  <div style="font-size:15px;font-weight:700;color:{% if title_color %}{{ title_color }}{% else %}#1e293b{% endif %};margin-top:4px;">{{ ws.title }}</div>
+                  {% if ws.location %}<div style="font-size:12px;color:{% if text_color %}{{ text_color }}{% else %}#7a8fa0{% endif %};margin-top:2px;">{{ ws.location }}</div>{% endif %}
+                  {% if ws.description %}<div style="font-size:13px;line-height:1.5;color:{% if text_color %}{{ text_color }}{% else %}#3f4c5e{% endif %};margin-top:6px;">{% if "<" in ws.description %}{{ ws.description|safe }}{% else %}{{ ws.description|linebreaksbr }}{% endif %}</div>{% endif %}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+      {% else %}
+      {# card par défaut #}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{% if outer_bg and outer_bg != 'transparent' and outer_bg != '' %}{{ outer_bg }}{% else %}#ffffff{% endif %};{% if border_style == 'left-accent' %}border:1px solid {{ border_color }};border-left:4px solid {{ newsletter.primary_color }};{% elif border_style != 'none' %}border:{{ border_width }}px {{ border_style }} {{ border_color }};{% else %}border:none;{% endif %}border-radius:{{ border_radius }}px;overflow:hidden;">
+        {% with img2=block.image_obj %}
+        {% if img2 %}
+        <tr><td style="padding:14px 18px 0 18px;" align="center"><img src="{{ site_url }}{{ img2.image.url }}" alt="{{ ws.title }}" style="display:block;width:100%;max-width:520px;height:auto;border:0;border-radius:6px;" /></td></tr>
+        {% elif ws.image_url %}
+        <tr><td style="padding:14px 18px 0 18px;" align="center"><img src="{{ site_url }}{{ ws.image_url }}" alt="{{ ws.title }}" style="display:block;width:100%;max-width:520px;height:auto;border:0;border-radius:6px;" /></td></tr>
+        {% endif %}
+        {% endwith %}
+        <tr><td style="padding:16px 18px 18px 18px;font-family:{{ newsletter.font_family }};">
+          <div style="font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:{% if title_color %}{{ title_color }}{% else %}{{ newsletter.primary_color }}{% endif %};">{{ ws.date_text }}</div>
+          <div style="font-size:20px;font-weight:700;color:{% if title_color %}{{ title_color }}{% else %}#1e293b{% endif %};line-height:1.3;margin-top:6px;">{{ ws.title }}</div>
+          {% if ws.location %}<div style="font-size:13px;color:{% if text_color %}{{ text_color }}{% else %}#7a8fa0{% endif %};margin-top:2px;">{{ ws.location }}</div>{% endif %}
+          {% if ws.description %}{% if "<" in ws.description %}<div style="font-size:15px;line-height:1.65;color:{% if text_color %}{{ text_color }}{% else %}#3f4c5e{% endif %};margin-top:10px;">{{ ws.description|safe }}</div>{% else %}<div style="font-size:15px;line-height:1.65;color:{% if text_color %}{{ text_color }}{% else %}#3f4c5e{% endif %};margin-top:10px;">{{ ws.description|linebreaksbr }}</div>{% endif %}{% endif %}
+        </td></tr>
+      </table>
+      {% endif %}
+    </td>
+  </tr>
+</table>
+{% endwith %}{% endwith %}{% endwith %}{% endwith %}{% endwith %}{% endwith %}{% endwith %}{% endwith %}{% endwith %}{% endwith %}{% endwith %}{% endwith %}{% endwith %}
+{% endwith %}

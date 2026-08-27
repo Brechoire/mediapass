@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:v="urn:schemas-microsoft-com:vml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <title>{{ newsletter.subject }}</title>
+</head>
+<body style="margin:0;padding:0;background-color:{{ newsletter.background_color }};-webkit-text-size-adjust:100%;">
+  <div style="display:none;font-size:1px;color:{{ newsletter.background_color }};line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{ newsletter.preheader }}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="{{ newsletter.background_color }}" style="background-color:{{ newsletter.background_color }};">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="nl-container" style="width:600px;max-width:100%;background-color:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(30,41,59,.08);">
+          <tr>
+            <td style="padding-top:18px;">
+              {% for block_html in rendered_blocks %}{{ block_html }}{% endfor %}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:22px 24px 26px 24px;font-family:{{ newsletter.font_family }};text-align:center;">
+              <div style="font-size:12px;line-height:1.7;color:#93a3b3;">
+                M&eacute;di@'pass &middot; R&eacute;seau de m&eacute;diath&egrave;ques<br />Communaut&eacute; de Communes Sud-Avesnois
+              </div>
+            </td>
+          </tr>
+        </table>
+        <div style="font-family:{{ newsletter.font_family }};font-size:11px;color:#a5b2c2;margin-top:14px;">
+          <a href="{{ site_url }}" target="_blank" rel="noopener" style="color:#8fa3bd;text-decoration:underline;">{{ site_url }}</a>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

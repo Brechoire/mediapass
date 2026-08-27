@@ -46,6 +46,9 @@
                         <a href="{% url 'library_workshops:index' %}" class="px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors">Ateliers</a>
                         <a href="{% url 'visitor_tracking:index' %}" class="px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors">Pointage</a>
                         {% endif %}
+                        {% if user.is_superuser or user|has_group:'communication' %}
+                        <a href="{% url 'newsletter:index' %}" class="px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors">Newsletter</a>
+                        {% endif %}
                         {% if not user|has_group:'mediatheque' %}
                         <a href="{% url 'distribution:index' %}" class="px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors">Distribution</a>
                         {% endif %}
@@ -79,7 +82,7 @@
                                 <a href="{% url 'visitor_tracking:superadmin_statistics' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-group text-[#b0bedb]"></i> Visiteurs</a>
                                 <hr class="border-[#dce3ef] my-1">
                                 <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Communication</p>
-                                <a href="{% url 'library_workshops:newsletter' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-mail-send text-[#b0bedb]"></i> Newsletter</a>
+                                <a href="{% url 'newsletter:index' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-mail-send text-[#b0bedb]"></i> Newsletter</a>
                                 <a href="{% url 'notifications:email_admin' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-envelope text-[#b0bedb]"></i> Emails</a>
                                 <hr class="border-[#dce3ef] my-1">
                                 <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Système</p>
@@ -141,6 +144,10 @@
                     {% if user|has_group:'mediatheque' %}
                     <a href="{% url 'library_workshops:index' %}" class="block px-3 py-2.5 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Ateliers</a>
                     <a href="{% url 'visitor_tracking:index' %}" class="block px-3 py-2.5 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Pointage visiteurs</a>
+                    <a href="{% url 'newsletter:ma_fiche' %}" class="block px-3 py-2.5 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Ma fiche médiathèque</a>
+                    {% endif %}
+                    {% if user.is_superuser or user|has_group:'communication' %}
+                    <a href="{% url 'newsletter:index' %}" class="block px-3 py-2.5 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Newsletters</a>
                     {% endif %}
                     {% if not user|has_group:'mediatheque' %}
                     <a href="{% url 'distribution:index' %}" class="block px-3 py-2.5 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Distribution</a>
@@ -171,7 +178,7 @@
                     </div>
                     <div class="px-3 py-2">
                         <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Communication</p>
-                        <a href="{% url 'library_workshops:newsletter' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-mail-send text-[#b0bedb]"></i> Newsletter</a>
+                        <a href="{% url 'newsletter:index' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-mail-send text-[#b0bedb]"></i> Newsletter</a>
                         <a href="{% url 'notifications:email_admin' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-envelope text-[#b0bedb]"></i> Emails</a>
                     </div>
                     <div class="px-3 py-2">

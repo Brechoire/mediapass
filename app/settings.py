@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "distribution",
     "notifications",
     "visitor_tracking",
+    "newsletter",
 ]
 
 MIDDLEWARE = [
@@ -144,19 +145,13 @@ AUTH_PASSWORD_VALIDATORS = [
         ),
     },
     {
-        "NAME": (
-            "django.contrib.auth.password_validation.MinimumLengthValidator"
-        ),
+        "NAME": ("django.contrib.auth.password_validation.MinimumLengthValidator"),
     },
     {
-        "NAME": (
-            "django.contrib.auth.password_validation.CommonPasswordValidator"
-        ),
+        "NAME": ("django.contrib.auth.password_validation.CommonPasswordValidator"),
     },
     {
-        "NAME": (
-            "django.contrib.auth.password_validation.NumericPasswordValidator"
-        ),
+        "NAME": ("django.contrib.auth.password_validation.NumericPasswordValidator"),
     },
 ]
 
@@ -200,6 +195,13 @@ DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_HOST_USER")
 
 # Fichiers
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10 Mo
+
+# Newsletter
+SITE_URL = os.environ.get("SITE_URL", "http://127.0.0.1:8000")
+SENDER_API_KEY = os.environ.get("SENDER_API_KEY", "")
+SENDER_FROM_NAME = os.environ.get("SENDER_FROM_NAME", "Médi@'pass")
+SENDER_REPLY_TO = os.environ.get("SENDER_REPLY_TO", "")
+SENDER_GROUP_ID = os.environ.get("SENDER_GROUP_ID", "")
 
 # Auth redirects
 LOGIN_REDIRECT_URL = "/"

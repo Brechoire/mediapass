@@ -1,0 +1,589 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Builder — {{ newsletter.title }}{% endblock %}
+
+{% block stylesheets %}
+<style>
+  .animate-nl-enter { animation: nl-enter .28s cubic-bezier(.2,.8,.3,1) both; }
+  @keyframes nl-enter { from { opacity: 0; transform: translateY(6px) scale(.995); } to { opacity: 1; transform: none; } }
+  #nl-side-panel { transform: translateX(105%); transition: transform .28s cubic-bezier(.2,.8,.3,1); }
+  #nl-side-panel.open { transform: translateX(0); box-shadow: -12px 0 40px rgba(30,41,59,.18); }
+  .htmx-request.nl-progress { opacity: 1 !important; }
+  #nl-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; z-index: 60;
+                 background: linear-gradient(90deg,#4a6fa5,#3daae0); border-radius: 0 9999px 9999px 0;
+                 transition: width .25s ease, opacity .4s ease; opacity: 0; pointer-events: none; }
+  .nl-toast { animation: nl-toast-in .25s cubic-bezier(.2,.8,.3,1) both; }
+  @keyframes nl-toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  /* Éditeur enrichi */
+  .nl-editor { min-height: 140px; max-height: 320px; overflow-y: auto; border: 1px solid #dce3ef; border-radius: .5rem;
+               padding: .75rem; font-size: .9rem; line-height: 1.65; color: #3f4c5e; background: #fff; outline: none; }
+  .nl-editor:focus { border-color: #4a6fa5; box-shadow: 0 0 0 3px rgba(74,111,165,.15); }
+  .nl-editor p { margin: 0 0 .5em; } .nl-editor ul, .nl-editor ol { padding-left: 1.4em; margin: 0 0 .5em; }
+  .nl-editor a { color: #4a6fa5; text-decoration: underline; }
+  .nl-richtext-bar { display: flex; gap: .25rem; margin-bottom: .35rem; flex-wrap: wrap; }
+  .nl-richtext-bar button { min-width: 2rem; padding: .3rem .45rem; font-size: .8rem; font-weight: 600; border-radius: .5rem;
+                            border: 1px solid #e3e9f4; background: #f8fafc; color: #33475e; cursor: pointer; transition: all .15s; }
+  .nl-richtext-bar button:hover { background: #e8eef7; border-color: #b9cbe8; }
+  textarea[data-rich-hidden="1"] { display: none; }
+  /* Choix variante atelier */
+  .nl-variant-radio { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
+  .nl-variant-radio li { margin:0; }
+  .nl-variant-radio label { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid #dce3ef; border-radius:10px; background:#f8fafc; cursor:pointer; font-size:13px; font-weight:500; color:#33475e; transition:all .15s; }
+  .nl-variant-radio label:has(input:checked) { border-color:#4a6fa5; background:#eef2fb; color:#1e293b; box-shadow:0 0 0 2px rgba(74,111,165,.15); }
+  .nl-variant-radio input[type="radio"] { accent-color:#4a6fa5; }
+  /* Slider taille image */
+  .nl-range-wrap { display:flex; align-items:center; gap:10px; }
+  .nl-range-wrap input[type="range"] { flex:1; accent-color:#4a6fa5; }
+  .nl-range-val { min-width:52px; text-align:center; font-size:12px; font-weight:700; color:#4a6fa5; background:#eef2fb; border-radius:6px; padding:4px 6px; }
+  /* Poignée draggable sur image */
+  .nl-drag-handle { position:absolute; top:0; right:-6px; width:12px; height:100%; cursor:ew-resize; display:flex; align-items:center; justify-content:center; }
+  .nl-drag-handle::after { content:""; width:4px; height:36px; border-radius:9999px; background:#4a6fa5; opacity:.9; box-shadow:0 1px 4px rgba(0,0,0,.2); }
+  .nl-drag-handle:hover::after { width:6px; }
+  /* Champs génériques sidebar droite (manquants précédemment) */
+  .nl-input { width:100%; border:1px solid #dce3ef; border-radius:8px; padding:8px 10px; font-size:13px; background:#fff; color:#1e293b; outline:none; transition:border-color .15s, box-shadow .15s; }
+  .nl-input:focus { border-color:#4a6fa5; box-shadow:0 0 0 3px rgba(74,111,165,.15); }
+  .nl-input::placeholder { color:#94a3b8; }
+  select.nl-input { padding-right:28px; }
+  .nl-color { width:100%; height:36px; border:1px solid #dce3ef; border-radius:8px; padding:2px; background:#fff; cursor:pointer; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+<div id="nl-progress"></div>
+
+{# Barre supérieure #}
+<header class="sticky top-16 z-20 bg-white/85 backdrop-blur-md border-b border-[#dce3ef]">
+  <div class="mx-auto max-w-[1500px] px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+    <a href="{% url 'newsletter:index' %}" class="inline-flex items-center gap-1 text-sm text-[#7a8fa0] hover:text-[#4a6fa5] transition-colors">
+      <i class='bx bx-arrow-back'></i> Newsletters
+    </a>
+    <div class="min-w-0">
+      <div class="flex items-center gap-2">
+        <h1 class="text-lg font-bold text-[#1e293b] truncate">{{ newsletter.title }}</h1>
+        {% if newsletter.status == "sent" %}
+        <span class="inline-flex items-center gap-1 rounded-full bg-[#e5f5ec] text-[#1a8a4a] text-[11px] font-semibold px-2.5 py-0.5">
+          <i class='bx bx-check'></i> Terminée
+        </span>
+        {% else %}
+        <span class="rounded-full bg-[#fff4dd] text-[#b8860b] text-[11px] font-semibold px-2.5 py-0.5">Brouillon</span>
+        {% endif %}
+      </div>
+      <p class="text-xs text-[#93a3b3]">Du {{ newsletter.period_start|date:"d/m/Y" }} au {{ newsletter.period_end|date:"d/m/Y" }}</p>
+    </div>
+
+    <div class="ml-auto flex items-center gap-2">
+      <button type="button" onclick="openChangelogModal()" title="Voir le changelog du builder"
+              class="inline-flex items-center gap-1.5 rounded-full border border-[#c7d7f0] bg-[#eef2ff] px-2.5 py-1 text-xs font-bold text-[#4a6fa5] hover:bg-[#e0e7ff] transition-colors cursor-pointer">
+        <i class='bx bx-history'></i> Beta 0.3
+      </button>
+      <button type="button" onclick="nlOpenPanel('{% url 'newsletter:settings_panel' newsletter.pk %}')"
+              class="inline-flex items-center gap-1.5 rounded-xl border border-[#dce3ef] bg-white px-3 py-2 text-sm font-medium text-[#33475e] hover:bg-[#f1f5fb] transition-colors cursor-pointer">
+        <i class='bx bx-palette'></i> Réglages
+      </button>
+      <a href="{% url 'newsletter:preview' newsletter.pk %}" target="_blank" rel="noopener"
+         class="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-[#dce3ef] bg-white px-3 py-2 text-sm font-medium text-[#33475e] hover:bg-[#f1f5fb] transition-colors">
+        <i class='bx bx-show'></i> Aperçu
+      </a>
+      <button type="button" onclick="nlCopyHtml(this)"
+              data-preview-url="{% url 'newsletter:preview' newsletter.pk %}"
+              class="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-[#dce3ef] bg-white px-3 py-2 text-sm font-medium text-[#33475e] hover:bg-[#f1f5fb] transition-colors cursor-pointer">
+        <i class='bx bx-copy'></i> Copier le HTML
+      </button>
+      <a href="{% url 'newsletter:download' newsletter.pk %}"
+         class="hidden md:inline-flex items-center gap-1.5 rounded-xl border border-[#dce3ef] bg-white px-3 py-2 text-sm font-medium text-[#33475e] hover:bg-[#f1f5fb] transition-colors">
+        <i class='bx bx-download'></i> HTML
+      </a>
+      <a href="{% url 'newsletter:contacts_csv' newsletter.pk %}"
+         title="Exporter les contacts (nom, prénom, email)"
+         class="hidden md:inline-flex items-center gap-1.5 rounded-xl border border-[#dce3ef] bg-white px-3 py-2 text-sm font-medium text-[#33475e] hover:bg-[#f1f5fb] transition-colors">
+        <i class='bx bx-group'></i> CSV
+      </a>
+      <button type="button" onclick="openClearModal()" title="Vider la mise en page (tous les blocs)"
+              class="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-[#fee2e2] bg-white px-3 py-2 text-sm font-medium text-[#dc2626] hover:bg-[#fef2f2] transition-colors cursor-pointer">
+        <i class='bx bx-trash'></i> Vider
+      </button>
+      <form method="post" action="{% url 'newsletter:send_sender' newsletter.pk %}" class="m-0"
+            onsubmit="this.querySelector('button').disabled=true;">
+        {% csrf_token %}
+        <button type="submit" {% if not sender_configured %}title="Clé SENDER_API_KEY absente du .env"{% endif %}
+                class="inline-flex items-center gap-1.5 rounded-xl bg-[#4a6fa5] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#3d5f8f] active:scale-[.98] transition-all disabled:opacity-50 cursor-pointer">
+          <i class='bx bx-send'></i> Envoyer vers Sender.net
+        </button>
+      </form>
+    </div>
+  </div>
+</header>
+
+<main class="mx-auto max-w-[1500px] px-4 py-5 grid grid-cols-1 lg:grid-cols-[270px_minmax(0,1fr)] xl:grid-cols-[270px_minmax(0,1fr)] gap-5">
+
+  {# ─── Sidebar gauche : palette & ateliers ─── #}
+  <aside class="lg:sticky lg:top-[136px] self-start rounded-2xl border border-[#dce3ef] bg-white shadow-sm overflow-hidden">
+    <div id="nl-tabs" class="flex border-b border-[#dce3ef]" role="tablist">
+      <button type="button" role="tab" data-tab="palette" aria-selected="true"
+              class="nl-tab flex-1 px-3 py-3 text-sm font-semibold text-[#4a6fa5] border-b-2 border-[#4a6fa5] bg-[#f6f9ff]/60 transition-colors cursor-pointer">
+        <i class='bx bx-layout mr-1'></i>Blocs
+      </button>
+      <button type="button" role="tab" data-tab="ateliers" aria-selected="false"
+              class="nl-tab flex-1 px-3 py-3 text-sm font-semibold text-[#7a8fa0] border-b-2 border-transparent hover:text-[#4a6fa5] transition-colors cursor-pointer">
+        <i class='bx bx-calendar-star mr-1'></i>Ateliers
+      </button>
+    </div>
+
+    {# Onglet Blocs #}
+    <div id="tab-palette" class="p-3 space-y-4" role="tabpanel">
+      <div>
+        <p class="text-[11px] font-bold uppercase tracking-wider text-[#93a3b3] mb-2">Contenu</p>
+        <div class="grid grid-cols-2 gap-2">
+          {% for bt in content_block_types %}
+          <button type="button" hx-post="{% url 'newsletter:add_block' newsletter.pk %}" hx-vals='{"block_type": "{{ bt.key }}"}'
+                  hx-target="#nl-canvas" hx-swap="outerHTML"
+                  class="nl-add-btn group flex flex-col items-center gap-1.5 rounded-xl border border-[#e3e9f4] bg-white px-2 py-3 hover:border-[#4a6fa5] hover:bg-[#f6f9ff] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 transition-all cursor-pointer">
+            <i class='bx {{ bt.icon }} text-xl text-[#4a6fa5] group-hover:scale-110 transition-transform'></i>
+            <span class="text-xs font-medium text-[#33475e]">{{ bt.label }}</span>
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+      <div>
+        <p class="text-[11px] font-bold uppercase tracking-wider text-[#93a3b3] mb-2">Structure</p>
+        <div class="space-y-2">
+          <button type="button"
+                  hx-post="{% url 'newsletter:add_section' newsletter.pk %}"
+                  hx-target="#nl-canvas" hx-swap="outerHTML"
+                  class="w-full flex items-center gap-2.5 rounded-xl border border-[#e3e9f4] bg-white px-3 py-2.5 hover:border-[#4a6fa5] hover:bg-[#f6f9ff] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 transition-all cursor-pointer">
+            <span class="w-8 h-8 rounded-lg bg-[#ede9fe] flex items-center justify-center shrink-0"><i class='bx bx-collection text-[#7c3aed]'></i></span>
+            <span class="text-left">
+              <span class="block text-xs font-semibold text-[#1e293b]">Section</span>
+              <span class="block text-[11px] text-[#93a3b3]">En-tête médiathèque + ateliers</span>
+            </span>
+          </button>
+        </div>
+      </div>
+      <div>
+        <p class="text-[11px] font-bold uppercase tracking-wider text-[#93a3b3] mb-2">Ateliers &amp; événements</p>
+        <div class="space-y-2">
+          {% for bt in special_block_types %}
+          <button type="button" {% if bt.key == "workshop" %}onclick="nlShowTab('ateliers')"{% elif bt.key == "library" %}onclick="nlOpenPanel('{% url 'newsletter:candidates_panel' newsletter.pk %}')"{% else %}hx-post="{% url 'newsletter:add_block' newsletter.pk %}" hx-vals='{"block_type": "{{ bt.key }}"}' hx-target="#nl-canvas" hx-swap="outerHTML"{% endif %}
+                  class="w-full flex items-center gap-2.5 rounded-xl border border-[#e3e9f4] bg-white px-3 py-2.5 hover:border-[#4a6fa5] hover:bg-[#f6f9ff] hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 transition-all cursor-pointer">
+            <span class="w-8 h-8 rounded-lg bg-[#e8eef7] flex items-center justify-center shrink-0"><i class='bx {{ bt.icon }} text-[#4a6fa5]'></i></span>
+            <span class="text-left">
+              <span class="block text-xs font-semibold text-[#1e293b]">{{ bt.label }}</span>
+              <span class="block text-[11px] text-[#93a3b3]">{{ bt.hint }}</span>
+            </span>
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {# Onglet Ateliers candidats #}
+    <div id="tab-ateliers" class="hidden p-3 max-h-[70vh] overflow-y-auto" role="tabpanel">
+      <button type="button"
+              hx-post="{% url 'newsletter:bulk_add_workshops' newsletter.pk %}"
+              hx-target="#nl-canvas" hx-swap="outerHTML"
+              hx-confirm="Générer toute la disposition de base ? Tous les ateliers de la période seront ajoutés par médiathèque puis par date. Les doublons seront ignorés."
+              class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#4a6fa5] px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#3d5f8f] active:scale-[.98] transition-all cursor-pointer">
+        <i class='bx bx-magic-wand text-base'></i> Générer la disposition de base
+      </button>
+      <p class="mt-2 mb-3 text-[11px] leading-relaxed text-[#7a8fa0]">Ajoute tous les ateliers en 1 clic, triés par médiathèque (Anor, Trélon, Wignehies) puis par date. Chaque bloc reste ensuite éditable/déplaçable/supprimable normalement.</p>
+      <div id="nl-candidates-wrap">
+        {% include "newsletter/partials/candidates.html" %}
+      </div>
+    </div>
+  </aside>
+
+  {# ─── Canevas central ─── #}
+  <section aria-label="Aperçu de la newsletter">
+    <div class="rounded-t-2xl bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75] px-5 py-3.5 flex items-center justify-between">
+      <p class="text-white/95 text-sm font-semibold truncate"><i class='bx bx-envelope mr-1.5'></i>{{ newsletter.subject }}</p>
+      <p class="text-white/60 text-xs shrink-0 pl-3">{{ newsletter.blocks.count }} bloc{% if newsletter.blocks.count > 1 or newsletter.blocks.count == 0 %}s{% endif %}</p>
+    </div>
+      <div class="rounded-b-2xl bg-[#edf1f8] border border-t-0 border-[#dce3ef] p-4 sm:p-6 min-h-[50vh]"
+         style="background-color: {{ newsletter.background_color }}22;">
+        {% include "newsletter/partials/canvas.html" %}
+      </div>
+  </section>
+</main>
+
+{# ─── Panneau latéral droit (édition) ─── #}
+<div id="nl-overlay" class="fixed inset-0 z-40 bg-gray-900/30 backdrop-blur-[2px] hidden" onclick="nlClosePanel()"></div>
+<aside id="nl-side-panel" class="fixed right-0 top-0 z-50 h-full w-full max-w-[400px] bg-[#fafbfd] border-l border-[#dce3ef] overflow-hidden" role="dialog" aria-modal="true">
+  <div id="nl-panel-content" class="h-full"></div>
+</aside>
+
+  {# ─── Toasts ─── #}
+<div id="nl-toasts" class="fixed bottom-5 right-5 z-[70] space-y-2 w-80"></div>
+
+  {# Modale Vider la mise en page #}
+  <div id="clear-layout-modal" class="hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="clear-layout-title">
+    <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onclick="closeClearModal()"></div>
+    <div class="relative mx-auto mt-32 w-full max-w-md px-4">
+      <div class="bg-white rounded-2xl shadow-xl border border-[#dce3ef] overflow-hidden animate-nl-enter">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+          <h3 id="clear-layout-title" class="text-lg font-bold text-[#1e293b]">Vider la mise en page ?</h3>
+          <p class="text-sm text-[#64748b] mt-1">Tous les blocs seront supprimés (sections et ateliers). Cette action est irréversible.</p>
+        </div>
+        <div class="px-6 py-4 flex items-center justify-end gap-3">
+          <button type="button" onclick="closeClearModal()" class="px-4 py-2 rounded-xl border border-[#dce3ef] bg-white text-sm font-medium text-[#475569] hover:bg-[#f8fafc] cursor-pointer">Annuler</button>
+          <button type="button"
+                  hx-post="{% url 'newsletter:clear_layout' newsletter.pk %}"
+                  hx-target="#nl-canvas" hx-swap="outerHTML"
+                  onclick="closeClearModal()"
+                  class="px-4 py-2 rounded-xl bg-[#dc2626] text-white text-sm font-semibold hover:bg-[#b91c1c] cursor-pointer">Vider</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Modale Changelog Builder #}
+  <div id="changelog-modal" class="hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="changelog-title">
+    <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onclick="closeChangelogModal()"></div>
+    <div class="relative mx-auto mt-10 w-full max-w-2xl px-4 max-h-[85vh] flex flex-col">
+      <div class="bg-white rounded-2xl shadow-xl border border-[#dce3ef] overflow-hidden animate-nl-enter flex flex-col max-h-[85vh]">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-[#dce3ef] bg-gradient-to-r from-[#4a6fa5] to-[#3d5f8f] text-white shrink-0">
+          <h3 id="changelog-title" class="text-lg font-bold flex items-center gap-2"><i class='bx bx-history'></i> Changelog — Newsletter Builder <span class="ml-2 rounded-full bg-white/20 px-2.5 py-0.5 text-xs">Beta 0.3</span></h3>
+          <button type="button" onclick="closeChangelogModal()" class="p-2 rounded-lg hover:bg-white/20 transition-colors" aria-label="Fermer"><i class='bx bx-x text-xl'></i></button>
+        </div>
+        <div class="overflow-y-auto px-6 py-5 space-y-6 text-sm leading-relaxed flex-1">
+          <section>
+            <h4 class="font-bold text-[#4a6fa5] flex items-center gap-2"><span class="rounded-full bg-[#4a6fa5] text-white text-xs px-2 py-0.5">Beta 0.3</span> 27 août 2026 — Sections & Personnalisation avancée</h4>
+            <ul class="list-disc ml-5 mt-2 space-y-1 text-[#475569]">
+              <li><strong>Sections par médiathèque</strong> — 1 section = 1 médiathèque (Anor, Trélon, Wignehies), header avec image, nom, téléphone, adresse, description, boutons Site / Facebook / Instagram / Appeler, fond uniforme blanc par défaut, supprimable en bloc (cascade).</li>
+              <li><strong>Bouton Générer</strong> dans l'onglet Ateliers : ajoute en 1 clic tous les ateliers de la période triés par médiathèque puis date, avec headings, déduplication.</li>
+              <li><strong>5 variantes atelier</strong> : Carte empilée, Image à gauche, Image à droite, Compact (liste sans image), Timeline — héritage Global → Section → Bloc, slider largeur 60–280px + poignée draggable sur l'image (ratio conservé).</li>
+              <li><strong>Fonds transparents</strong> à 3 niveaux (global Newsletter / Section / Bloc) via case “Fond transparent” — permet de laisser apparaître le fond parent.</li>
+              <li><strong>Bordures & formes</strong> à 3 niveaux : style (aucune, pleine, pointillée, accent à gauche), couleur, épaisseur 1–4px, rayon 0/6/8/12/16/pill.</li>
+              <li><strong>Toolbar fix</strong> — repositionnée à l'intérieur (`top-2`) avec `opacity` au lieu de `hidden -translate`, `min-h-[32px]` pour séparateur/espaceur, visible au survol sans être clippée.</li>
+              <li><strong>Drag & drop</strong> — SortableJS 1.15 avec poignées `bx-move` pour sections et blocs (y compris inter-sections, groupe `nl-blocks`), persistance via `/sections/reorder/` et `/blocks/reorder/`.</li>
+              <li><strong>CSS sidebar</strong> — `.nl-input/.nl-color` ajoutés à `site.css` : champs du panneau de droite correctement stylisés.</li>
+              <li><strong>Bouton Vider</strong> — header + modale de confirmation, `clear_layout` vide blocs + sections.</li>
+              <li><strong>Fix empty section</strong> — placeholder centré (`p-3` + `px-6 py-10`) au lieu de `mx-3 mb-3` décentré.</li>
+            </ul>
+          </section>
+          <section>
+            <h4 class="font-bold text-[#4a6fa5]">Beta 0.2 — 27 août 2026 — Stabilisation builder</h4>
+            <ul class="list-disc ml-5 mt-2 space-y-1 text-[#475569]">
+              <li>Fix `htmx:targetError` : wrapper `#nl-canvas` déplacé dans `canvas.html` (source unique) pour que le swap `outerHTML` conserve l'ancre.</li>
+              <li>`htmx.process()` après injection `nlOpenPanel` + handler `htmx:afterSwap` pour ouverture auto du panneau d'édition.</li>
+              <li>Image block : `hx-encoding="multipart/form-data"` + préservation `image_id` à l'édition, placeholder pointillé visible uniquement dans le builder (`for_email` flag), `site_url` passé au canvas.</li>
+              <li>Fix `label` sans `for` (2 warnings console) + `SectionForm` sociaux.</li>
+              <li>Fix `VariableDoesNotExist` sur `/sections/2/edit/` (`prof.name` sur `None`).</li>
+            </ul>
+          </section>
+          <section>
+            <h4 class="font-bold text-[#4a6fa5]">Beta 0.1 — 26 août 2026 — Builder initial (Sender-like)</h4>
+            <ul class="list-disc ml-5 mt-2 space-y-1 text-[#475569]">
+              <li>Nouvelle app `newsletter` : `LibraryProfile` (fiche médiathèque), `Newsletter` (titre, sujet, période, couleurs, police, `workshop_default_variant`), `Block` (9 types : heading/text/image/button/separator/spacer/workshop/event/library, `content`/`style` JSON, `position` unique), `NewsletterImage`, `Section`.</li>
+              <li>Dashboard + builder 3 zones (palette Blocs/Structure/Ateliers, canvas 600px, drawer latéral), HTMX sans drag, boutons monter/descendre/dupliquer/supprimer/éditer, toasts, progression.</li>
+              <li>Ateliers médiathèques : `newsletter=True` filtré sur `period_start/end` via `get_candidate_workshops` groupé par médiathèque, snapshot local éditable (titre/date/lieu/description/image) sans toucher `library_workshops.Workshop`.</li>
+              <li>Fiches médiathèques : CRUD par médiathèque (`ma-fiche`), liste admin.</li>
+              <li>Rendu email table-based 600px inline CSS, partagé canvas/email via `partials/blocks/*.html`, aperçu iframe, téléchargement `.html`, copie HTML.</li>
+              <li>Exports : CSV contacts (nom, prénom, email dédupliqué) + push Sender.net `POST /v2/campaigns` (brouillon) via `SENDER_API_KEY`.</li>
+              <li>Seed : commande `generate_newsletter_workshops` (6/médiathèque, sept-oct, faux visuels Pillow).</li>
+              <li>Remplace `/mediatheque/ateliers/newsletter/` (ancienne page lecture seule) par redirection vers le builder.</li>
+            </ul>
+          </section>
+          <p class="text-xs text-[#94a3b8] border-t pt-3">Fichiers clés : `newsletter/models.py`, `views.py`, `forms.py`, `services.py`, `builder.html`, `canvas.html`, `section_header.html`, `workshop.html`, `site.css`, `migrations/0001→0005`.</p>
+        </div>
+        <div class="px-6 py-3 border-t border-[#dce3ef] bg-[#f8fafc] flex justify-end shrink-0">
+          <button type="button" onclick="closeChangelogModal()" class="px-4 py-2 rounded-xl bg-[#4a6fa5] text-white text-sm font-semibold hover:bg-[#3d5f8f] cursor-pointer">Fermer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<noscript><style>#nl-side-panel{display:none}</style></noscript>
+
+<script>
+  const NL_URLS = {
+    candidatesPanel: '{% url "newsletter:candidates_panel" newsletter.pk %}'
+  };
+
+  function nlToast(message, ok = true) {
+    const wrap = document.getElementById('nl-toasts');
+    if (!wrap || !message) return;
+    const el = document.createElement('div');
+    el.className = 'nl-toast flex items-start gap-2.5 rounded-xl px-4 py-3 shadow-lg text-sm font-medium ' +
+      (ok ? 'bg-[#123d28] text-emerald-100' : 'bg-[#4a1520] text-rose-100');
+    el.innerHTML = `<i class='bx ${ok ? "bx-check-circle" : "bx-error"} mt-0.5'></i><span></span>`;
+    el.querySelector('span').textContent = message;
+    wrap.appendChild(el);
+    setTimeout(() => { el.style.transition = 'opacity .3s, transform .3s'; el.style.opacity = '0'; el.style.transform = 'translateY(8px)'; setTimeout(() => el.remove(), 300); }, 2600);
+  }
+
+  document.body.addEventListener('nl-toast', e => nlToast(e.detail.value ?? '', true));
+  document.body.addEventListener('htmx:responseError', () => nlToast("Une erreur est survenue.", false));
+  document.body.addEventListener('htmx:targetError', e => {
+    console.warn('[newsletter] htmx:targetError — cible introuvable pour :', e.detail?.sourceEl ?? e.detail);
+    nlToast("Élément introuvable : rechargez la page.", false);
+  });
+
+  // Barre de progression HTMX
+  const progress = document.getElementById('nl-progress');
+  let progressTimer = null;
+  document.body.addEventListener('htmx:beforeRequest', () => {
+    clearTimeout(progressTimer);
+    progress.style.opacity = '1'; progress.style.width = '65%';
+  });
+  const finishProgress = () => { progress.style.width = '100%';
+    setTimeout(() => { progress.style.opacity = '0'; progressTimer = setTimeout(() => progress.style.width = '0', 400); }, 180); };
+  document.body.addEventListener('htmx:afterRequest', finishProgress);
+  document.body.addEventListener('htmx:afterSwap', finishProgress);
+
+  // Panneau latéral
+  function nlOpenPanel(url) {
+    fetch(url, { headers: { 'X-Requested-With': 'HTMX' } })
+      .then(r => r.text())
+      .then(html => {
+        const content = document.getElementById('nl-panel-content');
+        content.innerHTML = html;
+        if (window.htmx) htmx.process(content);
+        document.getElementById('nl-side-panel').classList.add('open');
+        document.getElementById('nl-overlay').classList.remove('hidden');
+        nlInitRichText();
+        nlInitWorkshopEditor();
+      });
+  }
+  function nlClosePanel() {
+    document.getElementById('nl-side-panel').classList.remove('open');
+    document.getElementById('nl-overlay').classList.add('hidden');
+    document.getElementById('nl-panel-content').innerHTML = '';
+  }
+  function openClearModal(){ document.getElementById('clear-layout-modal').classList.remove('hidden'); }
+  function closeClearModal(){ document.getElementById('clear-layout-modal').classList.add('hidden'); }
+  function openChangelogModal(){ document.getElementById('changelog-modal').classList.remove('hidden'); }
+  function closeChangelogModal(){ document.getElementById('changelog-modal').classList.add('hidden'); }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { nlClosePanel(); closeClearModal(); closeChangelogModal(); } });
+
+  // Panneau HTMX : ouverture auto quand le contenu est injecté par hx-get
+  document.body.addEventListener('htmx:afterSwap', e => {
+    if (e.detail && e.detail.target && e.detail.target.id === 'nl-panel-content') {
+      document.getElementById('nl-side-panel').classList.add('open');
+      document.getElementById('nl-overlay').classList.remove('hidden');
+      nlInitRichText();
+      nlInitWorkshopEditor();
+    }
+  });
+  // Après un swap du canevas : si l'édition d'un bloc est ouverte, on la ferme.
+  document.body.addEventListener('htmx:afterSwap', e => {
+    if (e.detail && e.detail.target && e.detail.target.id === 'nl-canvas') {
+      const root = document.getElementById('nl-panel-root');
+      if (root && root.dataset.blockId) nlClosePanel();
+    }
+  });
+
+  // Onglets sidebar
+  function nlShowTab(name) {
+    document.querySelectorAll('.nl-tab').forEach(t => {
+      const active = t.dataset.tab === name;
+      t.classList.toggle('text-[#4a6fa5]', active);
+      t.classList.toggle('border-[#4a6fa5]', active);
+      t.classList.toggle('bg-[#f6f9ff]/60', active);
+      t.classList.toggle('text-[#7a8fa0]', !active);
+      t.classList.toggle('border-transparent', !active);
+      t.setAttribute('aria-selected', String(active));
+    });
+    document.querySelectorAll('#tab-palette, #tab-ateliers').forEach(p => p.classList.add('hidden'));
+    document.getElementById('tab-' + name).classList.remove('hidden');
+  }
+  document.querySelectorAll('.nl-tab').forEach(tab => {
+    tab.addEventListener('click', () => nlShowTab(tab.dataset.tab));
+  });
+
+  // Éditeur atelier : slider taille image + poignée draggable (ratio conservé)
+  function nlInitWorkshopEditor() {
+    const panel = document.getElementById('nl-panel-content');
+    if (!panel) return;
+    const root = document.getElementById('nl-panel-root');
+    const bid = root ? root.dataset.blockId : null;
+    const variantRadios = panel.querySelectorAll('input[name="variant"]');
+    let range = panel.querySelector('input[name="image_width"]');
+    if (!variantRadios.length && !range) return;
+
+    // créer affichage valeur + hint si absents (edit_panel générique ne les fournit pas)
+    if (range) {
+      let valEl = panel.querySelector('#nl-image-width-val');
+      if (!valEl) {
+        valEl = document.createElement('span');
+        valEl.id = 'nl-image-width-val';
+        valEl.className = 'nl-range-val';
+        range.insertAdjacentElement('afterend', valEl);
+        // enveloppe flex pour aligner slider + valeur
+        const fieldDiv = range.closest('div');
+        if (fieldDiv && !fieldDiv.classList.contains('nl-range-wrap')) {
+          fieldDiv.classList.add('nl-range-wrap');
+          fieldDiv.style.display = 'flex';
+          fieldDiv.style.alignItems = 'center';
+          fieldDiv.style.gap = '10px';
+          // déplacer label/help hors du flex si besoin — on garde simple
+        }
+      }
+      let hint = panel.querySelector('#nl-width-hint');
+      if (!hint) {
+        hint = document.createElement('div');
+        hint.id = 'nl-width-hint';
+        hint.style.cssText = 'font-size:11px;color:#7a8fa0;margin-top:4px;';
+        range.closest('div').appendChild(hint);
+      }
+    }
+
+    // toggle visibilité du slider selon variante (uniquement side-* utilise la largeur)
+    const wrap = range ? range.closest('div') : null;
+    function updateVariantUI() {
+      const checked = panel.querySelector('input[name="variant"]:checked');
+      const v = checked ? checked.value : 'inherit';
+      const showSlider = v === 'side' || v === 'side-left' || v === 'side-right' || v === 'inherit';
+      if (range) {
+        const fieldDiv = range.closest('div');
+        if (fieldDiv) fieldDiv.style.display = showSlider ? '' : 'none';
+      }
+      const hint = panel.querySelector('#nl-width-hint');
+      if (hint) {
+        if (v === 'card') hint.textContent = 'Sans effet en mode carte (image pleine largeur)';
+        else if (v === 'compact' || v === 'timeline') hint.textContent = 'Pas d’image dans cette variante';
+        else hint.textContent = 'Ratio conservé — glissez aussi le bord de l’image dans l’aperçu';
+      }
+    }
+    variantRadios.forEach(r => r.addEventListener('change', updateVariantUI));
+    updateVariantUI();
+
+    if (!range || !bid) return;
+    const valEl = panel.querySelector('#nl-image-width-val');
+    const updateVal = () => { if (valEl) valEl.textContent = range.value + ' px'; };
+    // live preview dans le canevas
+    const applyPreview = () => {
+      const blockEl = document.getElementById('block-' + bid);
+      if (!blockEl) return;
+      const img = blockEl.querySelector('.nl-render img');
+      const td = img ? img.closest('td[width]') : blockEl.querySelector('td[width]');
+      if (img) { img.style.width = range.value + 'px'; img.setAttribute('width', range.value); }
+      if (td) { td.style.width = range.value + 'px'; td.setAttribute('width', range.value); }
+    };
+    range.addEventListener('input', () => { updateVal(); applyPreview(); });
+    updateVal();
+    applyPreview();
+
+    // poignée draggable directement sur l'image du canevas
+    const blockEl = document.getElementById('block-' + bid);
+    if (!blockEl) return;
+    const imgTd = blockEl.querySelector('td[width]');
+    const img = blockEl.querySelector('.nl-render img');
+    if (!imgTd || !img || imgTd.querySelector('.nl-drag-handle')) return;
+    imgTd.style.position = 'relative';
+    const h = document.createElement('div');
+    h.className = 'nl-drag-handle';
+    h.title = 'Glisser pour redimensionner (ratio conservé)';
+    imgTd.appendChild(h);
+    let startX, startW;
+    h.addEventListener('mousedown', e => {
+      e.preventDefault();
+      startX = e.clientX;
+      startW = parseInt(range.value,10) || 140;
+      const onMove = ev => {
+        const dx = ev.clientX - startX;
+        let nw = startW + dx;
+        nw = Math.max(60, Math.min(280, nw));
+        range.value = nw;
+        range.dispatchEvent(new Event('input', {bubbles:true}));
+      };
+      const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
+  // Éditeur enrichi (gras / italique / souligné / listes / lien) — inclut description atelier
+  function nlInitRichText() {
+    document.querySelectorAll('#nl-panel-content form textarea[name="html"], #nl-panel-content form textarea[name="body"], #nl-panel-content form textarea[name="description"]').forEach(ta => {
+      if (ta.dataset.rich === '1') return;
+      ta.dataset.rich = '1';
+      ta.setAttribute('data-rich-hidden', '1');
+      const bar = document.createElement('div'); bar.className = 'nl-richtext-bar';
+      [['bold', '<strong>G</strong>', 'Gras'], ['italic', '<em>I</em>', 'Italique'],
+       ['underline', '<u>S</u>', 'Souligné'], ['insertUnorderedList', '&bull;&nbsp;&mdash;', 'Liste à puces'],
+       ['insertOrderedList', '1.', 'Liste numérotée']].forEach(([cmd, label, title]) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.title = title; b.innerHTML = label;
+        b.onclick = e => { e.preventDefault(); ed.focus(); document.execCommand(cmd); };
+        bar.appendChild(b);
+      });
+      const linkBtn = document.createElement('button');
+      linkBtn.type = 'button'; linkBtn.title = 'Insérer un lien'; linkBtn.innerHTML = "&#128279;";
+      linkBtn.onclick = e => { e.preventDefault();
+        const url = prompt('Adresse du lien :', 'https://');
+        if (url) { ed.focus(); document.execCommand('createLink', false, url); } };
+      bar.appendChild(linkBtn);
+
+      const ed = document.createElement('div');
+      ed.className = 'nl-editor'; ed.contentEditable = 'true';
+      ed.innerHTML = ta.value || '';
+      ed.addEventListener('input', () => { ta.value = ed.innerHTML; });
+      ed.addEventListener('blur', () => { ta.value = ed.innerHTML; });
+      ta.parentNode.insertBefore(bar, ta);
+      ta.parentNode.insertBefore(ed, ta);
+      ta.closest('form').addEventListener('submit', () => { ta.value = ed.innerHTML; }, true);
+    });
+  }
+
+  // Copier le HTML final dans le presse-papiers
+  async function nlCopyHtml(btn) {
+    try {
+      btn.disabled = true;
+      const html = await fetch(btn.dataset.previewUrl).then(r => r.text());
+      await navigator.clipboard.writeText(html);
+      nlToast("HTML copié ! Collez-le dans Sender.net (mode « code »).");
+    } catch (err) {
+      nlToast("Copie impossible : utilisez « Aperçu » puis Ctrl+U.", false);
+    } finally { btn.disabled = false; }
+  }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+  function initSortables() {
+    const canvas = document.getElementById('nl-canvas');
+    if (!canvas || !window.Sortable) return;
+    // Sections
+    if (!canvas._sectionSortable) {
+      canvas._sectionSortable = Sortable.create(canvas, {
+        handle: '.drag-section-handle',
+        animation: 150,
+        ghostClass: 'opacity-40',
+        draggable: '.nl-section',
+        onEnd: () => {
+          const order = [...canvas.querySelectorAll('.nl-section')].map(el => parseInt(el.dataset.sectionId,10)).filter(Boolean);
+          fetch("{% url 'newsletter:reorder_sections' newsletter.pk %}", {method:'POST', headers:{'X-CSRFToken':'{{ csrf_token }}','Content-Type':'application/json'}, body: JSON.stringify({order})})
+            .then(r=>r.text()).then(html=>{ const tmp=document.createElement('div'); tmp.innerHTML=html; const nc=tmp.querySelector('#nl-canvas'); if(nc){ canvas.outerHTML=nc.outerHTML; if(window.htmx) htmx.process(document.getElementById('nl-canvas')); initSortables(); }});
+        }
+      });
+    }
+    // Blocs dans chaque section + orphelins
+    document.querySelectorAll('.section-blocks, .orphan-blocks').forEach(cont => {
+      if (cont._blockSortable) return;
+      cont._blockSortable = Sortable.create(cont, {
+        group: 'nl-blocks',
+        handle: '.drag-block-handle',
+        animation: 150,
+        ghostClass: 'opacity-40',
+        onEnd: () => {
+          const blocks = {};
+          document.querySelectorAll('.section-blocks').forEach(secEl => {
+            const sid = secEl.dataset.sectionId;
+            blocks[sid] = [...secEl.querySelectorAll('.nl-block')].map(el => parseInt(el.dataset.blockId,10)).filter(Boolean);
+          });
+          const orphanEl = document.querySelector('.orphan-blocks');
+          if (orphanEl) {
+            blocks['null'] = [...orphanEl.querySelectorAll('.nl-block')].map(el => parseInt(el.dataset.blockId,10)).filter(Boolean);
+          }
+          fetch("{% url 'newsletter:reorder_blocks' newsletter.pk %}", {method:'POST', headers:{'X-CSRFToken':'{{ csrf_token }}','Content-Type':'application/json'}, body: JSON.stringify({blocks})})
+            .then(r=>r.text()).then(html=>{ const tmp=document.createElement('div'); tmp.innerHTML=html; const nc=tmp.querySelector('#nl-canvas'); if(nc){ document.getElementById('nl-canvas').outerHTML=nc.outerHTML; if(window.htmx) htmx.process(document.getElementById('nl-canvas')); initSortables(); }});
+        }
+      });
+    });
+  }
+  document.addEventListener('DOMContentLoaded', initSortables);
+  document.body.addEventListener('htmx:afterSwap', e => { if(e.detail && e.detail.target && e.detail.target.id==='nl-canvas') initSortables(); });
+</script>
+</div>
+{% endblock %}

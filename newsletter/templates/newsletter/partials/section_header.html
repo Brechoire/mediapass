@@ -1,0 +1,56 @@
+{% with prof=section.library_profile %}
+{% if section.title or prof %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td style="padding:16px 18px; font-family:{{ newsletter.font_family }}; background-color:{{ section.background_color }};">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          {% if prof and prof.image %}
+          <td width="72" valign="middle" style="padding-right:14px;">
+            <img src="{{ site_url }}{{ prof.image.url }}" alt="{{ prof.name }}" width="64" style="display:block;width:64px;height:64px;object-fit:cover;border-radius:12px;border:0;" />
+          </td>
+          {% elif section.title %}
+          <td width="48" valign="middle" style="padding-right:12px;">
+            <div style="width:44px;height:44px;border-radius:10px;background:{{ newsletter.primary_color }};color:#fff;text-align:center;line-height:44px;font-weight:800;font-size:18px;">{{ section.title|slice:":1"|upper }}</div>
+          </td>
+          {% endif %}
+          <td valign="middle">
+            <div style="font-size:18px;font-weight:800;color:{{ section.title_color|default:'#1e293b' }};line-height:1.25;">{% if section.title %}{{ section.title }}{% elif prof %}{{ prof.name }}{% endif %}</div>
+            {% if prof %}
+              {% if prof.phone %}
+              <div style="font-size:13px;color:{{ section.text_color|default:'#475569' }};margin-top:2px;"><i class='bx bx-phone' style="vertical-align:middle;"></i> {{ prof.phone }}</div>
+              {% endif %}
+              {% if prof.address %}
+              <div style="font-size:12px;color:{{ section.text_color|default:'#7a8fa0' }};margin-top:1px;">{{ prof.address }}</div>
+              {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+      </table>
+      {% if prof and prof.description %}
+      <div style="font-size:13px;line-height:1.6;color:{{ section.text_color|default:'#475569' }};margin-top:10px;">{{ prof.description }}</div>
+      {% endif %}
+      {% if prof %}
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:10px;">
+        <tr>
+          {% if prof.website %}
+          <td style="padding-right:6px;"><a href="{{ prof.website }}" target="_blank" rel="noopener" style="display:inline-block;padding:6px 10px;background:#1e293b;color:#fff;font-size:12px;font-weight:600;text-decoration:none;border-radius:9999px;">Site web</a></td>
+          {% endif %}
+          {% if prof.facebook_url %}
+          <td style="padding-right:6px;"><a href="{{ prof.facebook_url }}" target="_blank" rel="noopener" style="display:inline-block;width:28px;height:28px;background:#1877f2;color:#fff;text-align:center;line-height:28px;border-radius:9999px;text-decoration:none;font-size:14px;"><i class='bx bxl-facebook'></i></a></td>
+          {% endif %}
+          {% if prof.instagram_url %}
+          <td style="padding-right:6px;"><a href="{{ prof.instagram_url }}" target="_blank" rel="noopener" style="display:inline-block;width:28px;height:28px;background:radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%);color:#fff;text-align:center;line-height:28px;border-radius:9999px;text-decoration:none;font-size:14px;"><i class='bx bxl-instagram'></i></a></td>
+          {% endif %}
+          {% if prof.phone %}
+          <td style="padding-right:6px;"><a href="tel:{{ prof.phone }}" style="display:inline-block;padding:6px 10px;border:1px solid #cbd5e1;color:#33475e;font-size:12px;text-decoration:none;border-radius:9999px;background:#fff;"><i class='bx bx-phone'></i> Appeler</a></td>
+          {% endif %}
+        </tr>
+      </table>
+      {% endif %}
+    </td>
+  </tr>
+  <tr><td style="border-top:1px solid #e2e8f0; font-size:0; line-height:0;">&nbsp;</td></tr>
+</table>
+{% endif %}
+{% endwith %}

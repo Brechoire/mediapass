@@ -1,0 +1,157 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Newsletters — Médi@'pass{% endblock %}
+
+{% block content %}
+<div hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+  <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-14 flex flex-wrap items-end justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+        <i class='bx bx-envelope-open text-2xl text-white'></i>
+      </div>
+      <div>
+        <h1 class="text-3xl sm:text-4xl font-bold text-white">Newsletters</h1>
+        <p class="text-white/70 text-sm">Composez vos emails avec des blocs : ateliers, fiches médiathèques, événements…</p>
+      </div>
+    </div>
+    <button type="button" onclick="document.getElementById('nl-create-modal').classList.remove('hidden'); document.getElementById('{{ form.title.id_for_label }}').focus();"
+            class="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#4a6fa5] shadow hover:bg-[#f1f5fb] active:scale-[.98] transition-all cursor-pointer">
+      <i class='bx bx-plus text-lg'></i> Nouvelle newsletter
+    </button>
+  </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  {% if messages %}
+    {% for message in messages %}
+    <div class="mb-4 rounded-xl border px-4 py-3 text-sm font-medium {% if message.tags == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800{% elif message.tags == 'error' %}border-rose-200 bg-rose-50 text-rose-700{% else %}border-[#dce3ef] bg-white text-[#33475e]{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    {% for newsletter in newsletters %}
+    <article class="group relative flex flex-col rounded-2xl border border-[#dce3ef] bg-white shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden">
+      <a href="{% url 'newsletter:builder' newsletter.pk %}" class="block p-5 flex-1">
+        <div class="flex items-start justify-between gap-3">
+          <h2 class="text-lg font-bold text-[#1e293b] group-hover:text-[#4a6fa5] transition-colors leading-snug">{{ newsletter.title }}</h2>
+          {% if newsletter.status == "sent" %}
+          <span class="shrink-0 inline-flex items-center rounded-full bg-[#e5f5ec] text-[#1a8a4a] text-[11px] font-semibold px-2.5 py-0.5"><i class='bx bx-check mr-0.5'></i>Terminée</span>
+          {% else %}
+          <span class="shrink-0 rounded-full bg-[#fff4dd] text-[#b8860b] text-[11px] font-semibold px-2.5 py-0.5">Brouillon</span>
+          {% endif %}
+        </div>
+        <p class="mt-1.5 text-xs text-[#93a3b3]">Du {{ newsletter.period_start|date:"d/m/Y" }} au {{ newsletter.period_end|date:"d/m/Y" }}</p>
+        <p class="mt-3 text-sm text-[#7a8fa0] line-clamp-2">{{ newsletter.subject }}</p>
+        <div class="mt-4 flex items-center gap-3 text-xs text-[#93a3b3]">
+          <span><i class='bx bx-layout mr-1'></i>{{ newsletter.blocks.count }} blocs</span>
+          {% if newsletter.sender_campaign_id %}
+          <span class="text-[#1a8a4a]" title="Poussée vers Sender.net"><i class='bx bxs-send mr-0.5'></i>Sender.net</span>
+          {% endif %}
+        </div>
+      </a>
+      <div class="border-t border-[#eef2f8] px-4 py-2.5 flex items-center justify-between bg-[#fafbfd]">
+        <div class="flex items-center gap-1">
+          <a href="{% url 'newsletter:preview' newsletter.pk %}" target="_blank" rel="noopener" title="Aperçu"
+             class="p-2 rounded-lg text-[#7a8fa0] hover:bg-[#e8eef7] hover:text-[#4a6fa5] transition-colors"><i class='bx bx-show'></i></a>
+          <a href="{% url 'newsletter:download' newsletter.pk %}" title="Télécharger le HTML"
+             class="p-2 rounded-lg text-[#7a8fa0] hover:bg-[#e8eef7] hover:text-[#4a6fa5] transition-colors"><i class='bx bx-download'></i></a>
+          <a href="{% url 'newsletter:contacts_csv' newsletter.pk %}" title="Contacts CSV"
+             class="p-2 rounded-lg text-[#7a8fa0] hover:bg-[#e8eef7] hover:text-[#4a6fa5] transition-colors"><i class='bx bx-group'></i></a>
+        </div>
+        <div class="flex items-center gap-1">
+          <form method="post" action="{% url 'newsletter:duplicate' newsletter.pk %}" class="m-0">
+            {% csrf_token %}
+            <button type="submit" title="Dupliquer" class="p-2 rounded-lg text-[#7a8fa0] hover:bg-[#e8eef7] hover:text-[#4a6fa5] transition-colors cursor-pointer"><i class='bx bx-copy'></i></button>
+          </form>
+          <form method="post" action="{% url 'newsletter:delete' newsletter.pk %}" class="m-0"
+                onsubmit="return confirm('Supprimer définitivement « {{ newsletter.title }} » ?');">
+            {% csrf_token %}
+            <button type="submit" title="Supprimer" class="p-2 rounded-lg text-[#c98a92] hover:bg-[#fbe8eb] hover:text-[#d46a78] transition-colors cursor-pointer"><i class='bx bx-trash'></i></button>
+          </form>
+        </div>
+      </div>
+    </article>
+    {% empty %}
+    <div class="col-span-full rounded-2xl border-2 border-dashed border-[#cdd9ea] bg-white/60 px-8 py-16 text-center">
+      <div class="mx-auto w-16 h-16 rounded-2xl bg-[#e8eef7] flex items-center justify-center mb-4">
+        <i class='bx bx-envelope-open text-3xl text-[#4a6fa5]'></i>
+      </div>
+      <h3 class="text-xl font-bold text-[#33475e]">Aucune newsletter pour le moment</h3>
+      <p class="mt-1.5 text-sm text-[#7a8fa0]">Créez votre première édition : les ateliers des médiathèques<br/>seront proposés automatiquement selon la période.</p>
+      <button type="button" onclick="document.getElementById('nl-create-modal').classList.remove('hidden')"
+              class="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#4a6fa5] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#3d5f8f] transition-colors cursor-pointer">
+        <i class='bx bx-plus'></i> Créer une newsletter
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+  {% if newsletters.has_other_pages %}
+  <div class="mt-8 flex items-center justify-center gap-2 text-sm">
+    {% if newsletters.has_previous %}
+    <a href="?page={{ newsletters.previous_page_number }}" class="px-3 py-1.5 rounded-lg border border-[#dce3ef] bg-white hover:bg-[#f1f5fb]">‹ Précédent</a>
+    {% endif %}
+    <span class="px-3 py-1.5 text-[#7a8fa0]">Page {{ newsletters.number }} sur {{ newsletters.paginator.num_pages }} — {{ newsletters.paginator.count }} newsletters</span>
+    {% if newsletters.has_next %}
+    <a href="?page={{ newsletters.next_page_number }}" class="px-3 py-1.5 rounded-lg border border-[#dce3ef] bg-white hover:bg-[#f1f5fb]">Suivant ›</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="mt-10 grid gap-3 sm:grid-cols-2">
+    <a href="{% url 'newsletter:fiche_list' %}" class="group flex items-center gap-3 rounded-2xl border border-[#dce3ef] bg-white p-4 hover:border-[#4a6fa5]/60 hover:shadow-sm transition-all">
+      <span class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center shrink-0"><i class='bx bx-map text-lg text-[#4a6fa5]'></i></span>
+      <span>
+        <span class="block text-sm font-bold text-[#1e293b] group-hover:text-[#4a6fa5] transition-colors">Fiches médiathèques</span>
+        <span class="block text-xs text-[#93a3b3]">Consulter les fiches renseignées par chaque médiathèque</span>
+      </span>
+      <i class='bx bx-chevron-right ml-auto text-[#b0bedb]'></i>
+    </a>
+    <div class="rounded-2xl border border-[#dce3ef] bg-[#f8fafc] p-4 flex items-center gap-3">
+      <span class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center shrink-0"><i class='bx bx-info-circle text-lg text-[#4a6fa5]'></i></span>
+      <p class="text-xs text-[#7a8fa0] leading-relaxed">Les ateliers cochés « newsletter » par les médiathèques apparaissent automatiquement dans l'onglet <strong>Ateliers</strong> du builder.</p>
+    </div>
+  </div>
+</section>
+
+{# Modal de création #}
+<div id="nl-create-modal" class="hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="nl-create-title">
+  <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" onclick="this.parentNode.classList.add('hidden')"></div>
+  <div class="relative mx-auto mt-24 w-full max-w-md px-4 animate-nl-enter">
+    <div class="bg-white rounded-2xl shadow-xl border border-[#dce3ef] overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-[#dce3ef]">
+        <h3 id="nl-create-title" class="text-xl font-bold text-[#4a6fa5]">Nouvelle newsletter</h3>
+        <button type="button" onclick="document.getElementById('nl-create-modal').classList.add('hidden')" class="p-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer" aria-label="Fermer">
+          <i class='bx bx-x text-xl text-[#7a8fa0]'></i>
+        </button>
+      </div>
+      <form method="post" action="{% url 'newsletter:index' %}" class="p-6 space-y-4">
+        {% csrf_token %}
+        {% for field in form %}
+        <div>
+          <label for="{{ field.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ field.label }}</label>
+          {{ field }}
+          {% for error in field.errors %}<p class="mt-1 text-[11px] text-[#d46a78]">{{ error }}</p>{% endfor %}
+        </div>
+        {% endfor %}
+        <p class="text-[11px] text-[#93a3b3]">La période préremplie correspond au mois prochain — ajustez-la librement.</p>
+        <button type="submit" class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#4a6fa5] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#3d5f8f] active:scale-[.98] transition-all cursor-pointer">
+          <i class='bx bx-magic-wand'></i> Créer et ouvrir le builder
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('nl-create-modal').classList.add('hidden');
+  });
+</script>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% with ev=block.content img=block.image_obj %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{{ block.style.bg_color|default:'transparent' }};">
+  <tr>
+    <td style="padding:{{ block.style.padding|default:'8px 16px' }};">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{{ newsletter.primary_color }};border-radius:12px;">
+        <tr>
+          <td align="center" style="padding:22px 26px 6px 26px;font-family:{{ newsletter.font_family }};">
+            {% if ev.subtitle %}
+            <div style="font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.75);">{{ ev.subtitle }}</div>
+            {% endif %}
+            <div style="font-size:26px;font-weight:800;color:#ffffff;line-height:1.25;margin-top:4px;">{{ ev.title }}</div>
+            {% if ev.date_text %}
+            <div style="font-size:15px;font-weight:600;color:rgba(255,255,255,.92);margin-top:8px;">{{ ev.date_text }}</div>
+            {% endif %}
+          </td>
+        </tr>
+        {% if img %}
+        <tr>
+          <td style="padding:12px 26px 0 26px;" align="center"><img src="{{ site_url }}{{ img.image.url }}" alt="{{ ev.title }}" style="display:block;width:100%;max-width:548px;height:auto;border:0;border-radius:8px;" /></td>
+        </tr>
+        {% endif %}
+        {% if ev.body %}
+        <tr>
+          <td style="padding:14px 26px 22px 26px;font-family:{{ newsletter.font_family }};font-size:15px;line-height:1.65;color:rgba(255,255,255,.94);text-align:center;" class="nl-rich">{{ ev.body|safe }}</td>
+        </tr>
+        {% endif %}
+      </table>
+    </td>
+  </tr>
+</table>
+{% endwith %}
