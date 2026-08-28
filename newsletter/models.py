@@ -1,5 +1,6 @@
 """Modèles de l'application newsletter (builder de campagnes)."""
 
+from accounts.models import LibraryProfile  # noqa: F401  # ré-export compatibilité
 from django.conf import settings
 from django.db import models, transaction
 
@@ -20,6 +21,25 @@ WORKSHOP_VARIANT_CHOICES = [
     ("side-right", "Image à droite"),
     ("compact", "Compact (liste)"),
     ("timeline", "Timeline"),
+]
+
+HEADER_HEIGHT_CHOICES = [
+    ("compact", "Compact — 120px"),
+    ("default", "Standard — 180px"),
+    ("large", "Grand — 260px"),
+]
+
+HEADER_ALIGN_CHOICES = [
+    ("left", "Gauche"),
+    ("center", "Centré"),
+    ("right", "Droite"),
+]
+
+HEADER_ALIGN_INHERIT_CHOICES = [
+    ("", "Hériter de l'en-tête"),
+    ("left", "Gauche"),
+    ("center", "Centré"),
+    ("right", "Droite"),
 ]
 
 BORDER_STYLE_CHOICES = [
@@ -49,50 +69,6 @@ BLOCK_TYPE_CHOICES = [
     ("event", "Événement"),
     ("library", "Médiathèque"),
 ]
-
-
-class LibraryProfile(models.Model):
-    """Fiche d'une médiathèque : identité et informations pratiques."""
-
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="library_profile",
-        verbose_name="Compte médiathèque",
-    )
-    name = models.CharField("Nom de la médiathèque", max_length=150)
-    image = models.ImageField(
-        "Image / logo", upload_to="newsletter/libraries/", null=True, blank=True
-    )
-    description = models.TextField("Description", blank=True)
-    phone = models.CharField("Téléphone", max_length=30, blank=True)
-    address = models.CharField("Adresse", max_length=255, blank=True)
-    opening_hours = models.TextField(
-        "Horaires d'ouverture",
-        blank=True,
-        help_text="Une ligne par jour, ex. « Lundi : 14h - 18h »",
-    )
-    closures = models.TextField(
-        "Fermetures exceptionnelles", blank=True, help_text="Une fermeture par ligne"
-    )
-    website = models.URLField("Site web", max_length=255, blank=True)
-    facebook_url = models.URLField("Facebook", max_length=255, blank=True)
-    instagram_url = models.URLField("Instagram", max_length=255, blank=True)
-    updated_at = models.DateTimeField("Modification", auto_now=True)
-
-    class Meta:
-        verbose_name = "Fiche médiathèque"
-
-    def __str__(self):
-        return self.name
-
-    @property
-    def hours_lines(self):
-        return [l.strip() for l in self.opening_hours.splitlines() if l.strip()]
-
-    @property
-    def closure_lines(self):
-        return [l.strip() for l in self.closures.splitlines() if l.strip()]
 
 
 class Newsletter(models.Model):
@@ -248,6 +224,77 @@ class Section(models.Model):
     )
     text_color = models.CharField(
         "Couleur texte section", max_length=20, default="", blank=True, help_text="Texte de l'en-tête"
+    )
+    header_height = models.CharField(
+        "Hauteur de l'en-tête",
+        max_length=10,
+        choices=HEADER_HEIGHT_CHOICES,
+        default="default",
+        help_text="Grandeur du bloc médiathèque (rendu email optimisé)",
+    )
+    header_align = models.CharField(
+        "Alignement du texte de l'en-tête",
+        max_length=10,
+        choices=HEADER_ALIGN_CHOICES,
+        default="left",
+    )
+    title_align = models.CharField(
+        "Alignement du nom / titre",
+        max_length=10,
+        choices=HEADER_ALIGN_INHERIT_CHOICES,
+        default="",
+        blank=True,
+        help_text="Vide = hérite de l'alignement de l'en-tête",
+    )
+    contact_align = models.CharField(
+        "Alignement du téléphone / adresse",
+        max_length=10,
+        choices=HEADER_ALIGN_INHERIT_CHOICES,
+        default="",
+        blank=True,
+        help_text="Vide = hérite de l'alignement de l'en-tête",
+    )
+    socials_align = models.CharField(
+        "Alignement des boutons réseaux sociaux",
+        max_length=10,
+        choices=HEADER_ALIGN_INHERIT_CHOICES,
+        default="",
+        blank=True,
+        help_text="Vide = hérite de l'alignement de l'en-tête",
+    )
+    header_overlay = models.CharField(
+        "Intensité du voile sur la bannière",
+        max_length=20,
+        default="0.35",
+        blank=True,
+        help_text="0.10 à 0.70 — assombrit la bannière pour lire le texte",
+    )
+    show_header_badge = models.BooleanField(
+        "Afficher le badge « Médiathèque »", default=True
+    )
+    show_header_phone = models.BooleanField(
+        "Afficher le téléphone dans l'en-tête", default=True
+    )
+    show_header_address = models.BooleanField(
+        "Afficher l'adresse dans l'en-tête", default=True
+    )
+    show_header_website = models.BooleanField(
+        "Afficher le bouton Site web", default=True
+    )
+    show_header_facebook = models.BooleanField(
+        "Afficher le bouton Facebook", default=True
+    )
+    show_header_instagram = models.BooleanField(
+        "Afficher le bouton Instagram", default=True
+    )
+    show_header_youtube = models.BooleanField(
+        "Afficher le bouton YouTube", default=True
+    )
+    show_header_tiktok = models.BooleanField(
+        "Afficher le bouton TikTok", default=True
+    )
+    show_header_x = models.BooleanField(
+        "Afficher le bouton X / Twitter", default=True
     )
     content_title_color = models.CharField(
         "Couleur titres du contenu", max_length=20, default="", blank=True, help_text="Titres des ateliers/blocs à l'intérieur"
@@ -424,11 +471,20 @@ class Block(models.Model):
 
     @property
     def section_border_color(self):
-        return self.section.border_color if self.section else ""
+        # Une bordure hérite de la section seulement si un style est défini
+        return (
+            self.section.border_color
+            if self.section and self.section.border_style
+            else ""
+        )
 
     @property
     def section_border_width(self):
-        return self.section.border_width if self.section and self.section.border_width is not None else ""
+        return (
+            self.section.border_width
+            if self.section and self.section.border_width is not None and self.section.border_style
+            else ""
+        )
 
     @property
     def section_border_radius(self):
@@ -520,3 +576,50 @@ class NewsletterImage(models.Model):
 
     def __str__(self):
         return self.alt or f"Image #{self.pk}"
+
+
+class HeaderPreset(models.Model):
+    """Preset d'en-tête médiathèque réutilisable (hauteur, alignement, couleurs)."""
+
+    name = models.CharField("Nom du preset", max_length=80, unique=True)
+    header_height = models.CharField(
+        "Hauteur de l'en-tête",
+        max_length=10,
+        choices=HEADER_HEIGHT_CHOICES,
+        default="default",
+    )
+    header_align = models.CharField(
+        "Alignement du texte",
+        max_length=10,
+        choices=HEADER_ALIGN_CHOICES,
+        default="left",
+    )
+    title_color = models.CharField(
+        "Couleur du titre", max_length=20, blank=True, default="", help_text="Vide = blanc (sur bannière)"
+    )
+    text_color = models.CharField(
+        "Couleur du texte", max_length=20, blank=True, default="", help_text="Vide = blanc (sur bannière)"
+    )
+    overlay_strength = models.CharField(
+        "Intensité du voile",
+        max_length=20,
+        default="0.35",
+        help_text="0.10 à 0.70 — assombrit la bannière pour lire le texte",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Créé par",
+    )
+    created_at = models.DateTimeField("Créé le", auto_now_add=True)
+    updated_at = models.DateTimeField("Modifié le", auto_now=True)
+
+    class Meta:
+        verbose_name = "preset d'en-tête"
+        verbose_name_plural = "presets d'en-tête"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name

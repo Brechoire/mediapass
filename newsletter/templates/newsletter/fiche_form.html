@@ -3,51 +3,275 @@
 
 {% block title %}Ma fiche médiathèque — Médi@'pass{% endblock %}
 
+{% block stylesheets %}
+<style>
+  .nl-input {
+    width: 100%; border: 1px solid #dce3ef; border-radius: 10px; padding: 10px 12px;
+    font-size: 14px; background: #fff; color: #1e293b; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .nl-input:focus { border-color: #4a6fa5; box-shadow: 0 0 0 3px rgba(74,111,165,.15); }
+  .nl-input::placeholder { color: #94a3b8; }
+  .nl-group-title {
+    display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .07em; color: #4a6fa5;
+    border-bottom: 1px solid #e3e9f4; padding-bottom: 9px; margin-bottom: 14px;
+  }
+  .nl-group-title i { font-size: 15px; }
+  .nl-social-input { }
+  .nl-social-input input { padding-left: 38px; }
+  .nl-social-input .nl-ic-input {
+    position: relative;
+  }
+  .nl-social-input .nl-ic-input > i {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 17px; z-index: 1; pointer-events: none;
+  }
+  .nl-upload-box {
+    display: block; border: 2px dashed #cdd9ea; border-radius: 12px; padding: 18px 14px;
+    text-align: center; cursor: pointer; transition: all .15s; background: #fafbfd;
+  }
+  .nl-upload-box:hover { border-color: #4a6fa5; background: #f6f9ff; }
+  .nl-upload-box input[type="file"] { display: none; }
+  .nl-upload-box .bx.bx-big { font-size: 28px; color: #b0bedb; }
+  .nl-upload-box:hover .bx.bx-big { color: #4a6fa5; }
+  .nl-upload-box .nl-sub { font-size: 11px; color: #93a3b3; margin-top: 4px; }
+  .nl-pill {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700;
+    padding: 3px 10px; border-radius: 9999px;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
   <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%);"></div>
-  <div class="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <h1 class="text-3xl font-bold text-white">Fiche médiathèque</h1>
-    <p class="text-white/70 text-sm mt-1">
-      Ces informations alimentent le bloc « Fiche médiathèque » des newsletters.
-      {% if not created %}Elles sont actuellement visibles par l'équipe communication.{% endif %}
-    </p>
+  <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <nav class="text-white/60 text-sm mb-3">
+          <a href="{% url 'newsletter:index' %}" class="hover:text-white/90 transition-colors">Newsletters</a>
+          <span class="mx-1.5">/</span>
+          <span class="text-white/80">Ma fiche médiathèque</span>
+        </nav>
+        <h1 class="text-3xl font-bold text-white flex items-center gap-3">
+          <i class='bx bx-library text-3xl'></i> Ma fiche médiathèque
+        </h1>
+        <p class="text-white/70 text-sm mt-1">
+          Ces informations alimentent l'en-tête et le bloc « Fiche médiathèque » des newsletters.
+          {% if not created %}Mis à jour en temps réel dans les prochaines newsletters.{% endif %}
+        </p>
+      </div>
+      {% if profile.banner %}
+      <img src="{{ profile.banner.url }}" alt="Bannière actuelle"
+           class="hidden lg:block w-56 h-full rounded-xl object-cover border-4 border-white/20 shadow-lg" />
+      {% endif %}
+    </div>
   </div>
 </section>
 
-<section class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  {% if messages %}
-    {% for message in messages %}
-    <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 px-4 py-3 text-sm font-medium">{{ message }}</div>
-    {% endfor %}
-  {% endif %}
+<section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="grid lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start">
 
-  <form method="post" enctype="multipart/form-data"
-        class="rounded-2xl border border-[#dce3ef] bg-white shadow-sm p-6 space-y-5">
-    {% csrf_token %}
-    {% for field in form %}
-    <div>
-      <label for="{{ field.id_for_label }}" class="block text-sm font-semibold text-[#33475e] mb-1.5">{{ field.label }}</label>
-      {{ field }}
-      {% if field.help_text %}<p class="mt-1 text-xs text-[#93a3b3]">{{ field.help_text }}</p>{% endif %}
-      {% for error in field.errors %}<p class="mt-1 text-xs text-[#d46a78]">{{ error }}</p>{% endfor %}
-    </div>
-    {% endfor %}
-    <div class="pt-2 flex items-center justify-between gap-3">
-      <p class="text-xs text-[#93a3b3]">Formats image acceptés : JPG, PNG. Idéalement carrée.</p>
-      <button type="submit"
-              class="inline-flex items-center gap-2 rounded-xl bg-[#4a6fa5] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#3d5f8f] active:scale-[.98] transition-all cursor-pointer">
-        <i class='bx bx-check'></i> Enregistrer ma fiche
-      </button>
-    </div>
-  </form>
+    <form method="post" enctype="multipart/form-data" class="rounded-2xl border border-[#dce3ef] bg-white shadow-sm overflow-hidden">
+      {% csrf_token %}
 
-  <div class="mt-4 rounded-xl border border-[#dce3ef] bg-white p-4 flex items-start gap-3">
-    <i class='bx bx-bulb text-lg text-[#b8860b] mt-0.5'></i>
-    <p class="text-xs text-[#7a8fa0] leading-relaxed">
-      Astuce : renseignez les fermetures exceptionnelles au fur et à mesure — elles apparaîtront
-      en rouge dans la newsletter pour prévenir vos lecteurs.
-    </p>
+      <div class="px-6 py-4 border-b border-[#eef2f7] bg-gradient-to-r from-[#f8fafc] to-white flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-sm font-bold text-[#33475e] flex items-center gap-2">
+          <i class='bx bx-edit text-lg text-[#4a6fa5]'></i> Modifier les informations
+        </h2>
+        <button type="submit"
+                class="inline-flex items-center gap-2 rounded-xl bg-[#4a6fa5] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#3d5f8f] active:scale-[.98] transition-all cursor-pointer">
+          <i class='bx bx-check'></i> Enregistrer
+        </button>
+      </div>
+
+      <div class="p-6 space-y-8">
+
+        {# ── Identité ── #}
+        <div>
+          <p class="nl-group-title"><i class='bx bx-info-circle'></i> Identité</p>
+          <div>
+            <label for="{{ form.name.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.name.label }}</label>
+            {{ form.name }}
+            {% for error in form.name.errors %}<p class="mt-1 text-xs text-[#d46a78]">{{ error }}</p>{% endfor %}
+          </div>
+          <div class="mt-4">
+            <label for="{{ form.description.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.description.label }}</label>
+            {{ form.description }}
+            {% for error in form.description.errors %}<p class="mt-1 text-xs text-[#d46a78]">{{ error }}</p>{% endfor %}
+          </div>
+        </div>
+
+        {# ── Visuels ── #}
+        <div>
+          <p class="nl-group-title"><i class='bx bx-image-alt'></i> Visuels</p>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div class="relative overflow-hidden rounded-xl border border-[#e3e9f4]">
+              <label for="{{ form.banner.id_for_label }}" class="nl-upload-box">
+                <div class="flex items-center justify-center gap-2 mb-1">
+                  <i class='bx bx-image bx-big'></i>
+                  <span class="text-xs font-semibold text-[#33475e]">{{ form.banner.label }} <span class="text-[#93a3b3] font-normal">(1200×400)</span></span>
+                </div>
+                <p class="nl-sub">Cliquez pour choisir — utilisée comme bannière newsletter</p>
+                {{ form.banner }}
+              </label>
+              {% if profile.banner %}
+              <img src="{{ profile.banner.url }}" alt="Bannière" class="w-full h-24 object-cover" />
+              {% endif %}
+            </div>
+            <div class="relative overflow-hidden rounded-xl border border-[#e3e9f4]">
+              <label for="{{ form.image.id_for_label }}" class="nl-upload-box">
+                <div class="flex items-center justify-center gap-2 mb-1">
+                  <i class='bx bx-crop bx-big'></i>
+                  <span class="text-xs font-semibold text-[#33475e]">{{ form.image.label }} <span class="text-[#93a3b3] font-normal">(carré)</span></span>
+                </div>
+                <p class="nl-sub">Cliquez pour choisir — votre logo</p>
+                {{ form.image }}
+              </label>
+              {% if profile.image %}
+              <img src="{{ profile.image.url }}" alt="Logo" class="w-full h-24 object-cover" />
+              {% endif %}
+            </div>
+          </div>
+          {% for error in form.banner.errors %}<p class="mt-1 text-xs text-[#d46a78]">{{ error }}</p>{% endfor %}
+          {% for error in form.image.errors %}<p class="mt-1 text-xs text-[#d46a78]">{{ error }}</p>{% endfor %}
+        </div>
+
+        {# ── Coordonnées ── #}
+        <div>
+          <p class="nl-group-title"><i class='bx bx-phone'></i> Coordonnées</p>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label for="{{ form.phone.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.phone.label }}</label>
+              {{ form.phone }}
+            </div>
+            <div>
+              <label for="{{ form.website.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.website.label }}</label>
+              {{ form.website }}
+            </div>
+          </div>
+          <div class="mt-4">
+            <label for="{{ form.address.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.address.label }}</label>
+            {{ form.address }}
+          </div>
+        </div>
+
+        {# ── Horaires ── #}
+        <div class="grid sm:grid-cols-2 gap-x-4 gap-y-5">
+          <div>
+            <p class="nl-group-title"><i class='bx bx-time'></i> Horaires d'ouverture</p>
+            {{ form.opening_hours }}
+            {% if form.opening_hours.help_text %}<p class="mt-1 text-xs text-[#93a3b3]">{{ form.opening_hours.help_text }}</p>{% endif %}
+          </div>
+          <div>
+            <p class="nl-group-title"><i class='bx bx-calendar-x'></i> Fermetures exceptionnelles</p>
+            {{ form.closures }}
+            {% if form.closures.help_text %}<p class="mt-1 text-xs text-[#93a3b3]">{{ form.closures.help_text }}</p>{% endif %}
+          </div>
+        </div>
+
+        {# ── Réseaux sociaux ── #}
+        <div>
+          <p class="nl-group-title"><i class='bx bx-link-alt'></i> Réseaux sociaux</p>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div class="nl-social-input">
+              <label for="{{ form.facebook_url.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.facebook_url.label }}</label>
+              <div class="nl-ic-input">
+                <i class='bx bxl-facebook' style="color:#1877f2"></i>
+                {{ form.facebook_url }}
+              </div>
+            </div>
+            <div class="nl-social-input">
+              <label for="{{ form.instagram_url.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.instagram_url.label }}</label>
+              <div class="nl-ic-input">
+                <i class='bx bxl-instagram' style="color:#d6249f"></i>
+                {{ form.instagram_url }}
+              </div>
+            </div>
+            <div class="nl-social-input">
+              <label for="{{ form.youtube_url.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.youtube_url.label }}</label>
+              <div class="nl-ic-input">
+                <i class='bx bxl-youtube' style="color:#ff0000"></i>
+                {{ form.youtube_url }}
+              </div>
+            </div>
+            <div class="nl-social-input">
+              <label for="{{ form.tiktok_url.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.tiktok_url.label }}</label>
+              <div class="nl-ic-input">
+                <i class='bx bxl-tiktok' style="color:#111"></i>
+                {{ form.tiktok_url }}
+              </div>
+            </div>
+            <div class="nl-social-input">
+              <label for="{{ form.x_url.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.x_url.label }}</label>
+              <div class="nl-ic-input">
+                <i class='bx bxl-twitter' style="color:#1da1f2"></i>
+                {{ form.x_url }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="px-6 py-4 border-t border-[#eef2f7] bg-[#f8fafc] flex items-center justify-between gap-3">
+        <p class="text-xs text-[#93a3b3]">JPG, PNG acceptés. La bannière est utilisée dans l'en-tête des sections.</p>
+        <button type="submit"
+                class="inline-flex items-center gap-2 rounded-xl bg-[#4a6fa5] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#3d5f8f] active:scale-[.98] transition-all cursor-pointer shrink-0">
+          <i class='bx bx-check'></i> Enregistrer ma fiche
+        </button>
+      </div>
+    </form>
+
+    {# ── Récapitulatif en direct ── #}
+    <aside class="lg:sticky lg:top-[136px] space-y-4">
+      <div class="rounded-2xl border border-[#dce3ef] bg-white shadow-sm p-5">
+        <p class="text-xs font-bold uppercase tracking-wider text-[#93a3b3] mb-3">Dans vos newsletters</p>
+        <div class="flex items-center gap-3">
+          {% if profile.image %}
+          <img src="{{ profile.image.url }}" alt="" class="w-12 h-12 rounded-xl object-cover shrink-0" />
+          {% else %}
+          <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center shrink-0">
+            <i class='bx bx-library text-2xl text-[#4a6fa5]'></i>
+          </div>
+          {% endif %}
+          <div class="min-w-0">
+            <p class="text-sm font-bold text-[#1e293b] truncate">{{ profile.name|default:"Médiathèque" }}</p>
+            <p class="text-xs text-[#7a8fa0] truncate">
+              {% if profile.phone %}<i class='bx bx-phone text-xs align-middle'></i> {{ profile.phone }}{% endif %}
+              {% if profile.phone and profile.address %} · {% endif %}
+              {% if profile.address %}{{ profile.address }}{% endif %}
+            </p>
+          </div>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-1.5">
+          {% if profile.website %}<span class="nl-pill bg-[#eef2fb] text-[#4a6fa5]"><i class='bx bx-globe'></i> Site</span>{% endif %}
+          {% if profile.facebook_url %}<span class="nl-pill bg-[#e7f0fd] text-[#1877f2]"><i class='bx bxl-facebook'></i> Facebook</span>{% endif %}
+          {% if profile.instagram_url %}<span class="nl-pill bg-[#fbe8f3] text-[#d6249f]"><i class='bx bxl-instagram'></i> Instagram</span>{% endif %}
+          {% if profile.youtube_url %}<span class="nl-pill bg-[#fdeaea] text-[#ff0000]"><i class='bx bxl-youtube'></i> YouTube</span>{% endif %}
+          {% if profile.tiktok_url %}<span class="nl-pill bg-[#f1f1f1] text-[#111]"><i class='bx bxl-tiktok'></i> TikTok</span>{% endif %}
+          {% if profile.x_url %}<span class="nl-pill bg-[#e7f2fc] text-[#1da1f2]"><i class='bx bxl-twitter'></i> X</span>{% endif %}
+          {% if not profile.website and not profile.facebook_url and not profile.instagram_url and not profile.youtube_url and not profile.tiktok_url and not profile.x_url %}
+          <p class="text-[11px] text-[#93a3b3]">Aucun réseau renseigné pour l'instant.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-[#dce3ef] bg-white shadow-sm p-5">
+        <p class="text-xs font-bold uppercase tracking-wider text-[#93a3b3] mb-2.5"><i class='bx bx-bulb' style="color:#b8860b"></i> Astuce</p>
+        <ul class="space-y-2 text-xs text-[#7a8fa0] leading-relaxed">
+          <li class="flex gap-2"><span class="text-[#4a6fa5]">→</span> La bannière remplit l'en-tête de section avec un dégradé de lisibilité.</li>
+          <li class="flex gap-2"><span class="text-[#4a6fa5]">→</span> Les réseaux apparaissent en boutons ronds dans l'en-tête.</li>
+          <li class="flex gap-2"><span class="text-[#4a6fa5]">→</span> Les fermetures s'affichent en rouge aux lecteurs.</li>
+        </ul>
+        <div class="mt-3 pt-3 border-t border-[#eef2f7]">
+          <a href="{% url 'mediatheque_public' user.pk %}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4a6fa5] hover:underline">
+            <i class='bx bx-show'></i> Voir ma page publique
+          </a>
+        </div>
+      </div>
+    </aside>
   </div>
 </section>
 {% endblock %}

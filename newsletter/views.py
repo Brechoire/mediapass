@@ -25,6 +25,7 @@ from .decorators import (
 from .forms import (
     BLOCK_TYPE_TO_FORM,
     EventForm,
+    HeaderPresetForm,
     ImageForm,
     LibraryPickForm,
     NewsletterForm,
@@ -33,7 +34,9 @@ from .forms import (
     TextForm,
     WorkshopBlockForm,
 )
-from .models import Block, LibraryProfile, Newsletter, NewsletterImage, Section
+from accounts.models import LibraryProfile
+
+from .models import Block, HeaderPreset, Newsletter, NewsletterImage, Section
 from .services import (
     build_library_snapshot,
     build_workshop_snapshot,
@@ -554,7 +557,12 @@ def edit_section_panel(request, pk, section_id):
     return render(
         request,
         "newsletter/panels/section_panel.html",
-        {"newsletter": section.newsletter, "section": section, "form": form},
+        {
+            "newsletter": section.newsletter,
+            "section": section,
+            "form": form,
+            "presets": HeaderPreset.objects.all(),
+        },
     )
 
 
@@ -889,6 +897,7 @@ class LibraryProfileForm(forms.ModelForm):
         fields = [
             "name",
             "image",
+            "banner",
             "description",
             "phone",
             "address",
@@ -897,6 +906,9 @@ class LibraryProfileForm(forms.ModelForm):
             "website",
             "facebook_url",
             "instagram_url",
+            "youtube_url",
+            "tiktok_url",
+            "x_url",
         ]
         widgets = {
             "name": forms.TextInput(attrs={"class": "nl-input"}),
@@ -913,6 +925,15 @@ class LibraryProfileForm(forms.ModelForm):
             ),
             "instagram_url": forms.URLInput(
                 attrs={"class": "nl-input", "placeholder": "https://instagram.com/..."}
+            ),
+            "youtube_url": forms.URLInput(
+                attrs={"class": "nl-input", "placeholder": "https://youtube.com/..."}
+            ),
+            "tiktok_url": forms.URLInput(
+                attrs={"class": "nl-input", "placeholder": "https://tiktok.com/..."}
+            ),
+            "x_url": forms.URLInput(
+                attrs={"class": "nl-input", "placeholder": "https://x.com/..."}
             ),
         }
 
@@ -956,4 +977,89 @@ def _render_fiche_form(request, profile, created):
         request,
         "newsletter/fiche_form.html",
         {"form": form, "profile": profile, "created": created},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Presets d'en-tête médiathèque
+# ---------------------------------------------------------------------------
+
+
+@login_required
+@communication_required
+def preset_list(request):
+    presets = HeaderPreset.objects.all()
+    return render(request, "newsletter/preset_list.html", {"presets": presets})
+
+
+@login_required
+@communication_required
+def preset_create(request):
+    return _render_preset_form(request, None)
+
+
+@login_required
+@communication_required
+def preset_edit(request, pk):
+    preset = get_object_or_404(HeaderPreset, pk=pk)
+    return _render_preset_form(request, preset)
+
+
+def _render_preset_form(request, preset):
+    if request.method == "POST":
+        form = HeaderPresetForm(request.POST, instance=preset)
+        if form.is_valid():
+            saved = form.save(commit=False)
+            if not saved.pk:
+                saved.created_by = request.user
+            saved.save()
+            messages.success(
+                request, f"Preset « {saved.name} » enregistré."
+            )
+            return redirect("newsletter:preset_list")
+    else:
+        form = HeaderPresetForm(instance=preset)
+    return render(
+        request,
+        "newsletter/preset_form.html",
+        {"form": form, "preset": preset},
+    )
+
+
+@login_required
+@communication_required
+@require_POST
+def preset_delete(request, pk):
+    preset = get_object_or_404(HeaderPreset, pk=pk)
+    name = preset.name
+    preset.delete()
+    messages.success(request, f"Preset « {name} » supprimé.")
+    return redirect("newsletter:preset_list")
+
+
+@login_required
+@communication_required
+@require_POST
+def apply_preset(request, pk, section_id, preset_id):
+    """Applique un preset d'en-tête à une section puis renvoie le canvas."""
+    section = _get_section(request, pk, section_id)
+    preset = get_object_or_404(HeaderPreset, pk=preset_id)
+    section.header_height = preset.header_height
+    section.header_align = preset.header_align
+    section.header_overlay = preset.overlay_strength
+    if preset.title_color:
+        section.title_color = preset.title_color
+    if preset.text_color:
+        section.text_color = preset.text_color
+    section.save(
+        update_fields=[
+            "header_height",
+            "header_align",
+            "header_overlay",
+            "title_color",
+            "text_color",
+        ]
+    )
+    return _canvas_response(
+        request, section.newsletter, f"Preset « {preset.name} » appliqué"
     )

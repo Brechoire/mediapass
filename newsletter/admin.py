@@ -1,15 +1,6 @@
 from django.contrib import admin
 
-from .models import Block, LibraryProfile, Newsletter, NewsletterImage, Section
-
-
-@admin.register(LibraryProfile)
-class LibraryProfileAdmin(admin.ModelAdmin):
-    list_display = ("name", "user", "phone", "updated_at")
-    search_fields = ("name", "user__username", "user__last_name")
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related("user")
+from .models import Block, HeaderPreset, Newsletter, NewsletterImage, Section
 
 
 class SectionInline(admin.TabularInline):
@@ -63,3 +54,9 @@ class BlockAdmin(admin.ModelAdmin):
 @admin.register(NewsletterImage)
 class NewsletterImageAdmin(admin.ModelAdmin):
     list_display = ("__str__", "uploaded_by", "created_at")
+
+
+@admin.register(HeaderPreset)
+class HeaderPresetAdmin(admin.ModelAdmin):
+    list_display = ("name", "header_height", "header_align", "created_by", "updated_at")
+    search_fields = ("name",)

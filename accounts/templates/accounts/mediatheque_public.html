@@ -1,0 +1,109 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}{% if profile %}{{ profile.name }}{% else %}{{ mediatheque_user.username }}{% endif %} — Médi@'pass{% endblock %}
+
+{% block content %}
+{% with name=profile.name|default_if_none:mediatheque_user.username %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+  <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%);"></div>
+  <div class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+    <nav class="text-white/60 text-sm mb-4">
+      <a href="{% url 'home' %}" class="hover:text-white/90 transition-colors">Accueil</a>
+      <span class="mx-1.5">/</span>
+      <span class="text-white/80">Médiathèques</span>
+    </nav>
+    <div class="flex flex-col sm:flex-row items-start sm:items-end gap-5">
+      {% if profile.image %}
+      <img src="{{ profile.image.url }}" alt="{{ name }}" class="h-24 w-24 rounded-2xl object-cover border-4 border-white/30 shadow-lg" />
+      {% else %}
+      <div class="h-24 w-24 rounded-2xl bg-white/15 border-4 border-white/30 flex items-center justify-center">
+        <i class='bx bx-library text-4xl text-white/70'></i>
+      </div>
+      {% endif %}
+      <div>
+        <h1 class="text-3xl sm:text-4xl font-bold text-white">{{ name }}</h1>
+        {% if profile.phone or profile.address %}
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-white/70 text-sm">
+          {% if profile.phone %}<span><i class='bx bx-phone text-base align-middle mr-1'></i>{{ profile.phone }}</span>{% endif %}
+          {% if profile.address %}<span><i class='bx bx-map-pin text-base align-middle mr-1'></i>{{ profile.address }}</span>{% endif %}
+        </div>
+        {% endif %}
+        <div class="flex flex-wrap gap-3 mt-4">
+          {% if profile.website %}
+          <a href="{{ profile.website }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2 text-sm font-semibold text-[#33475e] hover:bg-white transition-colors">
+            <i class='bx bx-globe'></i> Site web
+          </a>
+          {% endif %}
+          {% if profile.facebook_url %}
+          <a href="{{ profile.facebook_url }}" target="_blank" rel="noopener" aria-label="Facebook" class="inline-flex items-center justify-center h-10 w-10 rounded-xl bg-[#1877f2] text-white hover:bg-[#145fc7] transition-colors">
+            <i class='bx bxl-facebook text-lg'></i>
+          </a>
+          {% endif %}
+          {% if profile.instagram_url %}
+          <a href="{{ profile.instagram_url }}" target="_blank" rel="noopener" aria-label="Instagram" class="inline-flex items-center justify-center h-10 w-10 rounded-xl text-white transition-colors" style="background:radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%);">
+            <i class='bx bxl-instagram text-lg'></i>
+          </a>
+          {% endif %}
+          {% if profile.youtube_url %}
+          <a href="{{ profile.youtube_url }}" target="_blank" rel="noopener" aria-label="YouTube" class="inline-flex items-center justify-center h-10 w-10 rounded-xl bg-[#ff0000] text-white hover:bg-[#d90000] transition-colors">
+            <i class='bx bxl-youtube text-lg'></i>
+          </a>
+          {% endif %}
+          {% if profile.tiktok_url %}
+          <a href="{{ profile.tiktok_url }}" target="_blank" rel="noopener" aria-label="TikTok" class="inline-flex items-center justify-center h-10 w-10 rounded-xl bg-[#000000] text-white hover:bg-[#111] transition-colors">
+            <i class='bx bxl-tiktok text-lg'></i>
+          </a>
+          {% endif %}
+          {% if profile.x_url %}
+          <a href="{{ profile.x_url }}" target="_blank" rel="noopener" aria-label="X / Twitter" class="inline-flex items-center justify-center h-10 w-10 rounded-xl bg-[#1da1f2] text-white hover:bg-[#1a94dd] transition-colors">
+            <i class='bx bxl-twitter text-lg'></i>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  <div class="grid lg:grid-cols-5 gap-6">
+    <div class="lg:col-span-3 space-y-6">
+      {% if profile.description %}
+      <div class="rounded-2xl border border-[#dce3ef] bg-white shadow-sm p-6">
+        <h2 class="text-lg font-bold text-[#4a6fa5] mb-3">À propos</h2>
+        <p class="text-sm text-[#475569] leading-relaxed whitespace-pre-line">{{ profile.description }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="lg:col-span-2 space-y-6">
+      {% if profile.hours_lines %}
+      <div class="rounded-2xl border border-[#dce3ef] bg-white shadow-sm p-6">
+        <h2 class="text-lg font-bold text-[#4a6fa5] mb-3"><i class='bx bx-time text-xl align-middle mr-1'></i> Horaires d'ouverture</h2>
+        <ul class="space-y-2">
+          {% for line in profile.hours_lines %}
+          <li class="flex items-start gap-2 text-sm text-[#475569]">
+            <i class='bx bx-check-circle text-[#4a6fa5] mt-0.5'></i><span>{{ line }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      {% if profile.closure_lines %}
+      <div class="rounded-2xl border border-[#f5d4da] bg-[#fdf1f3] shadow-sm p-6">
+        <h2 class="text-lg font-bold text-[#b8485c] mb-3"><i class='bx bx-calendar-x text-xl align-middle mr-1'></i> Fermetures exceptionnelles</h2>
+        <ul class="space-y-2">
+          {% for line in profile.closure_lines %}
+          <li class="flex items-start gap-2 text-sm text-[#8f3d4d]">
+            <i class='bx bx-x-circle mt-0.5'></i><span>{{ line }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endwith %}
+{% endblock %}

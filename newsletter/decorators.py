@@ -37,7 +37,7 @@ def fiche_edit_required(view_func):
             return redirect("home")
         profile_id = kwargs.get("profile_id")
         if profile_id is not None:
-            from .models import LibraryProfile
+            from accounts.models import LibraryProfile
 
             profile = LibraryProfile.objects.filter(pk=profile_id).first()
             if profile is None or profile.user_id != request.user.pk:

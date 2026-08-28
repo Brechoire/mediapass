@@ -46,6 +46,16 @@
   .nl-input::placeholder { color:#94a3b8; }
   select.nl-input { padding-right:28px; }
   .nl-color { width:100%; height:36px; border:1px solid #dce3ef; border-radius:8px; padding:2px; background:#fff; cursor:pointer; }
+  .nl-checkbox { width:18px; height:18px; accent-color:#4a6fa5; cursor:pointer; }
+  .nl-checkbox-row { display:flex; align-items:center; gap:10px; border:1px solid #e3e9f4; border-radius:10px; padding:10px 12px; background:#f8fafc; cursor:pointer; transition:all .15s; }
+  .nl-checkbox-row:hover { background:#eef2f8; border-color:#b9cbe8; }
+  .nl-checkbox-row span { font-size:13px; font-weight:500; color:#33475e; }
+  .nl-group-title { display:flex; align-items:center; gap:7px; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#4a6fa5;
+                    border-bottom:1px solid #e3e9f4; padding-bottom:8px; margin-bottom:2px; }
+  .nl-group-title i { font-size:14px; }
+  .nl-group-subtitle { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+                       color:#7a8fa0; margin-top:10px; margin-bottom:2px; border-bottom:1px dashed #e3e9f4; padding-bottom:6px; }
+  .nl-range-val { min-width:52px; text-align:center; font-size:12px; font-weight:700; color:#4a6fa5; background:#eef2fb; border-radius:6px; padding:4px 6px; }
 </style>
 {% endblock %}
 
@@ -76,12 +86,16 @@
     <div class="ml-auto flex items-center gap-2">
       <button type="button" onclick="openChangelogModal()" title="Voir le changelog du builder"
               class="inline-flex items-center gap-1.5 rounded-full border border-[#c7d7f0] bg-[#eef2ff] px-2.5 py-1 text-xs font-bold text-[#4a6fa5] hover:bg-[#e0e7ff] transition-colors cursor-pointer">
-        <i class='bx bx-history'></i> Beta 0.3
+        <i class='bx bx-history'></i> Beta 0.4
       </button>
       <button type="button" onclick="nlOpenPanel('{% url 'newsletter:settings_panel' newsletter.pk %}')"
               class="inline-flex items-center gap-1.5 rounded-xl border border-[#dce3ef] bg-white px-3 py-2 text-sm font-medium text-[#33475e] hover:bg-[#f1f5fb] transition-colors cursor-pointer">
         <i class='bx bx-palette'></i> Réglages
       </button>
+      <a href="{% url 'newsletter:preset_list' %}"
+         class="inline-flex items-center gap-1.5 rounded-xl border border-[#dce3ef] bg-white px-3 py-2 text-sm font-medium text-[#33475e] hover:bg-[#f1f5fb] transition-colors">
+        <i class='bx bx-collection'></i> Presets
+      </a>
       <a href="{% url 'newsletter:preview' newsletter.pk %}" target="_blank" rel="noopener"
          class="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-[#dce3ef] bg-white px-3 py-2 text-sm font-medium text-[#33475e] hover:bg-[#f1f5fb] transition-colors">
         <i class='bx bx-show'></i> Aperçu
@@ -201,7 +215,7 @@
       <p class="text-white/60 text-xs shrink-0 pl-3">{{ newsletter.blocks.count }} bloc{% if newsletter.blocks.count > 1 or newsletter.blocks.count == 0 %}s{% endif %}</p>
     </div>
       <div class="rounded-b-2xl bg-[#edf1f8] border border-t-0 border-[#dce3ef] p-4 sm:p-6 min-h-[50vh]"
-         style="background-color: {{ newsletter.background_color }}22;">
+           style="background-color: {{ newsletter.background_color }}22; font-family: {{ newsletter.font_family }};">
         {% include "newsletter/partials/canvas.html" %}
       </div>
   </section>
@@ -243,10 +257,24 @@
     <div class="relative mx-auto mt-10 w-full max-w-2xl px-4 max-h-[85vh] flex flex-col">
       <div class="bg-white rounded-2xl shadow-xl border border-[#dce3ef] overflow-hidden animate-nl-enter flex flex-col max-h-[85vh]">
         <div class="flex items-center justify-between px-6 py-4 border-b border-[#dce3ef] bg-gradient-to-r from-[#4a6fa5] to-[#3d5f8f] text-white shrink-0">
-          <h3 id="changelog-title" class="text-lg font-bold flex items-center gap-2"><i class='bx bx-history'></i> Changelog — Newsletter Builder <span class="ml-2 rounded-full bg-white/20 px-2.5 py-0.5 text-xs">Beta 0.3</span></h3>
+          <h3 id="changelog-title" class="text-lg font-bold flex items-center gap-2"><i class='bx bx-history'></i> Changelog — Newsletter Builder <span class="ml-2 rounded-full bg-white/20 px-2.5 py-0.5 text-xs">Beta 0.4</span></h3>
           <button type="button" onclick="closeChangelogModal()" class="p-2 rounded-lg hover:bg-white/20 transition-colors" aria-label="Fermer"><i class='bx bx-x text-xl'></i></button>
         </div>
         <div class="overflow-y-auto px-6 py-5 space-y-6 text-sm leading-relaxed flex-1">
+          <section>
+            <h4 class="font-bold text-[#4a6fa5] flex items-center gap-2"><span class="rounded-full bg-[#4a6fa5] text-white text-xs px-2 py-0.5">Beta 0.4</span> 28 août 2026 — Fiches médiathèques, presets d'en-tête & personnalisation</h4>
+            <ul class="list-disc ml-5 mt-2 space-y-1 text-[#475569]">
+              <li><strong>Fiche médiathèque déplacée en source de vérité</strong> (`accounts.LibraryProfile`) — importée en lien live par la newsletter (bannière 1200×400, logo, téléphone, adresse, horaires, descriptions), page publique `/mediatheques/&lt;id&gt;/` + menu « Médiathèques » (comptes du groupe, lien « Ma fiche médiathèque » dans le menu profil des médiathèques).</li>
+              <li><strong>Réseaux sociaux étendus</strong> — YouTube, TikTok, X / Twitter ajoutés à la fiche (en plus de Facebook/Instagram/site web), affichés dans l'en-tête, la page publique et le snapshot.</li>
+              <li><strong>En-tête médiathèque à la carte</strong> — hauteurs (Compact / Standard / Grand), alignements indépendants par élément (nom, téléphone/adresse, boutons réseaux — gauche/centré/droite ou héritage), intensité du voile de bannière.</li>
+              <li><strong>Affichage précisément choisi</strong> — 9 interrupteurs individuels (badge « Médiathèque », téléphone, adresse, site web, Facebook, Instagram, YouTube, TikTok, X) pour masquer n'importe quel élément de l'en-tête.</li>
+              <li><strong>Presets d'en-tête</strong> — modèle nommé (hauteur, alignements, couleurs titre/texte, voile), CRUD complet réservé communication/superuser (`/newsletter/presets/`), 3 presets fournis (Standard gauche, Grand centré, Compact gauche), application en 1 clic sur une section.</li>
+              <li><strong>Sidebar « Modifier la section » réorganisée</strong> — 5 thèmes : Identification, En-tête médiathèque, Disposition des éléments, Éléments affichés, Couleurs, Bordure.</li>
+              <li><strong>Page « Ma fiche médiathèque » repensée</strong> — formulaire groupé par thèmes (identité, visuels upload box, coordonnées, horaires/fermetures, réseaux avec icônes), sidebar sticky « Dans vos newsletters » (aperçu en direct + pastilles réseau), lien vers la page publique.</li>
+              <li><strong>Cohérence builder / email</strong> — icônes remplacées par des glyphes universels (fonctionnent dans tous les clients mail), police de la newsletter appliquée au canvas et à l'email, héritage de bordure corrigé (couleur/largeur seulement si un style de bordure est défini sur la section).</li>
+              <li><strong>Optimisations</strong> — cache des groupes d'utilisateurs dans `has_group` (moins de requêtes par page), test Nb queries du builder renforcé (26 requêtes).</li>
+            </ul>
+          </section>
           <section>
             <h4 class="font-bold text-[#4a6fa5] flex items-center gap-2"><span class="rounded-full bg-[#4a6fa5] text-white text-xs px-2 py-0.5">Beta 0.3</span> 27 août 2026 — Sections & Personnalisation avancée</h4>
             <ul class="list-disc ml-5 mt-2 space-y-1 text-[#475569]">

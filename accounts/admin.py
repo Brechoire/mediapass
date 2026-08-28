@@ -1,8 +1,12 @@
-"""Module d'administration pour l'application accounts.
+from django.contrib import admin
 
-Ce module gère la configuration d'administration des modèles accounts.
-"""
-
+from .models import LibraryProfile
 
 
-# Register your models here.
+@admin.register(LibraryProfile)
+class LibraryProfileAdmin(admin.ModelAdmin):
+    list_display = ("name", "user", "phone", "updated_at")
+    search_fields = ("name", "user__username", "user__last_name")
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("user")

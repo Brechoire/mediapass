@@ -12,7 +12,9 @@ from django.urls import reverse
 from library_workshops.models import Workshop as LibraryWorkshop, WorkshopParticipant
 from PIL import Image as PILImage
 
-from .models import Block, LibraryProfile, Newsletter, NewsletterImage
+from accounts.models import LibraryProfile
+
+from .models import Block, Newsletter, NewsletterImage
 from .services import (
     get_candidate_workshops,
     push_to_sender,
@@ -531,7 +533,10 @@ class QueryCountTests(BaseNewsletterTestCase):
                     content={"image_id": img.pk},
                 )
         self.client.force_login(self.comm_user)
-        with self.assertNumQueries(32):
+        from django.core.cache import cache
+
+        cache.clear()
+        with self.assertNumQueries(26):
             self.client.get(reverse("newsletter:builder", args=[newsletter.pk]))
 
     def test_render_email_no_n_plus_1_images(self):

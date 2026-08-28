@@ -1,11 +1,13 @@
 """Module de vues pour l'application accounts."""
 from django.contrib.auth import login, logout
+from django.contrib.auth.models import User
 from django.contrib.auth.views import LoginView
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 
 from .forms import LoginForm
+from .models import LibraryProfile
 
 
 class CustomLoginView(LoginView):
@@ -29,3 +31,14 @@ class CustomLoginView(LoginView):
 def logout_view(request):
     logout(request)
     return redirect("home")
+
+
+def mediatheque_public(request, pk):
+    """Page publique d'une médiathèque (compte du groupe « mediatheque »)."""
+    mediatheque_user = get_object_or_404(User, pk=pk)
+    profile = LibraryProfile.objects.filter(user=mediatheque_user).select_related("user").first()
+    return render(
+        request,
+        "accounts/mediatheque_public.html",
+        {"profile": profile, "mediatheque_user": mediatheque_user},
+    )

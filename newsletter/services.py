@@ -11,7 +11,9 @@ from django.utils import timezone
 from library_workshops.models import Workshop, WorkshopParticipant
 from library_workshops.services import NewsletterService as LegacyNewsletterService
 
-from .models import Block, LibraryProfile, Newsletter
+from accounts.models import LibraryProfile
+
+from .models import Block, Newsletter
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +146,12 @@ def build_library_snapshot(profile):
         "hours_lines": profile.hours_lines if profile else [],
         "closure_lines": profile.closure_lines if profile else [],
         "image_url": image_url,
+        "website": profile.website if profile else "",
+        "facebook_url": profile.facebook_url if profile else "",
+        "instagram_url": profile.instagram_url if profile else "",
+        "youtube_url": profile.youtube_url if profile else "",
+        "tiktok_url": profile.tiktok_url if profile else "",
+        "x_url": profile.x_url if profile else "",
     }
 
 

@@ -83,10 +83,22 @@
                                 <hr class="border-[#dce3ef] my-1">
                                 <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Communication</p>
                                 <a href="{% url 'newsletter:index' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-mail-send text-[#b0bedb]"></i> Newsletter</a>
+                                <a href="{% url 'newsletter:preset_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-collection text-[#b0bedb]"></i> Presets d'en-tête</a>
                                 <a href="{% url 'notifications:email_admin' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-envelope text-[#b0bedb]"></i> Emails</a>
                                 <hr class="border-[#dce3ef] my-1">
                                 <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Système</p>
                                 <a href="#" id="open-backup-modal" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-download text-[#b0bedb]"></i> Sauvegardes</a>
+                            </div>
+                        </div>
+                        <div class="relative group">
+                            <button class="flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer">Médiathèques <i class="bx bx-chevron-down text-base"></i></button>
+                            <div class="absolute left-0 top-full z-50 hidden group-hover:block bg-white border border-[#dce3ef] rounded-xl shadow-lg py-2 min-w-[230px]">
+                                <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Voir une médiathèque</p>
+                                {% for prof in library_profiles %}
+                                <a href="{% url 'mediatheque_public' prof.pk %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-library text-[#b0bedb]"></i> {{ prof.name }}</a>
+                                {% endfor %}
+                                <hr class="border-[#dce3ef] my-1">
+                                <a href="{% url 'newsletter:fiche_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-edit text-[#b0bedb]"></i> Éditer les fiches</a>
                             </div>
                         </div>
                         {% endif %}
@@ -115,7 +127,13 @@
                             <span class="text-sm font-medium text-[#4a6fa5] hidden sm:inline">{{ user.username }}</span>
                             <i class="bx bx-chevron-down text-[#b0bedb]"></i>
                         </button>
-                        <div class="absolute right-0 top-full w-48 bg-white rounded-xl shadow-lg border border-[#dce3ef] py-1.5 z-50 hidden group-hover:block">
+                        <div class="absolute right-0 top-full w-56 bg-white rounded-xl shadow-lg border border-[#dce3ef] py-1.5 z-50 hidden group-hover:block">
+                            {% if user|has_group:'mediatheque' %}
+                            <a href="{% url 'newsletter:ma_fiche' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
+                                <i class="bx bx-library text-[#b0bedb]"></i> Ma fiche médiathèque
+                            </a>
+                            <hr class="border-[#dce3ef] my-1">
+                            {% endif %}
                             <form method="post" action="{% url 'logout' %}">
                                 {% csrf_token %}
                                 <button type="submit" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#d46a78] hover:bg-[#fbe8eb] transition-colors w-full">
@@ -179,7 +197,15 @@
                     <div class="px-3 py-2">
                         <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Communication</p>
                         <a href="{% url 'newsletter:index' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-mail-send text-[#b0bedb]"></i> Newsletter</a>
+                        <a href="{% url 'newsletter:preset_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-collection text-[#b0bedb]"></i> Presets d'en-tête</a>
                         <a href="{% url 'notifications:email_admin' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-envelope text-[#b0bedb]"></i> Emails</a>
+                    </div>
+                    <div class="px-3 py-2">
+                        <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Médiathèques</p>
+                        {% for prof in library_profiles %}
+                        <a href="{% url 'mediatheque_public' prof.pk %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-library text-[#b0bedb]"></i> {{ prof.name }}</a>
+                        {% endfor %}
+                        <a href="{% url 'newsletter:fiche_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-edit text-[#b0bedb]"></i> Éditer les fiches</a>
                     </div>
                     <div class="px-3 py-2">
                         <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Système</p>

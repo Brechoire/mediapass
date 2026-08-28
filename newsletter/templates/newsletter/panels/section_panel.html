@@ -9,32 +9,188 @@
     </button>
   </div>
 
+  {% if presets %}
+  <div class="px-5 pt-4">
+    <div class="rounded-xl border border-[#dbe5f3] bg-[#f4f8ff] p-3">
+      <label for="nl-preset-select" class="block text-xs font-semibold text-[#33475e] mb-1.5">
+        <i class='bx bx-collection text-[#4a6fa5]'></i> Appliquer un preset d'en-tête
+      </label>
+      <div class="flex gap-2">
+        <select id="nl-preset-select" class="nl-input flex-1">
+          <option value="">— Choisir un preset —</option>
+          {% for preset in presets %}
+          <option value="{% url 'newsletter:apply_preset' newsletter.pk section.pk preset.pk %}">{{ preset.name }} · {{ preset.get_header_height_display }}</option>
+          {% endfor %}
+        </select>
+        <button type="button" id="nl-preset-apply"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-[#4a6fa5] px-3 py-2 text-xs font-semibold text-white hover:bg-[#3d5f8f] transition-colors cursor-pointer">
+          <i class='bx bx-check'></i> Appliquer
+        </button>
+      </div>
+      <p class="mt-1.5 text-[11px] text-[#7a8fa0]">Gère vos presets dans <a href="{% url 'newsletter:preset_list' %}" class="text-[#4a6fa5] underline">la liste des presets</a>.</p>
+    </div>
+  </div>
+  {% endif %}
+
   <form hx-post="{% url 'newsletter:update_section' newsletter.pk section.pk %}"
         hx-target="#nl-canvas" hx-swap="outerHTML"
-        class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-    {% for field in form %}
-      {% if field.name == "background_color" %}
-        <div>
-          <label for="{{ field.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ field.label }}</label>
-          <div class="flex items-center gap-2">
-            {{ field }}
-            <span class="text-xs text-[#7a8fa0]">{{ field.value|default:"#ffffff" }}</span>
-          </div>
-          {% for error in field.errors %}<p class="mt-1 text-[11px] text-[#d46a78]">{{ error }}</p>{% endfor %}
-        </div>
-      {% else %}
-        <div>
-          <label for="{{ field.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ field.label }}</label>
-          {{ field }}
-          {% if field.help_text %}<p class="mt-1 text-[11px] text-[#93a3b3]">{{ field.help_text }}</p>{% endif %}
-          {% for error in field.errors %}<p class="mt-1 text-[11px] text-[#d46a78]">{{ error }}</p>{% endfor %}
-        </div>
-      {% endif %}
-    {% endfor %}
+        class="flex-1 overflow-y-auto px-5 py-4 space-y-6">
 
-    <div class="rounded-xl border border-[#e3e9f4] bg-[#f8fafc] p-3">
-      <p class="text-xs font-semibold text-[#33475e] mb-1">Aperçu header</p>
-      <p class="text-[11px] text-[#7a8fa0]">L'en-tête affichera l'image de la médiathèque, son nom, téléphone et boutons réseaux sociaux (site, Facebook, Instagram) renseignés dans sa fiche.</p>
+    {# ═════════ Thème : Identification ═════════ #}
+    <div class="space-y-3">
+      <p class="nl-group-title"><i class='bx bx-info-circle'></i> Identification</p>
+      <div>
+        <label for="{{ form.title.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.title.label }}</label>
+        {{ form.title }}
+        {% if form.title.help_text %}<p class="mt-1 text-[11px] text-[#93a3b3]">{{ form.title.help_text }}</p>{% endif %}
+      </div>
+      <div>
+        <label for="{{ form.library_profile.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.library_profile.label }}</label>
+        {{ form.library_profile }}
+      </div>
+    </div>
+
+    {# ═════════ Thème : En-tête ═════════ #}
+    <div class="space-y-3">
+      <p class="nl-group-title"><i class='bx bx-image'></i> En-tête médiathèque</p>
+      <div>
+        <label for="{{ form.header_height.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.header_height.label }}</label>
+        {{ form.header_height }}
+        {% if form.header_height.help_text %}<p class="mt-1 text-[11px] text-[#93a3b3]">{{ form.header_height.help_text }}</p>{% endif %}
+      </div>
+      <div>
+        <label for="{{ form.header_align.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.header_align.label }}</label>
+        {{ form.header_align }}
+        {% if form.header_align.help_text %}<p class="mt-1 text-[11px] text-[#93a3b3]">{{ form.header_align.help_text }}</p>{% endif %}
+      </div>
+      <div>
+        <label for="{{ form.header_overlay.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.header_overlay.label }}</label>
+        <div class="flex items-center gap-2">
+          {{ form.header_overlay }}
+          <span class="nl-range-val">{{ form.header_overlay.value|default:"0.35" }}</span>
+        </div>
+      </div>
+    </div>
+
+    {# ═════════ Thème : Disposition des éléments ═════════ #}
+    <div class="space-y-3">
+      <p class="nl-group-title"><i class='bx bx-move-horizontal'></i> Disposition des éléments</p>
+      <p class="text-[11px] text-[#7a8fa0] -mt-1">Positionnez chaque élément indépendamment. « Hériter de l'en-tête » = suit l'alignement global de la section.</p>
+      <div>
+        <label for="{{ form.title_align.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.title_align.label }}</label>
+        {{ form.title_align }}
+      </div>
+      <div>
+        <label for="{{ form.contact_align.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.contact_align.label }}</label>
+        {{ form.contact_align }}
+      </div>
+      <div>
+        <label for="{{ form.socials_align.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.socials_align.label }}</label>
+        {{ form.socials_align }}
+      </div>
+    </div>
+
+    {# ═════════ Thème : Éléments affichés ═════════ #}
+    <div class="space-y-2">
+      <p class="nl-group-title"><i class='bx bx-show'></i> Éléments affichés</p>
+      <p class="text-[11px] text-[#7a8fa0] -mt-1">Cochez précisément ce qui apparaît dans l'en-tête. Décoché = masqué dans le rendu email.</p>
+
+      <label for="{{ form.show_header_badge.id_for_label }}" class="nl-checkbox-row">
+        {{ form.show_header_badge }}
+        <span>{{ form.show_header_badge.label }}</span>
+      </label>
+      <label for="{{ form.show_header_phone.id_for_label }}" class="nl-checkbox-row">
+        {{ form.show_header_phone }}
+        <span>{{ form.show_header_phone.label }}</span>
+      </label>
+      <label for="{{ form.show_header_address.id_for_label }}" class="nl-checkbox-row">
+        {{ form.show_header_address }}
+        <span>{{ form.show_header_address.label }}</span>
+      </label>
+
+      <p class="nl-group-subtitle"><i class='bx bx-link'></i> Boutons réseaux sociaux</p>
+      <label for="{{ form.show_header_website.id_for_label }}" class="nl-checkbox-row">
+        {{ form.show_header_website }}
+        <span>{{ form.show_header_website.label }}</span>
+      </label>
+      <label for="{{ form.show_header_facebook.id_for_label }}" class="nl-checkbox-row">
+        {{ form.show_header_facebook }}
+        <span>{{ form.show_header_facebook.label }}</span>
+      </label>
+      <label for="{{ form.show_header_instagram.id_for_label }}" class="nl-checkbox-row">
+        {{ form.show_header_instagram }}
+        <span>{{ form.show_header_instagram.label }}</span>
+      </label>
+      <label for="{{ form.show_header_youtube.id_for_label }}" class="nl-checkbox-row">
+        {{ form.show_header_youtube }}
+        <span>{{ form.show_header_youtube.label }}</span>
+      </label>
+      <label for="{{ form.show_header_tiktok.id_for_label }}" class="nl-checkbox-row">
+        {{ form.show_header_tiktok }}
+        <span>{{ form.show_header_tiktok.label }}</span>
+      </label>
+      <label for="{{ form.show_header_x.id_for_label }}" class="nl-checkbox-row">
+        {{ form.show_header_x }}
+        <span>{{ form.show_header_x.label }}</span>
+      </label>
+    </div>
+
+    {# ═════════ Thème : Couleurs & texte ═════════ #}
+    <div class="space-y-3">
+      <p class="nl-group-title"><i class='bx bx-palette'></i> Couleurs</p>
+      <div>
+        <label for="{{ form.background_color.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.background_color.label }}</label>
+        <div class="flex items-center gap-2">
+          {{ form.background_color }}
+          <span class="text-xs text-[#7a8fa0]">{{ form.background_color.value|default:"#ffffff" }}</span>
+        </div>
+        {% if form.background_transparent %}
+        <label for="{{ form.background_transparent.id_for_label }}" class="nl-checkbox-row mt-2">
+          {{ form.background_transparent }}
+          <span>{{ form.background_transparent.label }}</span>
+        </label>
+        {% endif %}
+      </div>
+      <div>
+        <label for="{{ form.title_color.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.title_color.label }} <span class="text-[#b0bedb]">(titre)</span></label>
+        {{ form.title_color }}
+      </div>
+      <div>
+        <label for="{{ form.text_color.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.text_color.label }} <span class="text-[#b0bedb]">(texte)</span></label>
+        {{ form.text_color }}
+      </div>
+      <div>
+        <label for="{{ form.content_title_color.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.content_title_color.label }} <span class="text-[#b0bedb]">(contenu)</span></label>
+        {{ form.content_title_color }}
+      </div>
+      <div>
+        <label for="{{ form.content_text_color.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.content_text_color.label }} <span class="text-[#b0bedb]">(contenu)</span></label>
+        {{ form.content_text_color }}
+      </div>
+    </div>
+
+    {# ═════════ Thème : Bordures ═════════ #}
+    <div class="space-y-3">
+      <p class="nl-group-title"><i class='bx bx-border-radius'></i> Bordure</p>
+      <div>
+        <label for="{{ form.border_style.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.border_style.label }}</label>
+        {{ form.border_style }}
+      </div>
+      <div>
+        <label for="{{ form.border_color.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.border_color.label }}</label>
+        {{ form.border_color }}
+      </div>
+      <div>
+        <label for="{{ form.border_width.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.border_width.label }}</label>
+        <div class="flex items-center gap-2">
+          {{ form.border_width }}
+          <span class="nl-range-val">{{ form.border_width.value|default:1 }} px</span>
+        </div>
+      </div>
+      <div>
+        <label for="{{ form.border_radius.id_for_label }}" class="block text-xs font-semibold text-[#33475e] mb-1.5">{{ form.border_radius.label }}</label>
+        {{ form.border_radius }}
+      </div>
     </div>
 
     <div class="sticky bottom-0 -mx-5 px-5 py-3 bg-gradient-to-t from-white via-white/95 to-transparent">
@@ -45,3 +201,16 @@
     </div>
   </form>
 </div>
+
+<script>
+  document.getElementById('nl-preset-apply')?.addEventListener('click', function () {
+    const sel = document.getElementById('nl-preset-select');
+    const url = sel.value;
+    if (!url) return;
+    document.getElementById('nl-side-panel').classList.remove('open');
+    document.getElementById('nl-overlay').classList.add('hidden');
+    if (window.htmx) {
+      htmx.ajax('POST', url, { target: '#nl-canvas', swap: 'outerHTML' });
+    }
+  });
+</script>

@@ -2,13 +2,17 @@
 
 from django import forms
 
+from accounts.models import LibraryProfile
+
 from .models import (
     BORDER_STYLE_CHOICES,
     FONT_CHOICES,
+    HEADER_ALIGN_CHOICES,
+    HEADER_HEIGHT_CHOICES,
     RADIUS_CHOICES,
     WORKSHOP_VARIANT_CHOICES,
     Block,
-    LibraryProfile,
+    HeaderPreset,
     Newsletter,
     Section,
 )
@@ -334,6 +338,21 @@ class SectionForm(forms.ModelForm):
             "title",
             "library_profile",
             "background_color",
+            "header_height",
+            "header_align",
+            "header_overlay",
+            "title_align",
+            "contact_align",
+            "socials_align",
+            "show_header_badge",
+            "show_header_phone",
+            "show_header_address",
+            "show_header_website",
+            "show_header_facebook",
+            "show_header_instagram",
+            "show_header_youtube",
+            "show_header_tiktok",
+            "show_header_x",
             "title_color",
             "text_color",
             "content_title_color",
@@ -356,6 +375,47 @@ class SectionForm(forms.ModelForm):
                     "type": "color",
                     "class": "w-full h-9 rounded-lg border border-[#dce3ef] p-0.5 cursor-pointer bg-white",
                 }
+            ),
+            "header_height": forms.Select(attrs={"class": "nl-input"}),
+            "header_align": forms.Select(attrs={"class": "nl-input"}),
+            "header_overlay": forms.NumberInput(
+                attrs={
+                    "type": "range",
+                    "min": "0.10",
+                    "max": "0.70",
+                    "step": "0.05",
+                    "class": "w-full accent-[#4a6fa5]",
+                }
+            ),
+            "title_align": forms.Select(attrs={"class": "nl-input"}),
+            "contact_align": forms.Select(attrs={"class": "nl-input"}),
+            "socials_align": forms.Select(attrs={"class": "nl-input"}),
+            "show_header_badge": forms.CheckboxInput(
+                attrs={"class": "nl-checkbox"}
+            ),
+            "show_header_phone": forms.CheckboxInput(
+                attrs={"class": "nl-checkbox"}
+            ),
+            "show_header_address": forms.CheckboxInput(
+                attrs={"class": "nl-checkbox"}
+            ),
+            "show_header_website": forms.CheckboxInput(
+                attrs={"class": "nl-checkbox"}
+            ),
+            "show_header_facebook": forms.CheckboxInput(
+                attrs={"class": "nl-checkbox"}
+            ),
+            "show_header_instagram": forms.CheckboxInput(
+                attrs={"class": "nl-checkbox"}
+            ),
+            "show_header_youtube": forms.CheckboxInput(
+                attrs={"class": "nl-checkbox"}
+            ),
+            "show_header_tiktok": forms.CheckboxInput(
+                attrs={"class": "nl-checkbox"}
+            ),
+            "show_header_x": forms.CheckboxInput(
+                attrs={"class": "nl-checkbox"}
             ),
             "title_color": forms.TextInput(
                 attrs={
@@ -487,6 +547,55 @@ class LibraryPickForm(forms.Form):
             if (self.cleaned_data.get("profile_id"))
             else {}
         )
+
+
+class HeaderPresetForm(forms.ModelForm):
+    """Formulaire d'un preset d'en-tête médiathèque."""
+
+    class Meta:
+        model = HeaderPreset
+        fields = [
+            "name",
+            "header_height",
+            "header_align",
+            "title_color",
+            "text_color",
+            "overlay_strength",
+        ]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "nl-input"}),
+            "header_height": forms.Select(attrs={"class": "nl-input"}),
+            "header_align": forms.Select(attrs={"class": "nl-input"}),
+            "title_color": forms.TextInput(
+                attrs={"type": "color", "class": "nl-color"}
+            ),
+            "text_color": forms.TextInput(
+                attrs={"type": "color", "class": "nl-color"}
+            ),
+            "overlay_strength": forms.NumberInput(
+                attrs={
+                    "type": "range",
+                    "min": "0.10",
+                    "max": "0.70",
+                    "step": "0.05",
+                    "class": "w-full accent-[#4a6fa5]",
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["title_color"].required = False
+        self.fields["text_color"].required = False
+        self.fields["overlay_strength"].required = False
+
+    def clean_overlay_strength(self):
+        v = self.cleaned_data.get("overlay_strength") or "0.35"
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            f = 0.35
+        return str(max(0.10, min(0.70, f)))
 
 
 BLOCK_TYPE_TO_FORM = {

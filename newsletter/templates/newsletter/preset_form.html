@@ -1,0 +1,39 @@
+{% extends "base_new.html" %}
+
+{% block title %}{% if preset %}Modifier le preset{% else %}Nouveau preset{% endif %} — Médi@'pass{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+  <div class="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <h1 class="text-3xl font-bold text-white">
+      {% if preset %}Modifier le preset « {{ preset.name }} »{% else %}Nouveau preset{% endif %}
+    </h1>
+    <p class="text-white/70 text-sm mt-1">
+      Ce modèle pourra être appliqué en 1 clic sur l'en-tête d'une section (hauteur, alignement, couleurs).
+    </p>
+  </div>
+</section>
+
+<section class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <form method="post" class="rounded-2xl border border-[#dce3ef] bg-white shadow-sm p-6 space-y-5">
+    {% csrf_token %}
+    {% for field in form %}
+    <div>
+      <label for="{{ field.id_for_label }}" class="block text-sm font-semibold text-[#33475e] mb-1.5">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<p class="mt-1 text-xs text-[#93a3b3]">{{ field.help_text }}</p>{% endif %}
+      {% for error in field.errors %}<p class="mt-1 text-xs text-[#d46a78]">{{ error }}</p>{% endfor %}
+    </div>
+    {% endfor %}
+    <div class="pt-2 flex items-center justify-between gap-3">
+      <a href="{% url 'newsletter:preset_list' %}" class="inline-flex items-center gap-2 rounded-xl border border-[#dce3ef] px-4 py-2.5 text-sm font-semibold text-[#475569] hover:bg-[#f8fafc] transition-colors">
+        <i class='bx bx-arrow-back'></i> Retour
+      </a>
+      <button type="submit"
+              class="inline-flex items-center gap-2 rounded-xl bg-[#4a6fa5] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#3d5f8f] active:scale-[.98] transition-all cursor-pointer">
+        <i class='bx bx-check'></i> Enregistrer le preset
+      </button>
+    </div>
+  </form>
+</section>
+{% endblock %}

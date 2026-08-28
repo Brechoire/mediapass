@@ -84,4 +84,21 @@ urlpatterns = [
     path("<int:pk>/sender/", views.send_sender, name="send_sender"),
     path("<int:pk>/dupliquer/", views.duplicate_newsletter, name="duplicate"),
     path("<int:pk>/supprimer/", views.delete_newsletter, name="delete"),
+    path("presets/", views.preset_list, name="preset_list"),
+    path("presets/nouveau/", views.preset_create, name="preset_create"),
+    path(
+        "presets/<int:pk>/editer/",
+        views.preset_edit,
+        name="preset_edit",
+    ),
+    path(
+        "presets/<int:pk>/supprimer/",
+        views.preset_delete,
+        name="preset_delete",
+    ),
+    path(
+        "<int:pk>/sections/<int:section_id>/preset/<int:preset_id>/",
+        views.apply_preset,
+        name="apply_preset",
+    ),
 ]
