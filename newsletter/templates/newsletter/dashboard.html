@@ -34,6 +34,22 @@
     {% endfor %}
   {% endif %}
 
+  {# ⚠️ Bandeau développement #}
+  <div class="mb-6 rounded-2xl border border-[#f5d4da] bg-[#fdf1f3] px-5 py-4 flex items-start gap-4">
+    <div class="w-10 h-10 rounded-xl bg-[#d46a78]/15 flex items-center justify-center shrink-0">
+      <i class='bx bx-error text-2xl text-[#b8485c]'></i>
+    </div>
+    <div class="min-w-0">
+      <p class="text-sm font-bold text-[#b8485c]">Module en cours de développement</p>
+      <p class="mt-1 text-sm text-[#8f3d4d] leading-relaxed">
+        La création, la mise en page et l'aperçu des newsletters fonctionnent déjà, mais
+        <strong>l'envoi direct n'est pas encore disponible</strong> : le bouton « Envoyer vers
+        Sender.net » du builder ne doit pas être utilisé pour le moment. L'export HTML permet
+        déjà de transférer le contenu aux équipes.
+      </p>
+    </div>
+  </div>
+
   <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
     {% for newsletter in newsletters %}
     <article class="group relative flex flex-col rounded-2xl border border-[#dce3ef] bg-white shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden">
@@ -65,6 +81,9 @@
              class="p-2 rounded-lg text-[#7a8fa0] hover:bg-[#e8eef7] hover:text-[#4a6fa5] transition-colors"><i class='bx bx-group'></i></a>
         </div>
         <div class="flex items-center gap-1">
+          <button type="button" title="Modifier les informations"
+                  onclick="nlOpenPanel('{% url 'newsletter:edit_infos' newsletter.pk %}')"
+                  class="p-2 rounded-lg text-[#7a8fa0] hover:bg-[#e8eef7] hover:text-[#4a6fa5] transition-colors cursor-pointer"><i class='bx bx-edit-alt'></i></button>
           <form method="post" action="{% url 'newsletter:duplicate' newsletter.pk %}" class="m-0">
             {% csrf_token %}
             <button type="submit" title="Dupliquer" class="p-2 rounded-lg text-[#7a8fa0] hover:bg-[#e8eef7] hover:text-[#4a6fa5] transition-colors cursor-pointer"><i class='bx bx-copy'></i></button>
@@ -119,6 +138,12 @@
   </div>
 </section>
 
+{# Panneau latéral (édition des infos) #}
+<div id="nl-overlay" class="hidden fixed inset-0 z-40 bg-gray-900/30 backdrop-blur-[2px]" onclick="nlClosePanel()"></div>
+<aside id="nl-side-panel" class="fixed right-0 top-0 z-50 h-full w-full max-w-[400px] bg-[#fafbfd] border-l border-[#dce3ef] hidden overflow-hidden">
+  <div id="nl-panel-content" class="h-full"></div>
+</aside>
+
 {# Modal de création #}
 <div id="nl-create-modal" class="hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="nl-create-title">
   <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" onclick="this.parentNode.classList.add('hidden')"></div>
@@ -149,8 +174,32 @@
 </div>
 
 <script>
+  const nlOverlay = () => document.getElementById('nl-overlay');
+  const nlSidePanel = () => document.getElementById('nl-side-panel');
+  const nlPanelContent = () => document.getElementById('nl-panel-content');
+
+  function nlOpenPanel(url) {
+    fetch(url, { headers: { 'X-Requested-With': 'HTMX' } })
+      .then(r => r.text())
+      .then(html => {
+        const content = nlPanelContent();
+        content.innerHTML = html;
+        if (window.htmx) htmx.process(content);
+        nlSidePanel().classList.remove('hidden');
+        nlOverlay().classList.remove('hidden');
+      });
+  }
+  function nlClosePanel() {
+    nlSidePanel().classList.add('hidden');
+    nlOverlay().classList.add('hidden');
+    nlPanelContent().innerHTML = '';
+  }
+
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') document.getElementById('nl-create-modal').classList.add('hidden');
+    if (e.key === 'Escape') {
+      nlClosePanel();
+      document.getElementById('nl-create-modal').classList.add('hidden');
+    }
   });
 </script>
 </div>

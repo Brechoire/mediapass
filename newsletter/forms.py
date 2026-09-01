@@ -1,8 +1,12 @@
 """Formulaires de l'application newsletter."""
 
+import re
+
 from django import forms
+from django.core.validators import FileExtensionValidator
 
 from accounts.models import LibraryProfile
+from app.validators import ALLOWED_IMAGE_EXTENSIONS_NODOT, validate_image_content
 
 from .models import (
     BORDER_STYLE_CHOICES,
@@ -16,6 +20,8 @@ from .models import (
     Newsletter,
     Section,
 )
+
+HEX_COLOR_RE = re.compile(r"^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$")
 
 
 class NewsletterForm(forms.ModelForm):
@@ -57,6 +63,30 @@ class NewsletterForm(forms.ModelForm):
                     "focus:ring-[#4a6fa5]/20 focus:outline-none",
                 },
                 format="%Y-%m-%d",
+            ),
+        }
+
+
+class NewsletterInfosForm(forms.ModelForm):
+    """Modification des informations d'une newsletter (titre, objet, période)."""
+
+    class Meta:
+        model = Newsletter
+        fields = ["title", "subject", "preheader", "period_start", "period_end"]
+        widgets = {
+            "title": forms.TextInput(attrs={"class": "nl-input"}),
+            "subject": forms.TextInput(attrs={"class": "nl-input"}),
+            "preheader": forms.TextInput(
+                attrs={
+                    "class": "nl-input",
+                    "placeholder": "Aperçu dans la boîte mail",
+                }
+            ),
+            "period_start": forms.DateInput(
+                attrs={"type": "date", "class": "nl-input"}, format="%Y-%m-%d"
+            ),
+            "period_end": forms.DateInput(
+                attrs={"type": "date", "class": "nl-input"}, format="%Y-%m-%d"
             ),
         }
 
@@ -152,29 +182,82 @@ class SettingsForm(forms.ModelForm):
             self.fields["workshop_bg_transparent"].initial = True
 
     def clean_primary_color(self):
-        return (
-            self.cleaned_data["primary_color"].lower()
-            if self.cleaned_data.get("primary_color")
-            else ""
-        )
+        v = self.cleaned_data.get("primary_color", "") or ""
+        if not v:
+            return ""
+        low = v.strip().lower()
+        if not HEX_COLOR_RE.match(low):
+            raise forms.ValidationError("Couleur invalide (ex. #ff0000).")
+        return low
 
     def clean_background_color(self):
-        v = self.cleaned_data.get("background_color", "")
-        return v.lower() if v else ""
+        v = self.cleaned_data.get("background_color", "") or ""
+        if not v:
+            return ""
+        low = v.strip().lower()
+        if low == "transparent":
+            return low
+        if not HEX_COLOR_RE.match(low):
+            raise forms.ValidationError("Couleur invalide (ex. #ff0000).")
+        return low
+
+    def clean_workshop_bg_color(self):
+        v = self.cleaned_data.get("workshop_bg_color", "") or ""
+        if not v:
+            return ""
+        low = v.strip().lower()
+        if low == "transparent":
+            return low
+        if not HEX_COLOR_RE.match(low):
+            raise forms.ValidationError("Couleur invalide (ex. #ff0000).")
+        return low
+
+    def clean_workshop_title_color(self):
+        v = self.cleaned_data.get("workshop_title_color", "") or ""
+        if not v:
+            return ""
+        low = v.strip().lower()
+        if not HEX_COLOR_RE.match(low):
+            raise forms.ValidationError("Couleur invalide (ex. #ff0000).")
+        return low
+
+    def clean_workshop_text_color(self):
+        v = self.cleaned_data.get("workshop_text_color", "") or ""
+        if not v:
+            return ""
+        low = v.strip().lower()
+        if not HEX_COLOR_RE.match(low):
+            raise forms.ValidationError("Couleur invalide (ex. #ff0000).")
+        return low
+
+    def clean_workshop_border_color(self):
+        v = self.cleaned_data.get("workshop_border_color", "") or ""
+        if not v:
+            return ""
+        low = v.strip().lower()
+        if not HEX_COLOR_RE.match(low):
+            raise forms.ValidationError("Couleur invalide (ex. #ff0000).")
+        return low
 
     def clean(self):
         cleaned = super().clean()
         if cleaned.get("workshop_bg_transparent"):
             cleaned["workshop_bg_color"] = "transparent"
         else:
-            v = cleaned.get("workshop_bg_color", "")
-            cleaned["workshop_bg_color"] = v.lower() if v else "#ffffff"
+            v = cleaned.get("workshop_bg_color", "") or ""
+            if not v:
+                cleaned["workshop_bg_color"] = "#ffffff"
+            else:
+                low = v.strip().lower()
+                if low == "transparent":
+                    cleaned["workshop_bg_color"] = "transparent"
+                elif HEX_COLOR_RE.match(low):
+                    cleaned["workshop_bg_color"] = low
+                else:
+                    cleaned["workshop_bg_color"] = "#ffffff"
         # map legacy "side" -> "side-left"
         if cleaned.get("workshop_default_variant") == "side":
             cleaned["workshop_default_variant"] = "side-left"
-        for f in ("workshop_border_color", "workshop_title_color", "workshop_text_color"):
-            v = cleaned.get(f, "")
-            cleaned[f] = v.lower() if v else ""
         return cleaned
 
 
@@ -240,7 +323,14 @@ class SpacerForm(forms.Form):
 
 
 class ImageForm(forms.Form):
-    new_image = forms.ImageField(label="Téléverser une image", required=False)
+    new_image = forms.ImageField(
+        label="Téléverser une image",
+        required=False,
+        validators=[
+            FileExtensionValidator(ALLOWED_IMAGE_EXTENSIONS_NODOT),
+            validate_image_content,
+        ],
+    )
     alt = forms.CharField(label="Texte alternatif", max_length=200, required=False)
     link = forms.URLField(label="Lien au clic", required=False)
     width = forms.ChoiceField(
@@ -307,6 +397,10 @@ class WorkshopBlockForm(forms.Form):
     new_image = forms.ImageField(
         label="Remplacer le visuel (laisser vide pour conserver)",
         required=False,
+        validators=[
+            FileExtensionValidator(ALLOWED_IMAGE_EXTENSIONS_NODOT),
+            validate_image_content,
+        ],
     )
 
     def clean_image_width(self):
@@ -315,12 +409,22 @@ class WorkshopBlockForm(forms.Form):
         return max(60, min(280, int(v)))
 
     def clean_title_color(self):
-        v = self.cleaned_data.get("title_color", "")
-        return v.lower() if v else ""
+        v = self.cleaned_data.get("title_color", "") or ""
+        if not v:
+            return ""
+        low = v.strip().lower()
+        if not HEX_COLOR_RE.match(low):
+            raise forms.ValidationError("Couleur invalide (ex. #ff0000).")
+        return low
 
     def clean_text_color(self):
-        v = self.cleaned_data.get("text_color", "")
-        return v.lower() if v else ""
+        v = self.cleaned_data.get("text_color", "") or ""
+        if not v:
+            return ""
+        low = v.strip().lower()
+        if not HEX_COLOR_RE.match(low):
+            raise forms.ValidationError("Couleur invalide (ex. #ff0000).")
+        return low
 
 
 class SectionForm(forms.ModelForm):
@@ -492,24 +596,74 @@ class SectionForm(forms.ModelForm):
         if self.instance and self.instance.content_text_color:
             self.fields["content_text_color"].initial = self.instance.content_text_color
 
+    def clean_header_overlay(self):
+        v = self.cleaned_data.get("header_overlay") or "0.35"
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return "0.35"
+        return str(max(0.10, min(0.70, f)))
+
+    def clean_title_color(self):
+        v = self.cleaned_data.get("title_color", "") or ""
+        if not v:
+            return ""
+        low = v.strip().lower()
+        if not HEX_COLOR_RE.match(low):
+            raise forms.ValidationError("Couleur invalide (ex. #ff0000).")
+        return low
+
+    def clean_text_color(self):
+        v = self.cleaned_data.get("text_color", "") or ""
+        if not v:
+            return ""
+        low = v.strip().lower()
+        if not HEX_COLOR_RE.match(low):
+            raise forms.ValidationError("Couleur invalide (ex. #ff0000).")
+        return low
+
+    def clean_content_title_color(self):
+        v = self.cleaned_data.get("content_title_color", "") or ""
+        if not v:
+            return ""
+        low = v.strip().lower()
+        if not HEX_COLOR_RE.match(low):
+            raise forms.ValidationError("Couleur invalide (ex. #ff0000).")
+        return low
+
+    def clean_content_text_color(self):
+        v = self.cleaned_data.get("content_text_color", "") or ""
+        if not v:
+            return ""
+        low = v.strip().lower()
+        if not HEX_COLOR_RE.match(low):
+            raise forms.ValidationError("Couleur invalide (ex. #ff0000).")
+        return low
+
+    def clean_border_color(self):
+        v = self.cleaned_data.get("border_color", "") or ""
+        if not v:
+            return ""
+        low = v.strip().lower()
+        if not HEX_COLOR_RE.match(low):
+            raise forms.ValidationError("Couleur invalide (ex. #ff0000).")
+        return low
+
+    def clean_background_color(self):
+        v = self.cleaned_data.get("background_color", "") or ""
+        if not v:
+            return ""
+        low = v.strip().lower()
+        if low == "transparent":
+            return low
+        if not HEX_COLOR_RE.match(low):
+            raise forms.ValidationError("Couleur invalide (ex. #ff0000).")
+        return low
+
     def clean(self):
         cleaned = super().clean()
         if cleaned.get("background_transparent"):
             cleaned["background_color"] = "transparent"
-        else:
-            bg = cleaned.get("background_color", "")
-            if bg:
-                cleaned["background_color"] = bg.lower()
-        for f in (
-            "title_color",
-            "text_color",
-            "content_title_color",
-            "content_text_color",
-            "border_color",
-        ):
-            v = cleaned.get(f, "")
-            if v:
-                cleaned[f] = v.lower()
         return cleaned
 
 
@@ -524,7 +678,14 @@ class EventForm(forms.Form):
     body = forms.CharField(
         label="Description", widget=forms.Textarea(attrs=styled({"rows": 6}))
     )
-    new_image = forms.ImageField(label="Affiche / visuel", required=False)
+    new_image = forms.ImageField(
+        label="Affiche / visuel",
+        required=False,
+        validators=[
+            FileExtensionValidator(ALLOWED_IMAGE_EXTENSIONS_NODOT),
+            validate_image_content,
+        ],
+    )
 
 
 class LibraryPickForm(forms.Form):

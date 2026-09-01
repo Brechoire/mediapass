@@ -29,8 +29,7 @@ if settings.DEBUG:
     urlpatterns += [
         path("test404/", lambda request: render(request, "404.html")),
     ]
-
-# Sert les fichiers media/static en développement
-# En production, configurer Apache/Nginx pour les servir
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    # Sert les fichiers media/static uniquement en développement
+    # En production, configurer Apache/Nginx pour les servir
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

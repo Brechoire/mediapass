@@ -1,8 +1,8 @@
 <div id="nl-canvas" class="mx-auto w-full max-w-[600px] space-y-4">
 {% for section in newsletter.sections.all %}
-  <div id="section-{{ section.pk }}" class="nl-section group relative overflow-hidden shadow-sm" style="{% if section.background_color and section.background_color != 'transparent' %}background-color: {{ section.background_color }};{% else %}background-color:transparent;{% endif %}{% if section.border_style and section.border_style != 'none' %}border:{{ section.border_width|default:1 }}px {{ section.border_style }} {{ section.border_color|default:'#dce3ef' }};{% else %}border:1px solid #dce3ef;{% endif %}border-radius:{% if section.border_radius == '9999' %}9999px{% elif section.border_radius %}{{ section.border_radius }}px{% else %}16px{% endif %};" data-section-id="{{ section.pk }}">
-    {# Toolbar section — fixe à l'intérieur, reste visible au survol #}
-    <div class="nl-section-toolbar absolute top-2 right-2 z-20 flex items-center gap-0.5 rounded-lg bg-[#1e293b]/90 backdrop-blur px-1 py-1 shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150">
+  <div id="section-{{ section.pk }}" class="nl-section relative overflow-hidden shadow-sm" style="{% if section.background_color and section.background_color != 'transparent' %}background-color: {{ section.background_color }};{% else %}background-color:transparent;{% endif %}{% if section.border_style and section.border_style != 'none' %}border:{{ section.border_width|default:1 }}px {{ section.border_style }} {{ section.border_color|default:'#dce3ef' }};{% else %}border:1px solid #dce3ef;{% endif %}border-radius:{% if section.border_radius == '9999' %}9999px{% elif section.border_radius %}{{ section.border_radius }}px{% else %}16px{% endif %};" data-section-id="{{ section.pk }}">
+    {# Toolbar section — visible au survol de la section hors blocs #}
+    <div class="nl-section-toolbar absolute top-2 right-2 z-20 flex items-center gap-0.5 rounded-lg bg-[#1e293b]/90 backdrop-blur px-1 py-1 shadow-lg">
       <span class="drag-section-handle cursor-grab active:cursor-grabbing p-1 rounded hover:bg-white/10" title="Glisser pour réordonner la section"><i class='bx bx-move text-sm text-white/70'></i></span>
       <span class="px-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#cbd5e1]">Section</span>
       <button type="button" title="Monter la section" aria-label="Monter la section"
@@ -35,8 +35,8 @@
       {% include "newsletter/partials/section_header.html" with section=section newsletter=newsletter site_url=site_url %}
       <div class="section-blocks p-3 space-y-3" data-section-id="{{ section.pk }}">
         {% for block in section.blocks.all %}
-          <div id="block-{{ block.pk }}" class="nl-block group relative min-h-[32px] rounded-xl ring-0 hover:ring-2 hover:ring-[#4a6fa5]/40 transition-all duration-200 animate-nl-enter" data-block-id="{{ block.pk }}">
-            <div class="nl-toolbar absolute top-2 right-2 z-10 flex items-center gap-0.5 rounded-lg bg-[#1e293b]/90 backdrop-blur px-1 py-1 shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150">
+          <div id="block-{{ block.pk }}" class="nl-block relative min-h-[32px] rounded-xl ring-0 hover:ring-2 hover:ring-[#4a6fa5]/40 transition-all duration-200 animate-nl-enter" data-block-id="{{ block.pk }}">
+            <div class="nl-toolbar absolute top-2 right-2 z-10 flex items-center gap-0.5 rounded-lg bg-[#1e293b]/90 backdrop-blur px-1 py-1 shadow-lg">
               <span class="drag-block-handle cursor-grab active:cursor-grabbing p-1 rounded hover:bg-white/10" title="Glisser"><i class='bx bx-move text-sm text-white/60'></i></span>
               <span class="px-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#cbd5e1]">{{ block.type_label }}</span>
               <button type="button" title="Monter" hx-post="{% url 'newsletter:move_block' newsletter.pk block.pk 'up' %}" hx-target="#nl-canvas" hx-swap="outerHTML" class="p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 cursor-pointer {% if forloop.first %}invisible pointer-events-none{% endif %}"><i class='bx bx-chevron-up text-sm'></i></button>
@@ -66,8 +66,8 @@
 <div class="orphan-blocks space-y-3">
 {% for block in newsletter.blocks.all %}
   {% if not block.section %}
-  <div id="block-{{ block.pk }}" class="nl-block group relative min-h-[32px] rounded-xl ring-0 hover:ring-2 hover:ring-[#4a6fa5]/40 transition-all duration-200 animate-nl-enter" data-block-id="{{ block.pk }}">
-    <div class="nl-toolbar absolute top-2 right-2 z-20 flex items-center gap-0.5 rounded-lg bg-[#1e293b]/90 backdrop-blur px-1 py-1 shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-150">
+  <div id="block-{{ block.pk }}" class="nl-block relative min-h-[32px] rounded-xl ring-0 hover:ring-2 hover:ring-[#4a6fa5]/40 transition-all duration-200 animate-nl-enter" data-block-id="{{ block.pk }}">
+    <div class="nl-toolbar absolute top-2 right-2 z-20 flex items-center gap-0.5 rounded-lg bg-[#1e293b]/90 backdrop-blur px-1 py-1 shadow-lg">
       <span class="drag-block-handle cursor-grab active:cursor-grabbing p-1 rounded hover:bg-white/10" title="Glisser"><i class='bx bx-move text-sm text-white/60'></i></span>
       <span class="px-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#cbd5e1]">{{ block.type_label }}</span>
       <button type="button" title="Monter" hx-post="{% url 'newsletter:move_block' newsletter.pk block.pk 'up' %}" hx-target="#nl-canvas" hx-swap="outerHTML" class="p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 cursor-pointer {% if forloop.first %}invisible pointer-events-none{% endif %}"><i class='bx bx-chevron-up text-sm'></i></button>

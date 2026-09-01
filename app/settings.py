@@ -16,9 +16,10 @@ from pathlib import Path
 # from config import *
 import dotenv
 
-dotenv.load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+dotenv.load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -196,6 +197,10 @@ DEFAULT_FROM_EMAIL = os.environ.get("EMAIL_HOST_USER")
 
 # Fichiers
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10 Mo
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024  # 2 Mo — limite mémoire avant écriture disque
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = "DENY"
 
 # Newsletter
 SITE_URL = os.environ.get("SITE_URL", "http://127.0.0.1:8000")

@@ -1,5 +1,7 @@
 """Vues de l'application newsletter (builder)."""
 
+import logging
+import re
 from calendar import monthrange
 from datetime import date
 
@@ -8,7 +10,8 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.http import HttpResponse, StreamingHttpResponse
+from django.db.models import F, Max
+from django.http import HttpResponse, HttpResponseBadRequest, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils.text import slugify
@@ -16,6 +19,8 @@ from django.utils.timezone import now
 from django.views.decorators.http import require_POST
 
 from library_workshops.models import Workshop
+
+logger = logging.getLogger(__name__)
 
 from .decorators import (
     communication_required,
@@ -29,6 +34,7 @@ from .forms import (
     ImageForm,
     LibraryPickForm,
     NewsletterForm,
+    NewsletterInfosForm,
     SectionForm,
     SettingsForm,
     TextForm,
@@ -40,7 +46,6 @@ from .models import Block, HeaderPreset, Newsletter, NewsletterImage, Section
 from .services import (
     build_library_snapshot,
     build_workshop_snapshot,
-    export_contacts_csv,
     get_candidate_workshops,
     push_to_sender,
     render_newsletter_email,
@@ -67,6 +72,45 @@ DEFAULT_CONTENT = {
     "workshop": {},
     "library": {},
 }
+
+
+HEX_COLOR_RE = re.compile(r"^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$")
+
+def _is_valid_hex_color(v: str) -> bool:
+    if not v:
+        return False
+    low = v.strip().lower()
+    if low == "transparent":
+        return True
+    return bool(HEX_COLOR_RE.match(low))
+
+def _is_valid_border_style(v: str) -> bool:
+    from .models import BORDER_STYLE_CHOICES
+
+    return v in {c[0] for c in BORDER_STYLE_CHOICES}
+
+def _is_valid_border_width(v: str) -> bool:
+    try:
+        iv = int(v)
+    except (TypeError, ValueError):
+        return False
+    return 0 <= iv <= 4
+
+def _is_valid_border_radius(v: str) -> bool:
+    from .models import RADIUS_CHOICES
+
+    return v in {c[0] for c in RADIUS_CHOICES}
+
+def _is_valid_padding(v: str) -> bool:
+    # Accepte uniquement des valeurs sûres type "16px" ou "8px 16px" (1 à 4 valeurs), pas de ;, " ou url/javascript
+    if not v:
+        return False
+    if ";" in v or '"' in v or "'" in v or "{" in v or "}" in v or "<" in v or ">" in v:
+        return False
+    low = v.lower()
+    if "javascript" in low or "url(" in low or "expression" in low:
+        return False
+    return bool(re.match(r"^\d+px(\s+\d+px){0,3}$", v.strip()))
 
 
 def _next_month_range(today=None):
@@ -172,6 +216,27 @@ def duplicate_newsletter(request, pk):
     copy = original.duplicate()
     messages.success(request, f"Newsletter dupliquée en « {copy.title} ».")
     return redirect("newsletter:builder", pk=copy.pk)
+
+
+@login_required
+@communication_required
+def edit_infos(request, pk):
+    """Modification des informations d'une newsletter (titre, objet, période)."""
+    newsletter = get_object_or_404(Newsletter, pk=pk)
+    form = NewsletterInfosForm(request.POST or None, instance=newsletter)
+    if request.method == "POST":
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Informations de la newsletter mises à jour.")
+            return redirect("newsletter:index")
+        error = next(iter(form.errors.values()))[0]
+        messages.error(request, f"Non enregistré : {error}")
+        return redirect("newsletter:index")
+    return render(
+        request,
+        "newsletter/panels/edit_infos_panel.html",
+        {"newsletter": newsletter, "form": form},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -312,27 +377,32 @@ def _create_block(newsletter, block_type, content=None, section=None, style=None
             cached_wid = int(base_content["workshop_id"])
         except (TypeError, ValueError):
             cached_wid = None
-    return Block.objects.create(
-        newsletter=newsletter,
-        section=section,
-        position=Block.next_position(newsletter, section=section),
-        block_type=block_type,
-        content=base_content,
-        style=style or {},
-        cached_workshop_id=cached_wid,
-    )
+    with transaction.atomic():
+        # Sérialise les créations concurrentes sur la même newsletter
+        Newsletter.objects.select_for_update().get(pk=newsletter.pk)
+        return Block.objects.create(
+            newsletter=newsletter,
+            section=section,
+            position=Block.next_position(newsletter, section=section),
+            block_type=block_type,
+            content=base_content,
+            style=style or {},
+            cached_workshop_id=cached_wid,
+        )
 
 
 def _create_section(
     newsletter, library_profile=None, title="", background_color="#ffffff"
 ):
-    return Section.objects.create(
-        newsletter=newsletter,
-        position=Section.next_position(newsletter),
-        library_profile=library_profile,
-        title=title or (library_profile.name if library_profile else ""),
-        background_color=background_color,
-    )
+    with transaction.atomic():
+        Newsletter.objects.select_for_update().get(pk=newsletter.pk)
+        return Section.objects.create(
+            newsletter=newsletter,
+            position=Section.next_position(newsletter),
+            library_profile=library_profile,
+            title=title or (library_profile.name if library_profile else ""),
+            background_color=background_color,
+        )
 
 
 @login_required
@@ -437,13 +507,20 @@ def bulk_add_workshops(request, pk):
         existing_sections[key] = sec
     # Prépare bulk_create : on collecte les instances sans les sauver une par une
     pending_blocks = []
-    # Position courante par section
-    next_pos_by_section = {}
-    for sec in newsletter.sections.all():
-        next_pos_by_section[sec.pk] = Block.objects.filter(newsletter=newsletter, section=sec).count()
-    next_pos_by_section[None] = Block.objects.filter(newsletter=newsletter, section__isnull=True).count()
 
     with transaction.atomic():
+        # Sérialise les insertions concurrentes sur la même newsletter
+        Newsletter.objects.select_for_update().get(pk=newsletter.pk)
+        # Position courante par section — utilise Max (pas count) pour gérer les trous + SELECT FOR UPDATE
+        next_pos_by_section = {}
+        for sec in newsletter.sections.all():
+            agg = Block.objects.filter(newsletter=newsletter, section=sec).select_for_update().aggregate(m=Max("position"))
+            max_pos = agg["m"]
+            next_pos_by_section[sec.pk] = (max_pos + 1) if max_pos is not None else 0
+        agg = Block.objects.filter(newsletter=newsletter, section__isnull=True).select_for_update().aggregate(m=Max("position"))
+        max_pos = agg["m"]
+        next_pos_by_section[None] = (max_pos + 1) if max_pos is not None else 0
+
         for g, item in ordered:
             ws = item["workshop"]
             if str(ws.pk) in existing_str:
@@ -605,7 +682,7 @@ def delete_section(request, pk, section_id):
 @communication_required
 @require_POST
 def reorder_sections(request, pk):
-    """Réordonne les sections via drag & drop (JSON {order:[id,...]})."""
+    """Réordonne les sections via drag & drop (JSON {order:[id,...]}). Validation stricte NL-03."""
     import json
 
     newsletter = get_object_or_404(Newsletter, pk=pk)
@@ -614,17 +691,31 @@ def reorder_sections(request, pk):
         order = data.get("order", [])
         if not isinstance(order, list):
             raise ValueError
+        for oid in order:
+            if not isinstance(oid, int):
+                raise ValueError
     except Exception:
-        return _canvas_response(request, newsletter, "Ordre invalide")
-    # vérifie que toutes les ids appartiennent à cette newsletter
+        return HttpResponseBadRequest("Ordre invalide")
     sections = {s.pk: s for s in newsletter.sections.all()}
-    if set(order) != set(sections.keys()) and order:
-        # tolère ordre partiel (ex. après suppression) — on ne traite que les présents
-        order = [oid for oid in order if oid in sections]
+    # Validation stricte : doit contenir exactement toutes les sections, sans doublons/gaps
+    if len(order) != len(set(order)):
+        return HttpResponseBadRequest(
+            "Ordre invalide : doit contenir exactement toutes les sections"
+        )
+    if set(order) != set(sections.keys()):
+        return HttpResponseBadRequest(
+            "Ordre invalide : doit contenir exactement toutes les sections"
+        )
     with transaction.atomic():
+        Newsletter.objects.select_for_update().get(pk=newsletter.pk)
+        # Décalage temporaire pour éviter violation de contrainte unique (newsletter, position)
+        if order:
+            Section.objects.filter(pk__in=order, newsletter=newsletter).update(
+                position=F("position") + 100000
+            )
         for idx, sid in enumerate(order):
             sec = sections.get(sid)
-            if sec and sec.position != idx:
+            if sec is not None:
                 Section.objects.filter(pk=sid).update(position=idx)
     return _canvas_response(request, newsletter, "Sections réordonnées")
 
@@ -647,7 +738,7 @@ def clear_layout(request, pk):
 @communication_required
 @require_POST
 def reorder_blocks(request, pk):
-    """Réordonne les blocs (supporte drag inter-sections). JSON {blocks:{section_id:[block_ids]}} section_id "null" pour orphelins."""
+    """Réordonne les blocs (supporte drag inter-sections). JSON {blocks:{section_id:[block_ids]}} section_id "null" pour orphelins. Validation stricte NL-03."""
     import json
 
     newsletter = get_object_or_404(Newsletter, pk=pk)
@@ -656,25 +747,70 @@ def reorder_blocks(request, pk):
         blocks_map = data.get("blocks", {})
         if not isinstance(blocks_map, dict):
             raise ValueError
+        for _sec_key, _ids in blocks_map.items():
+            if not isinstance(_ids, list):
+                raise ValueError
     except Exception:
-        return _canvas_response(request, newsletter, "Ordre invalide")
+        return HttpResponseBadRequest("Ordre invalide")
+
+    # Charger tous les blocs de la newsletter
+    all_blocks = list(
+        Block.objects.filter(newsletter=newsletter).values_list("pk", flat=True)
+    )
+    all_blocks_set = set(all_blocks)
+
+    # Construire set_sent via parsing int et vérifier doublons / présence exacte
+    flat_ids = []
+    for ids in blocks_map.values():
+        flat_ids.extend(ids)
+
+    try:
+        bid_ints = [int(bid) for bid in flat_ids]
+    except (TypeError, ValueError):
+        return HttpResponseBadRequest(
+            "Ordre invalide : identifiants de blocs invalides"
+        )
+
+    set_sent = set(bid_ints)
+    # Doublons : len(set) doit égaler nombre total d'ids envoyés
+    if len(bid_ints) != len(set_sent):
+        return HttpResponseBadRequest("Ordre invalide : doublons détectés")
+    # Tous les blocs doivent être présents exactement une fois, pas de gaps ni d'extras
+    if set_sent != all_blocks_set:
+        return HttpResponseBadRequest(
+            "Ordre invalide : tous les blocs doivent être présents exactement une fois"
+        )
+
+    # Vérifier que chaque sec_key correspond à une section existante ou orphelin
+    valid_section_ids = set(
+        newsletter.sections.values_list("pk", flat=True)
+    )
+    for sec_key in blocks_map.keys():
+        if sec_key == "null" or sec_key is None or sec_key == "":
+            continue
+        try:
+            sid_int = int(sec_key)
+        except (TypeError, ValueError):
+            return HttpResponseBadRequest("Ordre invalide : section inconnue")
+        if sid_int not in valid_section_ids:
+            return HttpResponseBadRequest("Ordre invalide : section inconnue")
+
     with transaction.atomic():
+        Newsletter.objects.select_for_update().get(pk=newsletter.pk)
+        # Décalage temporaire pour éviter violation de contrainte unique (newsletter, section, position)
+        if bid_ints:
+            Block.objects.filter(
+                pk__in=bid_ints, newsletter=newsletter
+            ).update(position=F("position") + 100000)
         for sec_key, ids in blocks_map.items():
-            # sec_key = "null" ou str(section_id)
             if sec_key == "null" or sec_key is None or sec_key == "":
                 section = None
             else:
-                try:
-                    section = Section.objects.get(
-                        pk=int(sec_key), newsletter=newsletter
-                    )
-                except (Section.DoesNotExist, ValueError):
-                    continue
+                section = Section.objects.get(
+                    pk=int(sec_key), newsletter=newsletter
+                )
             for pos, bid in enumerate(ids):
-                try:
-                    bid_int = int(bid)
-                except ValueError:
-                    continue
+                bid_int = int(bid)
                 Block.objects.filter(pk=bid_int, newsletter=newsletter).update(
                     section=section, position=pos
                 )
@@ -710,7 +846,7 @@ def update_block(request, pk, block_id):
         style["bg_color"] = "transparent"
     else:
         v = request.POST.get("style_bg_color", "").strip()
-        if v:
+        if v and _is_valid_hex_color(v):
             style["bg_color"] = v.lower()
     for key, field_name in (
         ("text_color", "style_text_color"),
@@ -721,11 +857,29 @@ def update_block(request, pk, block_id):
         ("border_radius", "style_border_radius"),
     ):
         value = request.POST.get(field_name, "").strip()
-        if value:
-            style[key] = value.lower() if "color" in key else value
-    # normalisation couleur bordure en minuscule déjà faite
-    if "border_color" in style:
-        style["border_color"] = style["border_color"].lower()
+        if not value:
+            continue
+        if "color" in key:
+            if _is_valid_hex_color(value):
+                style[key] = value.lower()
+        elif key == "border_style":
+            if _is_valid_border_style(value):
+                style[key] = value
+        elif key == "border_width":
+            try:
+                iv = int(value)
+                iv = max(0, min(4, iv))
+                style[key] = str(iv)
+            except (TypeError, ValueError):
+                continue
+        elif key == "border_radius":
+            if _is_valid_border_radius(value):
+                style[key] = value
+        elif key == "padding":
+            if _is_valid_padding(value):
+                style[key] = value
+        else:
+            style[key] = value
 
     with transaction.atomic():
         if form_class is not None:
@@ -742,10 +896,10 @@ def update_block(request, pk, block_id):
                 # couleurs titres/textes par bloc -> style (héritage section/global)
                 title_color = data.pop("title_color", "")
                 text_color = data.pop("text_color", "")
-                if title_color:
-                    style["title_color"] = title_color
-                if text_color:
-                    style["text_color"] = text_color
+                if title_color and _is_valid_hex_color(title_color):
+                    style["title_color"] = title_color.lower()
+                if text_color and _is_valid_hex_color(text_color):
+                    style["text_color"] = text_color.lower()
                 image_file = data.pop("new_image", None)
                 if image_file:
                     image = NewsletterImage.objects.create(
@@ -869,6 +1023,12 @@ def contacts_csv(request, pk):
 
     response = StreamingHttpResponse(bom_iter(), content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    # Headers sécurité export CSV
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+    response["X-Content-Type-Options"] = "nosniff"
+    logger.info("contacts_csv export newsletter=%s user=%s", pk, request.user.pk)
     return response
 
 
@@ -876,8 +1036,19 @@ def contacts_csv(request, pk):
 @communication_required
 @require_POST
 def send_sender(request, pk):
-    newsletter = get_object_or_404(Newsletter, pk=pk)
-    success, message = push_to_sender(newsletter)
+    with transaction.atomic():
+        locked = get_object_or_404(Newsletter.objects.select_for_update(), pk=pk)
+        if locked.status == Newsletter.Status.SENT and locked.sender_campaign_id:
+            messages.error(
+                request,
+                f"Déjà envoyée vers Sender.net (ID {locked.sender_campaign_id}).",
+            )
+            return redirect("newsletter:builder", pk=pk)
+        success, message = push_to_sender(locked)
+        # Idempotence côté service (race) : push_to_sender a déjà vérifié SENT+ID
+        if not success and "Déjà" in message:
+            messages.error(request, message)
+            return redirect("newsletter:builder", pk=pk)
     messages.add_message(
         request,
         messages.SUCCESS if success else messages.ERROR,

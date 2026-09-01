@@ -10,6 +10,7 @@ urlpatterns = [
     path("fiches/<int:profile_id>/edit/", views.fiche_edit, name="fiche_edit"),
     path("ma-fiche/", views.ma_fiche, name="ma_fiche"),
     path("<int:pk>/", views.builder, name="builder"),
+    path("<int:pk>/infos/", views.edit_infos, name="edit_infos"),
     path("<int:pk>/candidats/", views.candidates_tab, name="candidates"),
     path(
         "<int:pk>/candidats/panneau/",

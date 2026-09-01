@@ -1,6 +1,5 @@
 """Services métier de l'application newsletter."""
 
-import csv
 import logging
 from collections import OrderedDict
 
@@ -121,7 +120,7 @@ def build_workshop_snapshot(workshop, variant="inherit", image_width=140):
         "workshop_id": workshop.pk,
         "title": workshop.title,
         "date_text": LegacyNewsletterService.format_date(workshop),
-        "description": workshop.description,
+        "description": sanitize_html(workshop.description),
         "location": location_name,
         "image_url": image_url,
         "variant": variant,
@@ -308,10 +307,15 @@ def iter_contacts_csv(newsletter):
 
 
 def _csv_line(*values):
-    """Ligne CSV point-virgule (Excel FR), échappement minimal."""
+    """Ligne CSV point-virgule (Excel FR), échappement minimal + anti injection formule."""
     escaped = []
     for value in values:
         value = (value or "").strip()
+        # Neutralise les formules Excel/LibreOffice selon OWASP (préfixe par single quote)
+        if value:
+            stripped = value.lstrip(" \t")
+            if stripped and stripped[0] in ("=", "+", "-", "@", "|", "%"):
+                value = "'" + value
         if ";" in value or '"' in value or "\n" in value:
             value = '"' + value.replace('"', '""') + '"'
         escaped.append(value)
@@ -327,6 +331,19 @@ def push_to_sender(newsletter):
     if not api_key:
         return False, (
             "Clé API Sender.net manquante. Renseignez SENDER_API_KEY dans le .env."
+        )
+
+    # Garde d'idempotence — évite double push synchrone et masquage d'absence d'ID
+    # Rafraîchit depuis la DB pour éviter objet stale (vue avec select_for_update)
+    try:
+        newsletter.refresh_from_db(fields=["status", "sender_campaign_id"])
+    except Exception:
+        # Si refresh échoue (objet non persisté), on poursuit avec l'état mémoire
+        pass
+    if newsletter.status == Newsletter.Status.SENT and newsletter.sender_campaign_id:
+        return False, (
+            f"Cette newsletter a déjà été poussée vers Sender.net "
+            f"(ID {newsletter.sender_campaign_id})"
         )
 
     reply_to = getattr(settings, "SENDER_REPLY_TO", "") or getattr(
@@ -347,6 +364,7 @@ def push_to_sender(newsletter):
     if group_id:
         payload["groups"] = [group_id]
 
+    logger.info("Push Sender.net demandé newsletter=%s title=%r", newsletter.pk, newsletter.title)
     try:
         response = requests.post(
             SENDER_API_URL,
@@ -377,7 +395,10 @@ def push_to_sender(newsletter):
     except ValueError:
         pass
     campaign_id = (data.get("data") or {}).get("id", "")
-    newsletter.sender_campaign_id = campaign_id or "-"
+    if not campaign_id:
+        logger.error("Sender.net réponse sans ID : %s", response.text[:500])
+        return False, "Sender.net n'a pas retourné d'identifiant de campagne — brouillon non confirmé."
+    newsletter.sender_campaign_id = campaign_id
     newsletter.sender_pushed_at = timezone.now()
     newsletter.status = Newsletter.Status.SENT
     newsletter.save(update_fields=["sender_campaign_id", "sender_pushed_at", "status"])

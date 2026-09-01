@@ -1,7 +1,15 @@
 """Modèles de profils médiathèques — app accounts (source de vérité)."""
 
 from django.conf import settings
+from django.core.validators import FileExtensionValidator
 from django.db import models
+
+from app.validators import (
+    ALLOWED_IMAGE_EXTENSIONS_NODOT,
+    library_banner_upload_to,
+    library_image_upload_to,
+    validate_image_content,
+)
 
 
 class LibraryProfile(models.Model):
@@ -15,14 +23,25 @@ class LibraryProfile(models.Model):
     )
     name = models.CharField("Nom de la médiathèque", max_length=150)
     image = models.ImageField(
-        "Logo", upload_to="newsletter/libraries/", null=True, blank=True
+        "Logo",
+        upload_to=library_image_upload_to,
+        null=True,
+        blank=True,
+        validators=[
+            FileExtensionValidator(ALLOWED_IMAGE_EXTENSIONS_NODOT),
+            validate_image_content,
+        ],
     )
     banner = models.ImageField(
         "Bannière",
-        upload_to="newsletter/banners/",
+        upload_to=library_banner_upload_to,
         null=True,
         blank=True,
         help_text="Image large pour l'en-tête newsletter (ex. 1200×400)",
+        validators=[
+            FileExtensionValidator(ALLOWED_IMAGE_EXTENSIONS_NODOT),
+            validate_image_content,
+        ],
     )
     description = models.TextField("Description", blank=True)
     phone = models.CharField("Téléphone", max_length=30, blank=True)

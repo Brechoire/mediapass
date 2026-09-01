@@ -53,6 +53,12 @@
   .nl-group-title { display:flex; align-items:center; gap:7px; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#4a6fa5;
                     border-bottom:1px solid #e3e9f4; padding-bottom:8px; margin-bottom:2px; }
   .nl-group-title i { font-size:14px; }
+  /* Toolbars canvas : blocs et sections indépendants */
+  .nl-toolbar, .nl-section-toolbar { opacity:0; pointer-events:none; transition:opacity .15s ease, transform .15s ease; }
+  .nl-block:hover > .nl-toolbar { opacity:1; pointer-events:auto; }
+  /* La toolbar section ne s'affiche que si on survole la section hors d'un bloc */
+  .nl-section:hover > .nl-section-toolbar { opacity:1; pointer-events:auto; }
+  .nl-section:has(> .section-inner .nl-block:hover) > .nl-section-toolbar { opacity:0; pointer-events:none; }
   .nl-group-subtitle { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
                        color:#7a8fa0; margin-top:10px; margin-bottom:2px; border-bottom:1px dashed #e3e9f4; padding-bottom:6px; }
   .nl-range-val { min-width:52px; text-align:center; font-size:12px; font-weight:700; color:#4a6fa5; background:#eef2fb; border-radius:6px; padding:4px 6px; }

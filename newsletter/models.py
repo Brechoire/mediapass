@@ -1,8 +1,18 @@
 """Modèles de l'application newsletter (builder de campagnes)."""
 
+import logging
+
 from accounts.models import LibraryProfile  # noqa: F401  # ré-export compatibilité
+from app.validators import (
+    ALLOWED_IMAGE_EXTENSIONS_NODOT,
+    newsletter_image_upload_to,
+    validate_image_content,
+)
 from django.conf import settings
+from django.core.validators import FileExtensionValidator
 from django.db import models, transaction
+
+logger = logging.getLogger(__name__)
 
 FONT_CHOICES = [
     ("Arial, Helvetica, sans-serif", "Arial"),
@@ -164,36 +174,73 @@ class Newsletter(models.Model):
 
     def duplicate(self):
         """Duplique la newsletter, ses sections et ses blocs (retour au statut brouillon)."""
-        copy = Newsletter.objects.get(pk=self.pk)
-        copy.pk = None
-        copy.title = f"{self.title} (copie)"
-        copy.status = self.Status.DRAFT
-        copy.sender_campaign_id = ""
-        copy.sender_pushed_at = None
-        copy.save()
-        # duplique sections puis blocs (avec mapping ancien -> nouveau)
-        section_map = {}
-        for sec in self.sections.all():
-            old_pk = sec.pk
-            sec.pk = None
-            sec.newsletter = copy
-            sec.save()
-            section_map[old_pk] = sec
-        for block in self.blocks.all():
-            sec = block.section
-            block.pk = None
-            block.newsletter = copy
-            if sec is not None:
-                block.section = section_map.get(sec.pk, sec)
-                # sec.pk a été changé ci-dessus, donc mapping via old_pk
-                # on récupère via old section id stocké avant : utiliser section_map avec old_pk
-                # fallback : retrouver par ancienne pk si mapping raté
-            block.save()
-        # second pass pour corriger les sections des blocs (car sec.pk a changé)
-        # plus simple : on a déjà mappé, mais pour les blocs où section était not None,
-        # on avait sec = ancienne instance dont pk a été réutilisé ; mapping ok.
-        # Pour les blocs hors section, section reste None.
-        return copy
+        with transaction.atomic():
+            copy = Newsletter.objects.get(pk=self.pk)
+            copy.pk = None
+            copy.title = f"{self.title} (copie)"
+            copy.status = self.Status.DRAFT
+            copy.sender_campaign_id = ""
+            copy.sender_pushed_at = None
+            copy.save()
+
+            section_map: dict[int, "Section"] = {}
+            for s in self.sections.all():
+                new = Section.objects.create(
+                    newsletter=copy,
+                    position=s.position,
+                    library_profile=s.library_profile,
+                    title=s.title,
+                    background_color=s.background_color,
+                    title_color=s.title_color,
+                    text_color=s.text_color,
+                    header_height=s.header_height,
+                    header_align=s.header_align,
+                    title_align=s.title_align,
+                    contact_align=s.contact_align,
+                    socials_align=s.socials_align,
+                    header_overlay=s.header_overlay,
+                    show_header_badge=s.show_header_badge,
+                    show_header_phone=s.show_header_phone,
+                    show_header_address=s.show_header_address,
+                    show_header_website=s.show_header_website,
+                    show_header_facebook=s.show_header_facebook,
+                    show_header_instagram=s.show_header_instagram,
+                    show_header_youtube=s.show_header_youtube,
+                    show_header_tiktok=s.show_header_tiktok,
+                    show_header_x=s.show_header_x,
+                    content_title_color=s.content_title_color,
+                    content_text_color=s.content_text_color,
+                    border_style=s.border_style,
+                    border_color=s.border_color,
+                    border_width=s.border_width,
+                    border_radius=s.border_radius,
+                )
+                if s.pk is not None:
+                    section_map[s.pk] = new
+
+            for block in self.blocks.select_related("section").all():
+                old_sid = block.section_id
+                if old_sid is not None and old_sid not in section_map:
+                    logger.warning(
+                        "Newsletter.duplicate: section_id %s introuvable dans mapping "
+                        "pour block pk=%s (newsletter pk=%s) — bloc ignoré",
+                        old_sid,
+                        block.pk,
+                        self.pk,
+                    )
+                    continue
+                new_section = section_map.get(old_sid) if old_sid is not None else None
+                Block.objects.create(
+                    newsletter=copy,
+                    section=new_section,
+                    position=block.position,
+                    block_type=block.block_type,
+                    content=dict(block.content) if isinstance(block.content, dict) else block.content,
+                    style=dict(block.style) if isinstance(block.style, dict) else block.style,
+                    cached_workshop_id=block.cached_workshop_id,
+                )
+
+            return copy
 
 
 class Section(models.Model):
@@ -345,13 +392,21 @@ class Section(models.Model):
 
     @classmethod
     def next_position(cls, newsletter):
-        last = (
-            cls.objects.filter(newsletter=newsletter)
-            .order_by("-position")
-            .values_list("position", flat=True)
-            .first()
-        )
-        return 0 if last is None else last + 1
+        """Retourne la prochaine position disponible pour cette newsletter.
+
+        Doit être appelée à l'intérieur d'un bloc ``transaction.atomic()``
+        où la newsletter a été verrouillée via
+        ``Newsletter.objects.select_for_update().get(pk=newsletter.pk)``
+        afin de sérialiser les créations concurrentes et éviter les
+        violations de ``UniqueConstraint`` sur ``(newsletter, position)``.
+        Utilise ``SELECT FOR UPDATE`` + ``Max('position')`` pour éviter
+        la race du ``order_by(...).first()`` sans verrou.
+        """
+        from django.db.models import Max
+
+        agg = cls.objects.filter(newsletter=newsletter).select_for_update().aggregate(m=Max("position"))
+        m = agg["m"]
+        return 0 if m is None else m + 1
 
     def move(self, direction):
         delta = {"up": -1, "down": 1}[direction]
@@ -378,11 +433,15 @@ class Section(models.Model):
         return True
 
     def delete(self, *args, **kwargs):
-        pos = self.position
-        super().delete(*args, **kwargs)
-        Section.objects.filter(newsletter=self.newsletter, position__gt=pos).update(
-            position=models.F("position") - 1
-        )
+        with transaction.atomic():
+            # Verrouille la partition pour sérialiser les suppressions concurrentes
+            list(Section.objects.select_for_update().filter(newsletter=self.newsletter))
+            pos = self.position
+            newsletter_id = self.newsletter_id
+            super().delete(*args, **kwargs)
+            Section.objects.filter(newsletter_id=newsletter_id, position__gt=pos).update(
+                position=models.F("position") - 1
+            )
 
 
 class Block(models.Model):
@@ -508,9 +567,21 @@ class Block(models.Model):
 
     @classmethod
     def next_position(cls, newsletter, section=None):
-        qs = cls.objects.filter(newsletter=newsletter, section=section)
-        last = qs.order_by("-position").values_list("position", flat=True).first()
-        return 0 if last is None else last + 1
+        """Retourne la prochaine position disponible dans la partition.
+
+        Partition = (newsletter, section). Doit être appelée à l'intérieur
+        d'un bloc ``transaction.atomic()`` où la newsletter a été
+        verrouillée via ``Newsletter.objects.select_for_update().get(...)``
+        afin de sérialiser les créations concurrentes et éviter les
+        violations de ``UniqueConstraint`` sur
+        ``(newsletter, section, position)``. Utilise ``SELECT FOR UPDATE``
+        + ``Max('position')``.
+        """
+        from django.db.models import Max
+
+        agg = cls.objects.filter(newsletter=newsletter, section=section).select_for_update().aggregate(m=Max("position"))
+        m = agg["m"]
+        return 0 if m is None else m + 1
 
     def move(self, direction):
         """Déplace le bloc d'une position en permutant avec son voisin (même section)."""
@@ -536,31 +607,52 @@ class Block(models.Model):
 
     def duplicate(self):
         """Insère une copie du bloc juste après lui-même (même section)."""
-        Block.objects.filter(
-            newsletter=self.newsletter,
-            section=self.section,
-            position__gt=self.position,
-        ).update(position=models.F("position") + 1)
-        copy = Block.objects.get(pk=self.pk)
-        copy.pk = None
-        copy.position = self.position + 1
-        copy.save()
-        return copy
+        with transaction.atomic():
+            # Verrouille la partition (newsletter, section) pour sérialiser
+            list(
+                Block.objects.select_for_update().filter(
+                    newsletter=self.newsletter, section=self.section
+                )
+            )
+            Block.objects.filter(
+                newsletter=self.newsletter,
+                section=self.section,
+                position__gt=self.position,
+            ).update(position=models.F("position") + 1)
+            copy = Block.objects.get(pk=self.pk)
+            copy.pk = None
+            copy.position = self.position + 1
+            copy.save()
+            return copy
 
     def delete(self, *args, **kwargs):
-        position = self.position
-        newsletter = self.newsletter
-        section = self.section
-        super().delete(*args, **kwargs)
-        Block.objects.filter(
-            newsletter=newsletter, section=section, position__gt=position
-        ).update(position=models.F("position") - 1)
+        with transaction.atomic():
+            # Verrouille la partition pour sérialiser les suppressions concurrentes
+            list(
+                Block.objects.select_for_update().filter(
+                    newsletter=self.newsletter, section=self.section
+                )
+            )
+            position = self.position
+            newsletter_id = self.newsletter_id
+            section_id = self.section_id
+            super().delete(*args, **kwargs)
+            Block.objects.filter(
+                newsletter_id=newsletter_id, section_id=section_id, position__gt=position
+            ).update(position=models.F("position") - 1)
 
 
 class NewsletterImage(models.Model):
     """Image téléversée réutilisable dans les blocs."""
 
-    image = models.ImageField("Image", upload_to="newsletter/blocks/")
+    image = models.ImageField(
+        "Image",
+        upload_to=newsletter_image_upload_to,
+        validators=[
+            FileExtensionValidator(ALLOWED_IMAGE_EXTENSIONS_NODOT),
+            validate_image_content,
+        ],
+    )
     alt = models.CharField("Texte alternatif", max_length=200, blank=True)
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

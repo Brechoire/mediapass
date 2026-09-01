@@ -512,6 +512,252 @@ class SettingsTests(BaseNewsletterTestCase):
         self.assertEqual(copy.blocks.count(), 1)
 
 
+class ReorderStrictTests(BaseNewsletterTestCase):
+    """Garde-fous NL-03 : reorder stricte 400 si ordre partiel/doublon/extra."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.comm_user)
+        self.newsletter = self.make_newsletter()
+
+    def test_reorder_sections_partial_returns_400(self):
+        from newsletter.models import Section
+
+        sec1 = Section.objects.create(newsletter=self.newsletter, position=0, title="A")
+        sec2 = Section.objects.create(newsletter=self.newsletter, position=1, title="B")
+        url = reverse("newsletter:reorder_sections", args=[self.newsletter.pk])
+        # partiel — manque sec2
+        response = self.client.post(url, data='{"order": [%d]}' % sec1.pk, content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+        sec1.refresh_from_db(); sec2.refresh_from_db()
+        self.assertEqual(sec1.position, 0)
+        self.assertEqual(sec2.position, 1)
+
+    def test_reorder_sections_duplicate_returns_400(self):
+        from newsletter.models import Section
+
+        sec1 = Section.objects.create(newsletter=self.newsletter, position=0, title="A")
+        Section.objects.create(newsletter=self.newsletter, position=1, title="B")
+        url = reverse("newsletter:reorder_sections", args=[self.newsletter.pk])
+        response = self.client.post(url, data='{"order": [%d, %d]}' % (sec1.pk, sec1.pk), content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+
+    def test_reorder_sections_extra_unknown_returns_400(self):
+        from newsletter.models import Section
+
+        sec1 = Section.objects.create(newsletter=self.newsletter, position=0, title="A")
+        sec2 = Section.objects.create(newsletter=self.newsletter, position=1, title="B")
+        url = reverse("newsletter:reorder_sections", args=[self.newsletter.pk])
+        response = self.client.post(url, data='{"order": [%d, %d, 9999]}' % (sec1.pk, sec2.pk), content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+
+    def test_reorder_sections_valid_reorders(self):
+        from newsletter.models import Section
+
+        sec1 = Section.objects.create(newsletter=self.newsletter, position=0, title="A")
+        sec2 = Section.objects.create(newsletter=self.newsletter, position=1, title="B")
+        url = reverse("newsletter:reorder_sections", args=[self.newsletter.pk])
+        response = self.client.post(url, data='{"order": [%d, %d]}' % (sec2.pk, sec1.pk), content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        sec1.refresh_from_db(); sec2.refresh_from_db()
+        self.assertEqual(sec1.position, 1)
+        self.assertEqual(sec2.position, 0)
+
+    def test_reorder_blocks_partial_missing_returns_400(self):
+        from newsletter.models import Block, Section
+
+        sec1 = Section.objects.create(newsletter=self.newsletter, position=0, title="A")
+        b1 = Block.objects.create(newsletter=self.newsletter, section=sec1, position=0, block_type="heading", content={"text": "t1"})
+        b2 = Block.objects.create(newsletter=self.newsletter, section=sec1, position=1, block_type="text", content={"html": "h"})
+        b3 = Block.objects.create(newsletter=self.newsletter, section=None, position=0, block_type="spacer", content={})
+        url = reverse("newsletter:reorder_blocks", args=[self.newsletter.pk])
+        import json
+
+        # manque b3
+        payload = json.dumps({"blocks": {str(sec1.pk): [b1.pk, b2.pk]}})
+        response = self.client.post(url, data=payload, content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+
+    def test_reorder_blocks_duplicate_returns_400(self):
+        from newsletter.models import Block, Section
+
+        sec1 = Section.objects.create(newsletter=self.newsletter, position=0, title="A")
+        b1 = Block.objects.create(newsletter=self.newsletter, section=sec1, position=0, block_type="heading", content={})
+        Block.objects.create(newsletter=self.newsletter, section=sec1, position=1, block_type="text", content={})
+        url = reverse("newsletter:reorder_blocks", args=[self.newsletter.pk])
+        import json
+
+        # doublon b1
+        payload = json.dumps({"blocks": {str(sec1.pk): [b1.pk, b1.pk]}})
+        response = self.client.post(url, data=payload, content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+
+    def test_reorder_blocks_valid_inter_section(self):
+        from newsletter.models import Block, Section
+
+        sec1 = Section.objects.create(newsletter=self.newsletter, position=0, title="A")
+        sec2 = Section.objects.create(newsletter=self.newsletter, position=1, title="B")
+        b1 = Block.objects.create(newsletter=self.newsletter, section=sec1, position=0, block_type="heading", content={"text": "t", "align": "left", "size": 28, "color": "#000"})
+        b2 = Block.objects.create(newsletter=self.newsletter, section=sec1, position=1, block_type="text", content={"html": "<p>x</p>", "align": "left", "font_size": 15})
+        url = reverse("newsletter:reorder_blocks", args=[self.newsletter.pk])
+        import json
+
+        payload = json.dumps({"blocks": {str(sec1.pk): [b1.pk], str(sec2.pk): [b2.pk]}})
+        response = self.client.post(url, data=payload, content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        b1.refresh_from_db(); b2.refresh_from_db()
+        self.assertEqual(b1.section_id, sec1.pk)
+        self.assertEqual(b2.section_id, sec2.pk)
+        self.assertEqual(b1.position, 0)
+        self.assertEqual(b2.position, 0)
+
+
+class ColorValidationTests(BaseNewsletterTestCase):
+    """Garde-fous NL-05 : couleurs hex et style injectés rejetés."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.comm_user)
+        self.newsletter = self.make_newsletter()
+
+    def test_settings_form_rejects_invalid_hex(self):
+        from newsletter.forms import SettingsForm
+
+        form = SettingsForm(
+            data={
+                "title": "t",
+                "subject": "s",
+                "period_start": "2030-10-01",
+                "period_end": "2030-10-31",
+                "primary_color": "#zzzzzz",
+                "background_color": "#ffffff",
+                "font_family": "Arial, Helvetica, sans-serif",
+                "workshop_default_variant": "card",
+            },
+            instance=self.newsletter,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("primary_color", form.errors)
+
+    def test_section_form_clamps_header_overlay(self):
+        from newsletter.forms import SectionForm
+        from newsletter.models import Section
+
+        sec = Section.objects.create(newsletter=self.newsletter, position=0, title="A")
+        form = SectionForm(data={"title": "A", "header_overlay": "99", "header_height": "default", "header_align": "left"}, instance=sec)
+        # header_overlay clamp 0.70 — clean renvoie "0.7" (float → str)
+        if form.is_valid():
+            self.assertEqual(form.cleaned_data["header_overlay"], "0.7")
+        else:
+            form2 = SectionForm(instance=sec)
+            form2.cleaned_data = {"header_overlay": "0.01"}
+            self.assertEqual(form2.clean_header_overlay(), "0.1")
+
+    def test_section_form_rejects_invalid_title_color(self):
+        from newsletter.forms import SectionForm
+        from newsletter.models import Section
+
+        sec = Section.objects.create(newsletter=self.newsletter, position=0, title="A")
+        form = SectionForm(data={"title": "A", "title_color": "red", "header_height": "default", "header_align": "left"}, instance=sec)
+        self.assertFalse(form.is_valid())
+        self.assertIn("title_color", form.errors)
+
+    def test_update_block_rejects_injected_style(self):
+        block = Block.objects.create(
+            newsletter=self.newsletter, position=0, block_type="separator", content={}
+        )
+        self.client.post(
+            reverse("newsletter:update_block", args=[self.newsletter.pk, block.pk]),
+            {
+                "style_bg_color": "red; background:url(javascript:alert(1))",
+                "style_padding": "16px; position:absolute",
+                "style_border_style": "evil",
+                "style_border_width": "999",
+            },
+        )
+        block.refresh_from_db()
+        # injection doit être ignorée
+        self.assertNotIn("red;", block.style.get("bg_color", ""))
+        self.assertNotIn("position", block.style.get("padding", ""))
+        self.assertNotEqual(block.style.get("border_style"), "evil")
+        # border_width clamp 0-4 → 4
+        if "border_width" in block.style:
+            self.assertEqual(block.style["border_width"], "4")
+
+    def test_update_block_accepts_valid_hex_and_padding(self):
+        block = Block.objects.create(
+            newsletter=self.newsletter, position=0, block_type="separator", content={}
+        )
+        self.client.post(
+            reverse("newsletter:update_block", args=[self.newsletter.pk, block.pk]),
+            {"style_bg_color": "#aabbcc", "style_padding": "8px 16px", "style_border_style": "solid"},
+        )
+        block.refresh_from_db()
+        self.assertEqual(block.style.get("bg_color"), "#aabbcc")
+        self.assertEqual(block.style.get("padding"), "8px 16px")
+        self.assertEqual(block.style.get("border_style"), "solid")
+
+
+class PushIdempotenceTests(BaseNewsletterTestCase):
+    """Garde-fous NL-07 : push Sender.net idempotent, pas de '-' si sans ID."""
+
+    def setUp(self):
+        super().setUp()
+        self.newsletter = self.make_newsletter()
+
+    @override_settings(SENDER_API_KEY="key-123")
+    @patch("newsletter.services.requests.post")
+    def test_second_push_is_idempotent(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {"data": {"id": "camp123"}}
+        mock_post.return_value.text = '{"data":{"id":"camp123"}}'
+        success1, _ = push_to_sender(self.newsletter)
+        self.assertTrue(success1)
+        self.newsletter.refresh_from_db()
+        self.assertEqual(self.newsletter.sender_campaign_id, "camp123")
+        self.assertEqual(self.newsletter.status, Newsletter.Status.SENT)
+        # second push → idempotent sans appel HTTP
+        mock_post.reset_mock()
+        success2, msg2 = push_to_sender(self.newsletter)
+        self.assertFalse(success2)
+        self.assertIn("déjà", msg2.lower())
+        mock_post.assert_not_called()
+        self.newsletter.refresh_from_db()
+        self.assertEqual(self.newsletter.sender_campaign_id, "camp123")
+
+    @override_settings(SENDER_API_KEY="key-123")
+    @patch("newsletter.services.requests.post")
+    def test_push_without_id_does_not_mark_sent(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {"data": {}}
+        mock_post.return_value.text = '{"data":{}}'
+        success, msg = push_to_sender(self.newsletter)
+        self.assertFalse(success)
+        self.assertIn("identifiant", msg)
+        self.newsletter.refresh_from_db()
+        self.assertEqual(self.newsletter.status, Newsletter.Status.DRAFT)
+        self.assertEqual(self.newsletter.sender_campaign_id, "")
+
+    @override_settings(SENDER_API_KEY="key-123", SENDER_GROUP_ID="grp01")
+    @patch("newsletter.services.requests.post")
+    def test_send_sender_view_blocks_second_push(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {"data": {"id": "v2id"}}
+        mock_post.return_value.text = '{"data":{"id":"v2id"}}'
+        self.client.force_login(self.comm_user)
+        url = reverse("newsletter:send_sender", args=[self.newsletter.pk])
+        # first push via vue
+        self.client.post(url)
+        self.newsletter.refresh_from_db()
+        self.assertEqual(self.newsletter.status, Newsletter.Status.SENT)
+        # second push via vue → ne crée pas de nouvelle requête Sender
+        mock_post.reset_mock()
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {"data": {"id": "other"}}
+        self.client.post(url)
+        mock_post.assert_not_called()
+
+
 class QueryCountTests(BaseNewsletterTestCase):
     """Non-régression N+1 et pagination."""
 
