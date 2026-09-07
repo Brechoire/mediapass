@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils import timezone
 from django.utils.html import format_html
 from django.db.models import Count, Q
 from .models import Commune, Lieu, CampagneDistribution, Distribution
@@ -13,10 +14,15 @@ class CommuneAdmin(admin.ModelAdmin):
     list_per_page = 25
 
     def lieux_count(self, obj):
+        # Utilise l'annotation du get_queryset (0 requête) avec repli sinon.
+        if hasattr(obj, 'total_lieux'):
+            return obj.total_lieux
         return obj.lieux.count()
     lieux_count.short_description = 'Total lieux'
 
     def lieux_actifs_count(self, obj):
+        if hasattr(obj, 'lieux_actifs'):
+            return obj.lieux_actifs
         return obj.lieux.filter(is_active=True).count()
     lieux_actifs_count.short_description = 'Lieux actifs'
 
@@ -39,8 +45,17 @@ class LieuAdmin(admin.ModelAdmin):
     actions = ['activate_lieux', 'deactivate_lieux']
 
     def distributions_count(self, obj):
+        if hasattr(obj, '_distributions_count'):
+            return obj._distributions_count
         return obj.distributions.count()
     distributions_count.short_description = 'Distributions'
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'commune'
+        ).annotate(
+            _distributions_count=Count('distributions')
+        )
 
     def activate_lieux(self, request, queryset):
         updated = queryset.update(is_active=True)
@@ -66,6 +81,11 @@ class DistributionInline(admin.TabularInline):
     readonly_fields = ['distributed_at']
     can_delete = False
     ordering = ['lieu__commune__name', 'lieu__name']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'lieu__commune', 'distributed_by', 'campagne'
+        )
 
 
 @admin.register(CampagneDistribution)
@@ -98,6 +118,19 @@ class CampagneDistributionAdmin(admin.ModelAdmin):
     )
 
     readonly_fields = ['created_at', 'updated_at']
+
+    def get_queryset(self, request):
+        # Pré-charge created_by + compteurs (mêmes noms que les propriétés
+        # CampagneDistribution.total_lieux / lieux_distribues) : 0 requête
+        # supplémentaire dans progression_display / is_completed_display.
+        return super().get_queryset(request).select_related(
+            'created_by'
+        ).annotate(
+            _total_lieux=Count('distributions'),
+            _lieux_distribues=Count(
+                'distributions', filter=Q(distributions__is_distributed=True)
+            ),
+        )
 
     def progression_display(self, obj):
         if obj.total_lieux == 0:
@@ -178,6 +211,11 @@ class DistributionAdmin(admin.ModelAdmin):
 
     readonly_fields = ['distributed_at']
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'campagne', 'lieu__commune', 'distributed_by'
+        )
+
     def is_distributed_display(self, obj):
         if obj.is_distributed:
             return format_html(
@@ -192,9 +230,24 @@ class DistributionAdmin(admin.ModelAdmin):
     is_distributed_display.short_description = 'Distribué'
 
     def mark_as_distributed(self, request, queryset):
-        updated = queryset.update(
-            is_distributed=True, distributed_by=request.user
+        # queryset.update() contourne Distribution.save() : il faut donc
+        # maintenir distributed_at ici (logique save() : pose la date si
+        # absente, conserve l'existante sinon).
+        # Ordre important : d'abord les lignes déjà datées, sinon le 2e
+        # UPDATE re-matcherait les lignes venant d'être datées.
+        now = timezone.now()
+        updated_with_date = queryset.filter(
+            distributed_at__isnull=False
+        ).update(
+            is_distributed=True, distributed_by=request.user,
         )
+        updated_without_date = queryset.filter(
+            distributed_at__isnull=True
+        ).update(
+            is_distributed=True, distributed_by=request.user,
+            distributed_at=now,
+        )
+        updated = updated_without_date + updated_with_date
         self.message_user(
             request, f'{updated} distribution(s) marquée(s) comme '
             f'distribuée(s).'
@@ -202,8 +255,9 @@ class DistributionAdmin(admin.ModelAdmin):
     mark_as_distributed.short_description = "Marquer comme distribuées"
 
     def mark_as_not_distributed(self, request, queryset):
+        # Cohérent avec Distribution.save() : décocher efface date + auteur.
         updated = queryset.update(
-            is_distributed=False, distributed_by=None
+            is_distributed=False, distributed_by=None, distributed_at=None,
         )
         self.message_user(
             request, f'{updated} distribution(s) marquée(s) comme '

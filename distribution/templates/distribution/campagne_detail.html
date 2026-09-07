@@ -532,154 +532,127 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    function refreshAllCommuneCounters() {
+        document.querySelectorAll('[id^="commune-distributed-"]').forEach(counter => {
+            const communeIndex = counter.id.split('-')[2];
+            updateCommuneProgress(communeIndex);
+        });
+    }
+
+    function bulkUpdateDistributions(ids, action, onDone) {
+        // 1 seule requête bulk au lieu de N requêtes unitaires (P1 perf).
+        fetch(`{% url 'distribution:bulk_update_distributions' campagne.pk %}`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ids: ids, action: action}),
+        })
+        .then(response => response.json().then(data => ({status: response.status, data: data})))
+        .then(({status, data}) => {
+            if (status >= 200 && status < 300 && data.success) {
+                onDone(null, data);
+            } else {
+                onDone(new Error((data && data.error) || `HTTP ${status}`), data);
+            }
+        })
+        .catch(error => onDone(error, null));
+    }
+
     function deselectAllDistributions(checkedBoxes) {
         const deselectBtn = document.getElementById('deselect-all-btn');
         if (deselectBtn) {
             deselectBtn.disabled = true;
             deselectBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i>Désélection...';
         }
-        
-        let completed = 0;
-        let errors = 0;
-        const total = checkedBoxes.length;
-        
-        console.log(`Désélection de ${total} lieux`);
-        
-        // Traiter les requêtes en parallèle avec un délai réduit
-        checkedBoxes.forEach((checkbox, index) => {
-            const distributionId = checkbox.dataset.distributionId;
-            const communeIndex = checkbox.dataset.communeIndex;
-            
-            console.log(`Désélection lieu ${index + 1}/${total}: ID ${distributionId}`);
-            
-            // Délai progressif réduit pour aller plus vite
-            setTimeout(() => {
-                fetch(`{% url 'distribution:toggle_distribution' 0 %}`.replace('0', distributionId), {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                        'Content-Type': 'application/json',
-                    },
-                })
-                .then(response => {
-                    console.log(`Réponse pour ${distributionId}:`, response.status);
-                    return response.json();
-                })
-                .then(data => {
-                    console.log(`Données pour ${distributionId}:`, data);
-                    if (data.success) {
-                        completed++;
-                        updateDistributionInfo(distributionId, data);
-                        updateCardAppearance(distributionId, data.is_distributed);
-                        updateCommuneProgress(communeIndex);
-                    } else {
-                        errors++;
-                        checkbox.checked = true; // Remettre à true en cas d'erreur
-                        console.error(`Erreur pour ${distributionId}:`, data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Erreur réseau pour', distributionId, ':', error);
-                    errors++;
-                    checkbox.checked = true; // Remettre à true en cas d'erreur
-                })
-                .finally(() => {
-                    if (completed + errors === total) {
-                        // Toutes les requêtes sont terminées
-                        console.log(`Désélection terminée: ${completed} succès, ${errors} erreurs`);
-                        updateGlobalProgress();
-                        updateValidateButton();
-                        
-                        if (deselectBtn) {
-                            deselectBtn.disabled = false;
-                            deselectBtn.innerHTML = '<i class="bx bx-square me-1"></i>Tout désélectionner';
-                        }
-                        
-                        if (errors > 0) {
-                            showAlert(`${completed} lieu(x) désélectionné(s), ${errors} erreur(s)`, 'warning');
-                        } else {
-                            showAlert(`${completed} lieu(x) désélectionné(s) avec succès !`, 'success');
-                        }
-                    }
+
+        const boxes = Array.from(checkedBoxes);
+        const ids = boxes.map(cb => parseInt(cb.dataset.distributionId, 10)).filter(Number.isInteger);
+        console.log(`Désélection bulk de ${ids.length} lieux`);
+
+        if (ids.length === 0) {
+            if (deselectBtn) {
+                deselectBtn.disabled = false;
+                deselectBtn.innerHTML = '<i class="bx bx-square me-1"></i>Tout désélectionner';
+            }
+            showAlert("Aucun lieu à désélectionner", 'info');
+            return;
+        }
+
+        bulkUpdateDistributions(ids, 'deselect', (err, data) => {
+            if (!err) {
+                boxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                    updateCardAppearance(checkbox.dataset.distributionId, false);
                 });
-            }, index * 50); // Délai réduit à 50ms entre chaque requête
+                refreshAllCommuneCounters();
+                updateGlobalProgress();
+                updateValidateButton();
+                const done = data.updated_count !== undefined ? data.updated_count : boxes.length;
+                showAlert(`${done} lieu(x) désélectionné(s) avec succès !`, 'success');
+            } else {
+                console.error('Erreur bulk désélection :', err);
+                boxes.forEach(checkbox => { checkbox.checked = true; });
+                refreshAllCommuneCounters();
+                updateGlobalProgress();
+                updateValidateButton();
+                showAlert('Erreur lors de la désélection : ' + err.message, 'danger');
+            }
+            if (deselectBtn) {
+                deselectBtn.disabled = false;
+                deselectBtn.innerHTML = '<i class="bx bx-square me-1"></i>Tout désélectionner';
+            }
         });
     }
-    
+
     function validateSelectedDistributions(selectedCheckboxes) {
         const validateBtn = document.getElementById('validate-selected-btn');
         if (validateBtn) {
             validateBtn.disabled = true;
             validateBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i>Validation...';
         }
-        
-        let completed = 0;
-        let errors = 0;
-        const total = selectedCheckboxes.length;
-        
-        console.log(`Validation de ${total} lieux sélectionnés`);
-        
-        // Traiter les requêtes en parallèle avec un délai réduit
-        selectedCheckboxes.forEach((checkbox, index) => {
-            const distributionId = checkbox.dataset.distributionId;
-            const communeIndex = checkbox.dataset.communeIndex;
-            
-            console.log(`Validation lieu ${index + 1}/${total}: ID ${distributionId}`);
-            
-            // Délai progressif réduit pour aller plus vite
-            setTimeout(() => {
-                fetch(`{% url 'distribution:force_validate_distribution' 0 %}`.replace('0', distributionId), {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                        'Content-Type': 'application/json',
-                    },
-                })
-                .then(response => {
-                    console.log(`Réponse pour ${distributionId}:`, response.status);
-                    return response.json();
-                })
-                .then(data => {
-                    console.log(`Données pour ${distributionId}:`, data);
-                    if (data.success) {
-                        completed++;
-                        updateDistributionInfo(distributionId, data);
-                        updateCardAppearance(distributionId, data.is_distributed);
-                        updateCommuneProgress(communeIndex);
-                    } else {
-                        errors++;
-                        checkbox.checked = false;
-                        console.error(`Erreur pour ${distributionId}:`, data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Erreur réseau pour', distributionId, ':', error);
-                    errors++;
-                    checkbox.checked = false;
-                })
-                .finally(() => {
-                    if (completed + errors === total) {
-                        // Toutes les requêtes sont terminées
-                        console.log(`Validation terminée: ${completed} succès, ${errors} erreurs`);
-                        updateGlobalProgress();
-                        updateValidateButton();
-                        
-                        if (validateBtn) {
-                            validateBtn.disabled = false;
-                            validateBtn.innerHTML = `
-                                <i class="bx bx-check me-1"></i>
-                                Valider les sélectionnés
-                            `;
-                        }
-                        
-                        if (errors > 0) {
-                            showAlert(`${completed} lieu(x) validé(s), ${errors} erreur(s)`, 'warning');
-                        } else {
-                            showAlert(`${completed} lieu(x) validé(s) avec succès !`, 'success');
-                        }
-                    }
+
+        const boxes = Array.from(selectedCheckboxes);
+        const ids = boxes.map(cb => parseInt(cb.dataset.distributionId, 10)).filter(Number.isInteger);
+        console.log(`Validation bulk de ${ids.length} lieux sélectionnés`);
+
+        if (ids.length === 0) {
+            if (validateBtn) {
+                validateBtn.disabled = false;
+                validateBtn.innerHTML = '<i class="bx bx-check me-1"></i>Valider les sélectionnés';
+            }
+            showAlert("Aucun lieu sélectionné pour validation.", 'info');
+            return;
+        }
+
+        bulkUpdateDistributions(ids, 'validate', (err, data) => {
+            if (!err) {
+                boxes.forEach(checkbox => {
+                    checkbox.checked = true;
+                    updateCardAppearance(checkbox.dataset.distributionId, true);
                 });
-            }, index * 50); // Délai réduit à 50ms entre chaque requête
+                refreshAllCommuneCounters();
+                updateGlobalProgress();
+                updateValidateButton();
+                const done = data.updated_count !== undefined ? data.updated_count : boxes.length;
+                if (done < boxes.length) {
+                    showAlert(`${done}/${boxes.length} lieu(x) validé(s) (certains hors campagne)`, 'warning');
+                } else {
+                    showAlert(`${done} lieu(x) validé(s) avec succès !`, 'success');
+                }
+            } else {
+                console.error('Erreur bulk validation :', err);
+                boxes.forEach(checkbox => { checkbox.checked = false; });
+                refreshAllCommuneCounters();
+                updateGlobalProgress();
+                updateValidateButton();
+                showAlert('Erreur lors de la validation : ' + err.message, 'danger');
+            }
+            if (validateBtn) {
+                validateBtn.disabled = false;
+                validateBtn.innerHTML = '<i class="bx bx-check me-1"></i>Valider les sélectionnés';
+            }
         });
     }
     

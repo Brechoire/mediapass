@@ -480,3 +480,123 @@ class CampagneProgressionBarTests(TestCase):
         self.assertIn(
             'style="width: 0%"', response.content.decode()
         )
+
+
+class BulkUpdateDistributionsTests(TestCase):
+    """Non-régression P1 : 1 requête bulk au lieu de N requêtes unitaires."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username="admin", password="admin123"
+        )
+        self.normal = User.objects.create_user(
+            username="normal", password="testpass123"
+        )
+        self.commune = Commune.objects.create(name="Testville")
+        self.lieux = [
+            Lieu.objects.create(commune=self.commune, name=f"Lieu {i}")
+            for i in range(3)
+        ]
+        self.campagne = CampagneDistribution.objects.create(
+            name="Campagne bulk",
+            created_by=self.admin,
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + timedelta(days=10),
+            status="active",
+        )
+        self.distributions = [
+            Distribution.objects.create(campagne=self.campagne, lieu=lieu)
+            for lieu in self.lieux
+        ]
+        self.url = reverse(
+            "distribution:bulk_update_distributions", args=[self.campagne.pk]
+        )
+
+    def _post(self, ids, action="validate"):
+        import json
+
+        return self.client.post(
+            self.url,
+            data=json.dumps({"ids": ids, "action": action}),
+            content_type="application/json",
+        )
+
+    def test_denied_for_normal_user(self):
+        self.client.login(username="normal", password="testpass123")
+        response = self._post([self.distributions[0].pk])
+        self.assertEqual(response.status_code, 403)
+
+    def test_bulk_validate_sets_date_and_author(self):
+        self.client.login(username="admin", password="admin123")
+        ids = [d.pk for d in self.distributions[:2]]
+        with self.assertNumQueries(10):
+            # Détail : session + user + campagne SELECT + 2 UPDATE ciblés
+            # + aggregate progression + savepoint/release + middleware
+            # analytics (SELECT anti-doublon + INSERT). Le cœur bulk reste
+            # 1 SELECT + 2 UPDATE + 1 aggregate contre N x 3 en fan-out.
+            response = self._post(ids, action="validate")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(data["updated_count"], 2)
+        for pk in ids:
+            d = Distribution.objects.get(pk=pk)
+            self.assertTrue(d.is_distributed)
+            self.assertEqual(d.distributed_by, self.admin)
+            self.assertIsNotNone(d.distributed_at)
+        untouched = Distribution.objects.get(pk=self.distributions[2].pk)
+        self.assertFalse(untouched.is_distributed)
+
+    def test_bulk_validate_preserves_existing_date(self):
+        old = self.distributions[0]
+        old.is_distributed = True
+        old.distributed_by = self.admin
+        old.save()
+        old.refresh_from_db()
+        kept = old.distributed_at
+        self.client.login(username="admin", password="admin123")
+        response = self._post([old.pk], action="validate")
+        self.assertEqual(response.status_code, 200)
+        old.refresh_from_db()
+        self.assertEqual(old.distributed_at, kept)
+
+    def test_bulk_deselect_clears_date_and_author(self):
+        target = self.distributions[0]
+        target.is_distributed = True
+        target.distributed_by = self.admin
+        target.save()
+        self.client.login(username="admin", password="admin123")
+        response = self._post([target.pk], action="deselect")
+        self.assertEqual(response.status_code, 200)
+        target.refresh_from_db()
+        self.assertFalse(target.is_distributed)
+        self.assertIsNone(target.distributed_by)
+        self.assertIsNone(target.distributed_at)
+
+    def test_bulk_scoped_to_campagne(self):
+        autre = CampagneDistribution.objects.create(
+            name="Autre campagne",
+            created_by=self.admin,
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + timedelta(days=5),
+            status="active",
+        )
+        intrus = Distribution.objects.create(
+            campagne=autre, lieu=self.lieux[0]
+        )
+        self.client.login(username="admin", password="admin123")
+        response = self._post(
+            [self.distributions[0].pk, intrus.pk], action="validate"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["updated_count"], 1)
+        intrus.refresh_from_db()
+        self.assertFalse(intrus.is_distributed)
+
+    def test_bulk_invalid_payload(self):
+        self.client.login(username="admin", password="admin123")
+        self.assertEqual(self._post([], action="validate").status_code, 400)
+        self.assertEqual(
+            self._post([self.distributions[0].pk], action="nope").status_code,
+            400,
+        )

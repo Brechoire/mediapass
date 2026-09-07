@@ -10,6 +10,7 @@ from django.db.models import Q, Count, Sum, Value, Case, When
 from django.db.models.functions import Coalesce
 from django.conf import settings
 from django.utils import timezone
+import json
 import logging
 from .models import Commune, Lieu, CampagneDistribution, Distribution
 
@@ -322,6 +323,100 @@ def force_validate_distribution(request, pk):
         })
     
     except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def bulk_update_distributions(request, pk):
+    """Mise à jour groupée des distributions d'une campagne (AJAX).
+
+    Remplace le fan-out JS (N requêtes toggle/force-validate) par :
+    1 SELECT de cadrage + 1 à 2 UPDATE + 1 aggregate, en une transaction.
+
+    Corps JSON attendu : {"ids": [1, 2, ...], "action": "validate"|"deselect"}.
+    - "validate" : is_distributed=True, distributed_by=request.user,
+      distributed_at conservée si déjà renseignée (logique Distribution.save()),
+      posée à maintenant sinon.
+    - "deselect" : is_distributed=False, distributed_by=None,
+      distributed_at=None (logique Distribution.save()).
+    Seules les distributions de la campagne `pk` sont touchées.
+    """
+    if not is_admin_excluding_mediatheque(request.user):
+        return JsonResponse({'error': 'Accès refusé'}, status=403)
+
+    try:
+        campagne = get_object_or_404(CampagneDistribution, pk=pk)
+
+        try:
+            payload = json.loads(request.body.decode('utf-8') or '{}')
+        except (ValueError, UnicodeDecodeError):
+            return JsonResponse({'error': 'Corps JSON invalide'}, status=400)
+
+        raw_ids = payload.get('ids', [])
+        action = payload.get('action', 'validate')
+        if action not in ('validate', 'deselect'):
+            return JsonResponse({'error': 'Action invalide'}, status=400)
+        if not isinstance(raw_ids, list) or not raw_ids:
+            return JsonResponse(
+                {'error': 'Liste ids vide ou invalide'}, status=400
+            )
+        if len(raw_ids) > 1000:
+            return JsonResponse(
+                {'error': 'Trop de distributions (max 1000)'}, status=400
+            )
+        try:
+            ids = sorted({int(i) for i in raw_ids})
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'ids invalides'}, status=400)
+
+        with transaction.atomic():
+            scoped = Distribution.objects.filter(
+                campagne=campagne, id__in=ids
+            )
+            if action == 'validate':
+                now = timezone.now()
+                # Ordre important : d'abord les lignes déjà datées, puis les
+                # sans date. L'inverse recompterait les lignes venant d'être
+                # datées (le 2e UPDATE re-matcherait le 1er).
+                updated_old = scoped.filter(
+                    distributed_at__isnull=False
+                ).update(
+                    is_distributed=True, distributed_by=request.user,
+                )
+                updated_new = scoped.filter(
+                    distributed_at__isnull=True
+                ).update(
+                    is_distributed=True, distributed_by=request.user,
+                    distributed_at=now,
+                )
+                updated_count = updated_new + updated_old
+            else:
+                updated_count = scoped.update(
+                    is_distributed=False, distributed_by=None,
+                    distributed_at=None,
+                )
+
+            campagne_stats = Distribution.objects.filter(
+                campagne=campagne
+            ).aggregate(
+                total=Count('id'),
+                distribue=Count('id', filter=Q(is_distributed=True))
+            )
+
+        total_lieux = campagne_stats['total']
+        lieux_distribues = campagne_stats['distribue']
+        return JsonResponse({
+            'success': True,
+            'updated_count': updated_count,
+            'total': total_lieux,
+            'distribue': lieux_distribues,
+            'progression': f"{lieux_distribues}/{total_lieux}",
+            'is_completed': lieux_distribues == total_lieux and total_lieux > 0,
+        })
+
+    except Exception as e:
+        logger.exception("Erreur bulk_update_distributions campagne=%s", pk)
         return JsonResponse({'error': str(e)}, status=500)
 
 

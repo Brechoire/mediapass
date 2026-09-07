@@ -21,6 +21,8 @@ urlpatterns = [
          name='toggle_distribution'),
     path('distributions/<int:pk>/force-validate/', views.force_validate_distribution,
          name='force_validate_distribution'),
+    path('campagnes/<int:pk>/bulk-update/', views.bulk_update_distributions,
+         name='bulk_update_distributions'),
     path('campagnes/<int:pk>/sync-lieux/', views.sync_campagne_lieux,
          name='sync_campagne_lieux'),
     
