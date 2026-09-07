@@ -323,7 +323,25 @@ class CampagneExpirationTests(TestCase):
             end_date=timezone.localdate() + timedelta(days=10),
             status="active",
         )
+        self.soon = CampagneDistribution.objects.create(
+            name="Campagne imminente",
+            created_by=self.admin,
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + timedelta(days=2),
+            status="active",
+        )
         self.client.login(username="admin", password="admin123")
+
+    def test_list_sorted_by_nearest_end_date(self):
+        response = self.client.get(reverse("distribution:campagne_list"))
+        self.assertEqual(response.status_code, 200)
+        names = [
+            c.name for c in response.context["page_obj"].object_list
+        ]
+        self.assertEqual(
+            names,
+            ["Campagne imminente", "Campagne future", "Campagne expir\u00e9e"],
+        )
 
     def test_list_shows_expired_as_completed(self):
         response = self.client.get(reverse("distribution:campagne_list"))

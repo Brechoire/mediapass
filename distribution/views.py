@@ -6,7 +6,7 @@ from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 from django.db import transaction
 from django.core.paginator import Paginator
-from django.db.models import Q, Count, Sum, Value
+from django.db.models import Q, Count, Sum, Value, Case, When
 from django.db.models.functions import Coalesce
 from django.conf import settings
 from django.utils import timezone
@@ -103,6 +103,17 @@ def campagne_list(request):
         if commune:
             campagnes = campagnes.filter(distributions__lieu__commune=commune).distinct()
     
+    # Tri : date de fin croissante (la plus proche en premier),
+    # campagnes déjà terminées en bas de liste
+    today = timezone.localdate()
+    campagnes = campagnes.order_by(
+        Case(
+            When(end_date__lt=today, then=Value(1)),
+            default=Value(0),
+        ),
+        'end_date',
+    )
+
     # Pagination
     paginator = Paginator(campagnes, 10)
     page_number = request.GET.get('page')
