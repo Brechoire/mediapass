@@ -9,6 +9,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q, Count, Sum, Value
 from django.db.models.functions import Coalesce
 from django.conf import settings
+from django.utils import timezone
 import logging
 from .models import Commune, Lieu, CampagneDistribution, Distribution
 
@@ -42,7 +43,9 @@ def index(request):
     
     # Statistiques générales
     total_campagnes = CampagneDistribution.objects.count()
-    campagnes_actives = CampagneDistribution.objects.filter(status='active').count()
+    campagnes_actives = CampagneDistribution.objects.filter(
+        status='active', end_date__gte=timezone.localdate()
+    ).count()
     total_lieux = Lieu.objects.filter(is_active=True).count()
     total_communes = Commune.objects.count()
     
@@ -84,7 +87,18 @@ def campagne_list(request):
             )
         
         if status:
-            campagnes = campagnes.filter(status=status)
+            today = timezone.localdate()
+            if status == 'active':
+                campagnes = campagnes.filter(
+                    status='active', end_date__gte=today
+                )
+            elif status == 'completed':
+                campagnes = campagnes.filter(
+                    Q(status='completed') |
+                    Q(status='active', end_date__lt=today)
+                )
+            else:
+                campagnes = campagnes.filter(status=status)
         
         if commune:
             campagnes = campagnes.filter(distributions__lieu__commune=commune).distinct()
@@ -503,8 +517,13 @@ def statistics(request):
     
     # Statistiques générales
     total_campagnes = CampagneDistribution.objects.count()
-    campagnes_actives = CampagneDistribution.objects.filter(status='active').count()
-    campagnes_terminees = CampagneDistribution.objects.filter(status='completed').count()
+    today = timezone.localdate()
+    campagnes_actives = CampagneDistribution.objects.filter(
+        status='active', end_date__gte=today
+    ).count()
+    campagnes_terminees = CampagneDistribution.objects.filter(
+        Q(status='completed') | Q(status='active', end_date__lt=today)
+    ).count()
     
     total_communes = Commune.objects.count()
     total_lieux = Lieu.objects.filter(is_active=True).count()

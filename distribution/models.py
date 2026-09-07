@@ -180,6 +180,17 @@ class CampagneDistribution(models.Model):
         total = self.total_lieux
         return self.lieux_distribues == total and total > 0
 
+    @property
+    def effective_status(self):
+        """'completed' si la date de fin est dépassée (J+1)"""
+        if (
+            self.status == 'active'
+            and self.end_date
+            and self.end_date < timezone.localdate()
+        ):
+            return 'completed'
+        return self.status
+
 
 class Distribution(models.Model):
     """Modèle pour représenter une distribution dans un lieu spécifique"""

@@ -212,11 +212,11 @@
                                 </div>
                             </td>
                             <td class="px-4 py-4 text-center">
-                                {% if campagne.status == 'active' %}
+                                {% if campagne.effective_status == 'active' %}
                                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                                     <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> En cours
                                 </span>
-                                {% elif campagne.status == 'completed' %}
+                                {% elif campagne.effective_status == 'completed' %}
                                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Termin&#xE9;e
                                 </span>

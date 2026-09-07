@@ -1,8 +1,10 @@
-from datetime import date
+from datetime import date, timedelta
+import html
 
 from django.contrib.auth.models import Group, User
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from .models import CampagneDistribution, Commune, Distribution, Lieu
 
@@ -73,6 +75,21 @@ class CampagneDistributionModelTests(TestCase):
             is_distributed=False,
         )
         self.assertEqual(self.campagne.progression, 50)
+
+    def test_effective_status_active_before_end_date(self):
+        self.campagne.end_date = timezone.localdate() + timedelta(days=1)
+        self.assertEqual(self.campagne.effective_status, 'active')
+
+    def test_effective_status_completed_after_end_date(self):
+        self.campagne.end_date = timezone.localdate() - timedelta(days=1)
+        self.assertEqual(self.campagne.effective_status, 'completed')
+
+    def test_effective_status_untouched_for_other_statuses(self):
+        self.campagne.end_date = timezone.localdate() - timedelta(days=10)
+        self.campagne.status = 'cancelled'
+        self.assertEqual(self.campagne.effective_status, 'cancelled')
+        self.campagne.status = 'completed'
+        self.assertEqual(self.campagne.effective_status, 'completed')
 
 
 class DistributionModelTests(TestCase):
@@ -281,3 +298,61 @@ class LieuViewsTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn("Ancien lieu", response.content.decode())
+
+
+class CampagneExpirationTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username="admin", password="admin123"
+        )
+        self.commune = Commune.objects.create(name="Testville")
+        self.lieu = Lieu.objects.create(
+            commune=self.commune, name="M\u00e9diath\u00e8que"
+        )
+        self.expired = CampagneDistribution.objects.create(
+            name="Campagne expir\u00e9e",
+            created_by=self.admin,
+            start_date=timezone.localdate() - timedelta(days=10),
+            end_date=timezone.localdate() - timedelta(days=1),
+            status="active",
+        )
+        self.future = CampagneDistribution.objects.create(
+            name="Campagne future",
+            created_by=self.admin,
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + timedelta(days=10),
+            status="active",
+        )
+        self.client.login(username="admin", password="admin123")
+
+    def test_list_shows_expired_as_completed(self):
+        response = self.client.get(reverse("distribution:campagne_list"))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("Termin\u00e9e", content)
+        self.assertIn("En cours", content)
+
+    def test_status_filter_active_excludes_expired(self):
+        response = self.client.get(
+            reverse("distribution:campagne_list"), {"status": "active"}
+        )
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("Campagne future", content)
+        self.assertNotIn("Campagne expir\u00e9e", content)
+
+    def test_status_filter_completed_includes_expired(self):
+        response = self.client.get(
+            reverse("distribution:campagne_list"), {"status": "completed"}
+        )
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("Campagne expir\u00e9e", content)
+        self.assertNotIn("Campagne future", content)
+
+    def test_statistics_counts_expired_as_completed(self):
+        response = self.client.get(reverse("distribution:statistics"))
+        self.assertEqual(response.status_code, 200)
+        content = html.unescape(response.content.decode())
+        self.assertIn("Campagne expir\u00e9e", content)
+        self.assertIn("Termin\u00e9e", content)
