@@ -5,139 +5,142 @@
 {% block title %}Campagnes de Distribution{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- En-tête -->
-    <div class="mb-8">
-        <nav class="flex mb-4" aria-label="Breadcrumb">
-            <ol class="inline-flex items-center space-x-1 md:space-x-3">
-                <li class="inline-flex items-center">
-                    <a href="{% url 'home' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-indigo-600">
-                        <i class="bx bx-home mr-2"></i>
-                        Accueil
-                    </a>
-                </li>
-                <li>
-                    <div class="flex items-center">
-                        <i class="bx bx-chevron-right text-gray-400 mx-1"></i>
-                        <a href="{% url 'distribution:index' %}" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Distribution</a>
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="bx bx-mail-send text-2xl text-white"></i>
                     </div>
-                </li>
-                <li>
-                    <div class="flex items-center">
-                        <i class="bx bx-chevron-right text-gray-400 mx-1"></i>
-                        <span class="text-sm font-medium text-gray-500">Campagnes</span>
-                    </div>
-                </li>
-            </ol>
-        </nav>
-        
-        <div class="flex items-center gap-3">
-            <i class="bx bx-envelope text-3xl text-indigo-600"></i>
-            <h1 class="text-3xl font-bold text-gray-900">Campagnes de Distribution</h1>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-white">Campagnes de Distribution</h1>
+                </div>
+                <p class="text-white/70 text-sm">G&#xE9;rez vos campagnes de distribution de flyers</p>
+            </div>
+            <a href="{% url 'distribution:campagne_create' %}"
+               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#2f4d75] text-sm font-semibold hover:bg-white/90 transition-all shadow-sm">
+                <i class="bx bx-plus"></i> Nouvelle campagne
+            </a>
         </div>
     </div>
+</section>
 
-    <!-- Actions et recherche -->
-    <div class="bg-white border border-gray-200 rounded-xl shadow mb-8">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-xl font-semibold text-gray-900">Recherche et filtres</h2>
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-search mr-1.5 text-[#4a6fa5]"></i>Recherche et filtres</h2>
         </div>
         <div class="p-6">
             <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Recherche</label>
+                    <label class="block text-sm font-medium text-[#1e293b] mb-2">Recherche</label>
                     {{ search_form.search|add_class:"tw-input w-full" }}
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Statut</label>
+                    <label class="block text-sm font-medium text-[#1e293b] mb-2">Statut</label>
                     {{ search_form.status|add_class:"tw-input w-full" }}
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Commune</label>
+                    <label class="block text-sm font-medium text-[#1e293b] mb-2">Commune</label>
                     {{ search_form.commune|add_class:"tw-input w-full" }}
                 </div>
                 <div class="flex items-end">
-                    <button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                    <button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#4a6fa5] text-white hover:bg-[#3d5f8f] transition-colors text-sm font-medium">
                         <i class="bx bx-search"></i>
                         Rechercher
                     </button>
                 </div>
             </form>
-            
-            <div class="mt-4 flex justify-end">
-                <a href="{% url 'distribution:campagne_create' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
-                    <i class="bx bx-plus"></i>
-                    Nouvelle Campagne
-                </a>
-            </div>
         </div>
     </div>
 
-    <!-- Liste des campagnes -->
-    <div class="bg-white border border-gray-200 rounded-xl shadow">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-xl font-semibold text-gray-900">Liste des campagnes</h2>
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-list-ul mr-1.5 text-[#4a6fa5]"></i>Liste des campagnes</h2>
         </div>
-        <div class="p-6">
+        <div class="p-5">
             {% if page_obj %}
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                    <table class="min-w-full divide-y divide-[#dce3ef]">
+                        <thead>
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campagne</th>
-                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progression</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Période</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Créée par</th>
-                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Campagne</th>
+                                <th class="px-4 py-3 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Statut</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Progression</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden md:table-cell">P&#xE9;riode</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden lg:table-cell">Cr&#xE9;&#xE9;e par</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
+                        <tbody class="divide-y divide-[#dce3ef]">
                             {% for campagne in page_obj %}
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div>
-                                        <div class="text-sm font-medium text-gray-900">{{ campagne.name }}</div>
-                                        {% if campagne.description %}
-                                            <div class="text-sm text-gray-500">{{ campagne.description|truncatechars:50 }}</div>
-                                        {% endif %}
+                            <tr class="hover:bg-[#f8f9fc] transition-colors">
+                                <td class="px-4 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-9 h-9 rounded-lg bg-[#e8eef7] flex items-center justify-center shrink-0">
+                                            <i class="bx bx-mail-send text-sm text-[#4a6fa5]"></i>
+                                        </div>
+                                        <div>
+                                            <div class="text-sm font-medium text-[#1e293b]">{{ campagne.name }}</div>
+                                            {% if campagne.description %}
+                                            <div class="text-xs text-[#b0bedb] mt-0.5">{{ campagne.description|truncatechars:50 }}</div>
+                                            {% endif %}
+                                        </div>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <td class="px-4 py-4 text-center">
                                     {% if campagne.effective_status == 'active' %}
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">En cours</span>
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> En cours
+                                    </span>
                                     {% elif campagne.effective_status == 'completed' %}
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Terminée</span>
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Termin&#xE9;e
+                                    </span>
                                     {% elif campagne.effective_status == 'draft' %}
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Brouillon</span>
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-50 text-gray-600 border border-gray-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> Brouillon
+                                    </span>
                                     {% else %}
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Annulée</span>
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Annul&#xE9;e
+                                    </span>
                                     {% endif %}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="w-full bg-gray-200 rounded-full h-2 mr-3">
-                                            <div class="bg-indigo-600 h-2 rounded-full" style="width: {% widthratio campagne.lieux_distribues campagne.total_lieux 100 %}%"></div>
+                                <td class="px-4 py-4 min-w-[130px]">
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex-1 h-2 bg-[#e8eef7] rounded-full overflow-hidden">
+                                            <div class="h-full rounded-full transition-all duration-500
+                                                {% if campagne.progression >= 100 %}bg-emerald-500
+                                                {% elif campagne.progression >= 50 %}bg-[#4a6fa5]
+                                                {% elif campagne.progression > 0 %}bg-amber-500
+                                                {% else %}bg-gray-300{% endif %}"
+                                                style="width: {% widthratio campagne.lieux_distribues campagne.total_lieux 100 %}%"></div>
                                         </div>
-                                        <span class="text-sm text-gray-500 font-medium">{{ campagne.progression }}%</span>
+                                        <span class="text-xs font-semibold text-[#b0bedb] min-w-[50px] text-right">{{ campagne.lieux_distribues }}/{{ campagne.total_lieux }}</span>
                                     </div>
-                                    <div class="text-xs text-gray-500 mt-1">{{ campagne.lieux_distribues }}/{{ campagne.total_lieux }}</div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {{ campagne.start_date|date:"d/m/Y" }} - {{ campagne.end_date|date:"d/m/Y" }}
+                                <td class="px-4 py-4 text-sm text-[#b0bedb] hidden md:table-cell">
+                                    {{ campagne.start_date|date:"d/m/Y" }} &#x2192; {{ campagne.end_date|date:"d/m/Y" }}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ campagne.created_by.get_full_name|default:campagne.created_by.username }}
+                                <td class="px-4 py-4 hidden lg:table-cell">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-6 h-6 rounded-full bg-[#e8eef7] flex items-center justify-center">
+                                            <i class="bx bx-user text-xs text-[#4a6fa5]"></i>
+                                        </div>
+                                        <span class="text-sm text-[#1e293b]">{{ campagne.created_by.get_full_name|default:campagne.created_by.username }}</span>
+                                    </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center">
-                                    <div class="flex items-center justify-center gap-2">
-                                        <a href="{% url 'distribution:campagne_detail' campagne.pk %}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-indigo-600 text-indigo-600 hover:bg-indigo-50">
-                                            <i class="bx bx-show"></i>
-                                            Voir
+                                <td class="px-4 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <a href="{% url 'distribution:campagne_detail' campagne.pk %}"
+                                           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#e8eef7] text-[#4a6fa5] text-xs font-semibold hover:bg-[#dce3ef] transition-colors">
+                                            Voir <i class="bx bx-chevron-right"></i>
                                         </a>
-                                        <a href="{% url 'distribution:campagne_edit' campagne.pk %}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">
-                                            <i class="bx bx-edit"></i>
-                                            Modifier
+                                        <a href="{% url 'distribution:campagne_edit' campagne.pk %}"
+                                           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#dce3ef] text-[#1e293b] text-xs font-semibold hover:bg-[#f8f9fc] transition-colors">
+                                            <i class="bx bx-edit"></i> Modifier
                                         </a>
                                     </div>
                                 </td>
@@ -147,32 +150,31 @@
                     </table>
                 </div>
 
-                <!-- Pagination -->
                 {% if page_obj.has_other_pages %}
                     <nav aria-label="Pagination des campagnes" class="mt-6">
                         <div class="flex items-center justify-between">
-                            <div class="text-sm text-gray-700">
+                            <div class="text-sm text-[#b0bedb]">
                                 Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}
                             </div>
                             <div class="flex items-center space-x-2">
                                 {% if page_obj.has_previous %}
-                                    <a href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.commune %}&commune={{ request.GET.commune }}{% endif %}" 
-                                       class="inline-flex items-center px-3 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">
+                                    <a href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.commune %}&commune={{ request.GET.commune }}{% endif %}"
+                                       class="inline-flex items-center px-3 py-2 rounded-xl border border-[#dce3ef] text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
                                         <i class="bx bx-chevrons-left"></i>
                                     </a>
-                                    <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.commune %}&commune={{ request.GET.commune }}{% endif %}" 
-                                       class="inline-flex items-center px-3 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">
+                                    <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.commune %}&commune={{ request.GET.commune }}{% endif %}"
+                                       class="inline-flex items-center px-3 py-2 rounded-xl border border-[#dce3ef] text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
                                         <i class="bx bx-chevron-left"></i>
                                     </a>
                                 {% endif %}
 
                                 {% if page_obj.has_next %}
-                                    <a href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.commune %}&commune={{ request.GET.commune }}{% endif %}" 
-                                       class="inline-flex items-center px-3 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">
+                                    <a href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.commune %}&commune={{ request.GET.commune }}{% endif %}"
+                                       class="inline-flex items-center px-3 py-2 rounded-xl border border-[#dce3ef] text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
                                         <i class="bx bx-chevron-right"></i>
                                     </a>
-                                    <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.commune %}&commune={{ request.GET.commune }}{% endif %}" 
-                                       class="inline-flex items-center px-3 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">
+                                    <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.commune %}&commune={{ request.GET.commune }}{% endif %}"
+                                       class="inline-flex items-center px-3 py-2 rounded-xl border border-[#dce3ef] text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
                                         <i class="bx bx-chevrons-right"></i>
                                     </a>
                                 {% endif %}
@@ -181,25 +183,25 @@
                     </nav>
                 {% endif %}
             {% else %}
-                <div class="text-center py-12">
-                    <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="bx bx-envelope text-4xl text-gray-400"></i>
+                <div class="text-center py-16">
+                    <div class="w-20 h-20 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4">
+                        <i class="bx bx-mail-send text-4xl text-[#4a6fa5]"></i>
                     </div>
-                    <h3 class="text-lg font-medium text-gray-900 mb-2">Aucune campagne trouvée</h3>
-                    <p class="text-gray-500 mb-6">
+                    <h3 class="text-lg font-semibold text-[#4a6fa5] mb-2">Aucune campagne trouv&#xE9;e</h3>
+                    <p class="text-[#b0bedb] text-sm mb-6">
                         {% if request.GET.search or request.GET.status or request.GET.commune %}
-                            Aucune campagne ne correspond à vos critères de recherche.
+                            Aucune campagne ne correspond &#xE0; vos crit&#xE8;res de recherche.
                         {% else %}
-                            Commencez par créer votre première campagne de distribution.
+                            Commencez par cr&#xE9;er votre premi&#xE8;re campagne de distribution.
                         {% endif %}
                     </p>
-                    <a href="{% url 'distribution:campagne_create' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
-                        <i class="bx bx-plus"></i>
-                        Créer une campagne
+                    <a href="{% url 'distribution:campagne_create' %}"
+                       class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4a6fa5] text-white font-medium text-sm hover:bg-[#3d5f8f] transition-all shadow-sm">
+                        <i class="bx bx-plus"></i> Cr&#xE9;er une campagne
                     </a>
                 </div>
             {% endif %}
         </div>
     </div>
-</div>
+</section>
 {% endblock %}
