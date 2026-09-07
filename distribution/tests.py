@@ -374,3 +374,59 @@ class CampagneExpirationTests(TestCase):
         content = html.unescape(response.content.decode())
         self.assertIn("Campagne expir\u00e9e", content)
         self.assertIn("Termin\u00e9e", content)
+
+
+class CampagneProgressionBarTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username="admin", password="admin123"
+        )
+        self.commune = Commune.objects.create(name="Testville")
+        self.lieu1 = Lieu.objects.create(commune=self.commune, name="Lieu 1")
+        self.lieu2 = Lieu.objects.create(commune=self.commune, name="Lieu 2")
+        self.campagne = CampagneDistribution.objects.create(
+            name="Campagne barre",
+            created_by=self.admin,
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + timedelta(days=10),
+            status="active",
+        )
+        Distribution.objects.create(
+            campagne=self.campagne, lieu=self.lieu1, is_distributed=True
+        )
+        Distribution.objects.create(
+            campagne=self.campagne, lieu=self.lieu2, is_distributed=False
+        )
+        self.client.login(username="admin", password="admin123")
+
+    def test_detail_bar_uses_valid_width(self):
+        response = self.client.get(
+            reverse("distribution:campagne_detail", args=[self.campagne.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            'style="width: 50%"', response.content.decode()
+        )
+
+    def test_list_bar_uses_valid_width(self):
+        response = self.client.get(reverse("distribution:campagne_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            'style="width: 50%"', response.content.decode()
+        )
+
+    def test_bar_zero_width_when_no_distributions(self):
+        autre = CampagneDistribution.objects.create(
+            name="Campagne vide",
+            created_by=self.admin,
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + timedelta(days=5),
+            status="active",
+        )
+        response = self.client.get(
+            reverse("distribution:campagne_detail", args=[autre.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            'style="width: 0%"', response.content.decode()
+        )

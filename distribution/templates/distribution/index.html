@@ -220,7 +220,7 @@
                                             {% elif campagne.progression >= 50 %}bg-[#4a6fa5]
                                             {% elif campagne.progression > 0 %}bg-amber-500
                                             {% else %}bg-gray-300{% endif %}"
-                                            style="width: {{ campagne.progression }}%"></div>
+                                            style="width: {% widthratio campagne.lieux_distribues campagne.total_lieux 100 %}%"></div>
                                     </div>
                                     <span class="text-xs font-semibold text-[#b0bedb] min-w-[50px] text-right">{{ campagne.lieux_distribues }}/{{ campagne.total_lieux }}</span>
                                 </div>
