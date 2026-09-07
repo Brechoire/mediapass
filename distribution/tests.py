@@ -383,6 +383,48 @@ class CampagneExpirationTests(TestCase):
         content = html.unescape(response.content.decode())
         self.assertIn("Date d\u00e9pass\u00e9e", content)
 
+    def test_statistics_shows_drafts_and_cancelled_counts(self):
+        today = timezone.localdate()
+        CampagneDistribution.objects.create(
+            name="Brouillon",
+            created_by=self.admin,
+            start_date=today,
+            end_date=today + timedelta(days=5),
+            status="draft",
+        )
+        CampagneDistribution.objects.create(
+            name="Annul\u00e9e",
+            created_by=self.admin,
+            start_date=today,
+            end_date=today + timedelta(days=5),
+            status="cancelled",
+        )
+        response = self.client.get(reverse("distribution:statistics"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["campagnes_drafts"], 1)
+        self.assertEqual(response.context["campagnes_cancelled"], 1)
+        content = html.unescape(response.content.decode())
+        self.assertIn("Annul\u00e9es", content)
+
+    def test_statistics_kpi_links(self):
+        response = self.client.get(reverse("distribution:statistics"))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("campagnes/?status=active", content)
+        self.assertIn("campagnes/?status=completed", content)
+        self.assertIn(reverse("distribution:commune_list"), content)
+
+    def test_statistics_recent_ordered_by_end_date(self):
+        response = self.client.get(reverse("distribution:statistics"))
+        self.assertEqual(response.status_code, 200)
+        names = [
+            c.name for c in response.context["campagnes_recentes"]
+        ]
+        self.assertEqual(
+            names,
+            ["Campagne imminente", "Campagne future", "Campagne expir\u00e9e"],
+        )
+
 
 class CampagneProgressionBarTests(TestCase):
     def setUp(self):

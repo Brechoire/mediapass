@@ -535,27 +535,51 @@ def statistics(request):
     campagnes_terminees = CampagneDistribution.objects.filter(
         Q(status='completed') | Q(status='active', end_date__lt=today)
     ).count()
-    
+    campagnes_drafts = CampagneDistribution.objects.filter(
+        status='draft'
+    ).count()
+    campagnes_cancelled = CampagneDistribution.objects.filter(
+        status='cancelled'
+    ).count()
+
+    distributions_stats = Distribution.objects.aggregate(
+        total=Count('id'),
+        distribuees=Count('id', filter=Q(is_distributed=True)),
+    )
+    distributions_total = distributions_stats['total']
+    distributions_distribuees = distributions_stats['distribuees']
+
     total_communes = Commune.objects.count()
     total_lieux = Lieu.objects.filter(is_active=True).count()
-    
+
     # Top des communes par nombre de lieux
     top_communes = Commune.objects.annotate(
         lieux_count=Count('lieux', filter=Q(lieux__is_active=True))
     ).order_by('-lieux_count')[:5]
-    
-    # Campagnes récentes
+
+    # Campagnes récentes (même tri que la liste : fin la plus proche
+    # en premier, campagnes expirées en bas)
     campagnes_recentes = CampagneDistribution.objects.select_related(
         'created_by'
     ).annotate(
         _total_lieux=Count('distributions'),
         _lieux_distribues=Count('distributions', filter=Q(distributions__is_distributed=True))
-    ).order_by('-created_at')[:5]
-    
+    ).order_by(
+        Case(
+            When(end_date__lt=today, then=Value(1)),
+            default=Value(0),
+        ),
+        'end_date',
+    )[:5]
+
     context = {
         'total_campagnes': total_campagnes,
         'campagnes_actives': campagnes_actives,
         'campagnes_terminees': campagnes_terminees,
+        'campagnes_drafts': campagnes_drafts,
+        'campagnes_cancelled': campagnes_cancelled,
+        'distributions_total': distributions_total,
+        'distributions_distribuees': distributions_distribuees,
         'total_communes': total_communes,
         'total_lieux': total_lieux,
         'top_communes': top_communes,

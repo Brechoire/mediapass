@@ -21,7 +21,8 @@
 
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div class="bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm">
+        <a href="{% url 'distribution:campagne_list' %}"
+           class="block bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Total campagnes</p>
@@ -31,8 +32,9 @@
                     <i class="bx bx-mail-send text-xl text-[#4a6fa5]"></i>
                 </div>
             </div>
-        </div>
-        <div class="bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm">
+        </a>
+        <a href="{% url 'distribution:campagne_list' %}?status=active"
+           class="block bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">En cours</p>
@@ -42,8 +44,9 @@
                     <i class="bx bx-play-circle text-xl text-[#e67e22]"></i>
                 </div>
             </div>
-        </div>
-        <div class="bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm">
+        </a>
+        <a href="{% url 'distribution:campagne_list' %}?status=completed"
+           class="block bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Termin&#xE9;es</p>
@@ -53,18 +56,19 @@
                     <i class="bx bx-check-circle text-xl text-[#00a86b]"></i>
                 </div>
             </div>
-        </div>
-        <div class="bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm">
+        </a>
+        <a href="{% url 'distribution:commune_list' %}"
+           class="block bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieux</p>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieux actifs</p>
                     <p class="text-3xl font-bold text-[#8e44ad] mt-1">{{ total_lieux }}</p>
                 </div>
                 <div class="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center">
                     <i class="bx bx-map text-xl text-[#8e44ad]"></i>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -95,7 +99,7 @@
                                             <div class="w-8 h-8 rounded-lg bg-[#e8eef7] flex items-center justify-center">
                                                 <i class="bx bx-buildings text-sm text-[#4a6fa5]"></i>
                                             </div>
-                                            <span class="text-sm font-medium text-[#1e293b]">{{ commune.name }}</span>
+                                            <a href="{% url 'distribution:commune_detail' commune.pk %}" class="text-sm font-medium text-[#1e293b] hover:text-[#4a6fa5] transition-colors">{{ commune.name }}</a>
                                         </div>
                                     </td>
                                     <td class="px-4 py-4 text-center">
@@ -142,29 +146,46 @@
                             <p class="text-xs font-medium text-[#00a86b] mt-1">Termin&#xE9;es</p>
                         </div>
                         <div class="text-center p-4 rounded-xl bg-gray-50 border border-gray-200">
-                            <p class="text-2xl font-bold text-gray-600">{{ total_campagnes|add:"-"|add:campagnes_actives|add:"-"|add:campagnes_terminees }}</p>
+                            <p class="text-2xl font-bold text-gray-600">{{ campagnes_drafts }}</p>
                             <p class="text-xs font-medium text-gray-500 mt-1">Brouillons</p>
                         </div>
-                        <div class="text-center p-4 rounded-xl bg-purple-50 border border-purple-200">
+                        <div class="text-center p-4 rounded-xl bg-red-50 border border-red-200">
+                            <p class="text-2xl font-bold text-red-600">{{ campagnes_cancelled }}</p>
+                            <p class="text-xs font-medium text-red-500 mt-1">Annul&#xE9;es</p>
+                        </div>
+                        <div class="text-center p-4 rounded-xl bg-purple-50 border border-purple-200 col-span-2">
                             <p class="text-2xl font-bold text-[#8e44ad]">{{ total_lieux }}</p>
-                            <p class="text-xs font-medium text-[#8e44ad] mt-1">Lieux total</p>
+                            <p class="text-xs font-medium text-[#8e44ad] mt-1">Lieux actifs</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#f8f9fc] rounded-xl p-4 border border-[#dce3ef] mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Campagnes</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-[#e8eef7] rounded-full overflow-hidden flex">
+                            <div class="h-full bg-[#e67e22] transition-all" style="width: {% if total_campagnes > 0 %}{% widthratio campagnes_actives total_campagnes 100 %}{% else %}0{% endif %}%"></div>
+                            <div class="h-full bg-[#00a86b] transition-all" style="width: {% if total_campagnes > 0 %}{% widthratio campagnes_terminees total_campagnes 100 %}{% else %}0{% endif %}%"></div>
+                            <div class="h-full bg-gray-300 transition-all" style="width: {% if total_campagnes > 0 %}{% widthratio campagnes_drafts total_campagnes 100 %}{% else %}0{% endif %}%"></div>
+                            <div class="h-full bg-[#d46a78] transition-all" style="width: {% if total_campagnes > 0 %}{% widthratio campagnes_cancelled total_campagnes 100 %}{% else %}0{% endif %}%"></div>
+                        </div>
+                        <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-[#e67e22]"></span> En cours</span>
+                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-[#00a86b]"></span> Termin&#xE9;es</span>
+                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-gray-300"></span> Brouillons</span>
+                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-[#d46a78]"></span> Annul&#xE9;es</span>
                         </div>
                     </div>
 
                     <div class="bg-[#f8f9fc] rounded-xl p-4 border border-[#dce3ef]">
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Progression globale</span>
+                            <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieux distribu&#xE9;s</span>
                             <span class="text-xs font-semibold text-[#1e293b]">
-                                {% if total_campagnes > 0 %}{% widthratio campagnes_terminees total_campagnes 100 %}%{% else %}0{% endif %} termin&#xE9;es
+                                {{ distributions_distribuees }}/{{ distributions_total }}
                             </span>
                         </div>
-                        <div class="w-full h-2.5 bg-[#e8eef7] rounded-full overflow-hidden flex">
-                            <div class="h-full bg-[#e67e22] transition-all" style="width: {% if total_campagnes > 0 %}{% widthratio campagnes_actives total_campagnes 100 %}{% else %}0{% endif %}%"></div>
-                            <div class="h-full bg-[#00a86b] transition-all" style="width: {% if total_campagnes > 0 %}{% widthratio campagnes_terminees total_campagnes 100 %}{% else %}0{% endif %}%"></div>
-                        </div>
-                        <div class="flex gap-4 mt-2">
-                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-[#e67e22]"></span> En cours</span>
-                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-[#00a86b]"></span> Termin&#xE9;es</span>
+                        <div class="w-full h-2.5 bg-[#e8eef7] rounded-full overflow-hidden">
+                            <div class="h-full bg-[#4a6fa5] transition-all" style="width: {% widthratio distributions_distribuees distributions_total 100 %}%"></div>
                         </div>
                     </div>
                 </div>
@@ -220,7 +241,7 @@
                                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Termin&#xE9;e
                                 </span>
-                                {% elif campagne.status == 'draft' %}
+                                {% elif campagne.effective_status == 'draft' %}
                                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-50 text-gray-600 border border-gray-200">
                                     <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> Brouillon
                                 </span>
