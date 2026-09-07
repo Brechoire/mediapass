@@ -375,6 +375,14 @@ class CampagneExpirationTests(TestCase):
         self.assertIn("Campagne expir\u00e9e", content)
         self.assertIn("Termin\u00e9e", content)
 
+    def test_detail_shows_expired_date_badge(self):
+        response = self.client.get(
+            reverse("distribution:campagne_detail", args=[self.expired.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        content = html.unescape(response.content.decode())
+        self.assertIn("Date d\u00e9pass\u00e9e", content)
+
 
 class CampagneProgressionBarTests(TestCase):
     def setUp(self):

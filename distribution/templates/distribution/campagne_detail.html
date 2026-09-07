@@ -84,22 +84,29 @@
                 <div class="lg:col-span-1">
                     <div class="bg-gray-50 rounded-xl p-6">
                         <div class="text-center mb-4">
-                            <h3 class="text-3xl font-bold text-indigo-600 mb-1">{{ campagne.lieux_distribues }}/{{ campagne.total_lieux }}</h3>
+                            <h3 id="global-counter" class="text-3xl font-bold text-indigo-600 mb-1">{{ campagne.lieux_distribues }}/{{ campagne.total_lieux }}</h3>
                             <p class="text-sm text-gray-600">Lieux distribués</p>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-3 mb-4">
-                            <div class="bg-indigo-600 h-3 rounded-full" style="width: {% widthratio campagne.lieux_distribues campagne.total_lieux 100 %}%"></div>
+                            <div id="global-progress-bar" class="bg-indigo-600 h-3 rounded-full" style="width: {% widthratio campagne.lieux_distribues campagne.total_lieux 100 %}%"></div>
                         </div>
+                        <div id="global-badge" data-expired="{% if campagne.effective_status == 'completed' %}true{% else %}false{% endif %}">
                         {% if campagne.is_completed %}
                             <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800">
                                 <i class="bx bx-check mr-1"></i>
                                 Campagne terminée
+                            </span>
+                        {% elif campagne.effective_status == 'completed' %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                                <i class="bx bx-time mr-1"></i>
+                                Date dépassée — {{ campagne.progression }}% distribué
                             </span>
                         {% else %}
                             <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
                                 {{ campagne.progression }}% complété
                             </span>
                         {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -163,7 +170,7 @@
                                 {{ commune_name }}
                             </h3>
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800" id="commune-progress-{{ forloop.counter }}">
-                                {{ data.lieux|length }} lieu{{ data.lieux|length|pluralize }}
+                                {{ data.lieux|length }} lieu{{ data.lieux|length|pluralize:"x" }}
                             </span>
                         </div>
                         <div class="flex items-center gap-4">
@@ -366,7 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const selectedCheckboxes = Array.from(currentCheckboxes).filter(cb => cb.checked);
             
             if (selectedCheckboxes.length === 0) {
-                alert('Aucun lieu sélectionné pour validation.');
+                showAlert('Aucun lieu sélectionné pour validation.', 'info');
                 return;
             }
             
@@ -470,12 +477,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function updateCardAppearance(distributionId, isDistributed) {
         const card = document.querySelector(`[data-distribution-id="${distributionId}"]`);
+        if (!card) return;
         if (isDistributed) {
-            card.classList.remove('border-light');
-            card.classList.add('border-success');
+            card.classList.remove('border-gray-200');
+            card.classList.add('border-emerald-200');
         } else {
-            card.classList.remove('border-success');
-            card.classList.add('border-light');
+            card.classList.remove('border-emerald-200');
+            card.classList.add('border-gray-200');
         }
     }
     
@@ -507,27 +515,40 @@ document.addEventListener('DOMContentLoaded', function() {
         const total = totalCheckboxes.length;
         const distributed = Array.from(totalCheckboxes).filter(cb => cb.checked).length;
         const percentage = total > 0 ? Math.round((distributed / total) * 100) : 0;
-        
-        // Mettre à jour l'affichage global
-        const globalProgress = document.querySelector('.progress-bar');
-        if (globalProgress) {
-            globalProgress.style.width = `${percentage}%`;
-            globalProgress.setAttribute('aria-valuenow', percentage);
-        }
-        
-        const globalCounter = document.querySelector('.text-primary');
+
+        // Mettre à jour le compteur
+        const globalCounter = document.getElementById('global-counter');
         if (globalCounter) {
             globalCounter.textContent = `${distributed}/${total}`;
         }
-        
-        const globalBadge = document.querySelector('.badge.fs-6');
+
+        // Mettre à jour la barre de progression
+        const globalProgressBar = document.getElementById('global-progress-bar');
+        if (globalProgressBar) {
+            globalProgressBar.style.width = `${percentage}%`;
+        }
+
+        // Mettre à jour le badge de statut
+        const globalBadge = document.getElementById('global-badge');
         if (globalBadge) {
-            if (distributed === total && total > 0) {
-                globalBadge.textContent = '✓ Campagne terminée';
-                globalBadge.className = 'badge bg-success fs-6';
+            const isCompleted = distributed === total && total > 0;
+            if (isCompleted) {
+                globalBadge.innerHTML = `
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800">
+                        <i class="bx bx-check mr-1"></i>
+                        Campagne terminée
+                    </span>`;
+            } else if (globalBadge.dataset.expired === 'true') {
+                globalBadge.innerHTML = `
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                        <i class="bx bx-time mr-1"></i>
+                        Date dépassée — ${percentage}% distribué
+                    </span>`;
             } else {
-                globalBadge.textContent = `${percentage}% complété`;
-                globalBadge.className = 'badge bg-warning fs-6';
+                globalBadge.innerHTML = `
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                        ${percentage}% complété
+                    </span>`;
             }
         }
     }
@@ -723,15 +744,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function showAlert(message, type) {
         // Créer une alerte temporaire
+        const colors = {
+            success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+            danger: 'border-red-200 bg-red-50 text-red-800',
+            warning: 'border-amber-200 bg-amber-50 text-amber-800',
+            info: 'border-blue-200 bg-blue-50 text-blue-800',
+        };
         const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-        alertDiv.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
+        alertDiv.className = `fixed top-20 right-4 z-[9999] min-w-[300px] max-w-md px-4 py-3 rounded-xl border shadow-lg text-sm font-medium ${colors[type] || colors.info}`;
+        alertDiv.setAttribute('role', 'status');
+        alertDiv.textContent = message;
         document.body.appendChild(alertDiv);
-        
+
         // Supprimer l'alerte après 5 secondes
         setTimeout(() => {
             if (alertDiv.parentNode) {
