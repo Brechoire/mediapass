@@ -1,7 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
+from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 from django.db import transaction
 from django.core.paginator import Paginator
@@ -361,7 +362,7 @@ def commune_detail(request, pk):
         return redirect('distribution:access_denied')
     
     commune = get_object_or_404(Commune, pk=pk)
-    lieux = commune.lieux.filter(is_active=True).order_by('name')
+    lieux = commune.lieux.all().order_by('name')
     
     context = {
         'commune': commune,
@@ -402,7 +403,7 @@ def lieu_create(request, commune_pk):
 
     if request.method == 'POST':
         logger.debug("POST data received for commune %s", commune_pk)
-        form = LieuForm(request.POST)
+        form = LieuForm(request.POST, instance=Lieu(commune=commune))
         if form.is_valid():
             lieu = form.save(commit=False)
             lieu.commune = commune
@@ -418,6 +419,80 @@ def lieu_create(request, commune_pk):
         'commune': commune,
     }
     return render(request, 'distribution/lieu_form.html', context)
+
+
+@login_required
+def lieu_edit_modal(request, commune_pk, pk):
+    """Vue HTMX : retourne le fragment HTML de la modale d'édition d'un lieu"""
+    if not is_admin_excluding_mediatheque(request.user):
+        if request.headers.get('HX-Request'):
+            return JsonResponse({'error': 'Accès refusé'}, status=403)
+        return redirect('distribution:access_denied')
+
+    lieu = get_object_or_404(Lieu, pk=pk, commune_id=commune_pk)
+    form = LieuForm(instance=lieu)
+
+    html = render_to_string(
+        'distribution/partials/lieu_modal.html',
+        {'form': form, 'lieu': lieu, 'commune': lieu.commune},
+        request=request,
+    )
+    return HttpResponse(html)
+
+
+@login_required
+@require_POST
+def lieu_update(request, commune_pk, pk):
+    """Vue HTMX : met à jour un lieu depuis la modale d'édition"""
+    if not is_admin_excluding_mediatheque(request.user):
+        return JsonResponse({'error': 'Accès refusé'}, status=403)
+
+    lieu = get_object_or_404(Lieu, pk=pk, commune_id=commune_pk)
+    form = LieuForm(request.POST, instance=lieu)
+    if form.is_valid():
+        lieu = form.save()
+        logger.info(
+            "Lieu updated: %s in %s by %s",
+            lieu.name, lieu.commune.name, request.user,
+        )
+        card_html = render_to_string(
+            'distribution/partials/lieu_card.html',
+            {'lieu': lieu, 'commune': lieu.commune},
+            request=request,
+        )
+        return JsonResponse({
+            'success': True,
+            'lieu_id': lieu.pk,
+            'card_html': card_html,
+        })
+
+    errors = {}
+    for field, field_errors in form.errors.items():
+        errors[field] = [str(e) for e in field_errors]
+    return JsonResponse(
+        {'error': 'Formulaire invalide', 'errors': errors}, status=400
+    )
+
+
+@login_required
+@require_POST
+def lieu_toggle(request, commune_pk, pk):
+    """Vue HTMX : active/désactive un lieu"""
+    if not is_admin_excluding_mediatheque(request.user):
+        return JsonResponse({'error': 'Accès refusé'}, status=403)
+
+    lieu = get_object_or_404(Lieu, pk=pk, commune_id=commune_pk)
+    lieu.is_active = not lieu.is_active
+    lieu.save()
+    logger.info(
+        "Lieu %s is_active=%s by %s",
+        lieu.name, lieu.is_active, request.user,
+    )
+    return render(
+        request,
+        'distribution/partials/lieu_card.html',
+        {'lieu': lieu, 'commune': lieu.commune},
+    )
 
 
 @login_required

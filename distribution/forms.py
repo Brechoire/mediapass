@@ -19,7 +19,7 @@ class CommuneForm(forms.ModelForm):
 
 class LieuForm(forms.ModelForm):
     """Formulaire pour créer/modifier un lieu"""
-    
+
     class Meta:
         model = Lieu
         fields = ['name', 'description', 'is_active']
@@ -37,6 +37,22 @@ class LieuForm(forms.ModelForm):
                 attrs={'class': 'form-check-input'}
             )
         }
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if name:
+            commune = getattr(self.instance, 'commune', None)
+            if commune:
+                queryset = Lieu.objects.filter(
+                    commune=commune, name__iexact=name
+                )
+                if self.instance.pk:
+                    queryset = queryset.exclude(pk=self.instance.pk)
+                if queryset.exists():
+                    raise forms.ValidationError(
+                        "Ce nom existe déjà dans cette commune."
+                    )
+        return name
 
 
 class CampagneDistributionForm(forms.ModelForm):

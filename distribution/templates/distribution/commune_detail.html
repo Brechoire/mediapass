@@ -73,48 +73,7 @@
             {% if lieux %}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for lieu in lieux %}
-                <div class="bg-white rounded-2xl border {% if lieu.is_active %}border-[#dce3ef]{% else %}border-gray-200 bg-gray-50/50{% endif %} hover:shadow-md transition-shadow">
-                    <div class="p-5">
-                        <div class="flex items-start justify-between mb-4">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center">
-                                    <i class="bx bx-current-location text-lg {% if lieu.is_active %}text-[#4a6fa5]{% else %}text-gray-400{% endif %}"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-sm font-semibold text-[#1e293b]">{{ lieu.name }}</h3>
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {% if lieu.is_active %}bg-emerald-50 text-emerald-700 border border-emerald-200{% else %}bg-gray-100 text-gray-600 border border-gray-200{% endif %}">
-                                        <span class="w-1.5 h-1.5 rounded-full {% if lieu.is_active %}bg-emerald-500{% else %}bg-gray-400{% endif %} mr-1"></span>
-                                        {% if lieu.is_active %}Actif{% else %}Inactif{% endif %}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {% if lieu.description %}
-                        <p class="text-xs text-[#b0bedb] mb-4">{{ lieu.description }}</p>
-                        {% endif %}
-
-                        <div class="flex items-center justify-between pt-3 border-t border-[#dce3ef]">
-                            <div class="flex items-center text-xs text-[#b0bedb]">
-                                <i class="bx bx-time mr-1"></i>
-                                {{ lieu.created_at|date:"d/m/Y" }}
-                            </div>
-                            <div class="flex items-center gap-1.5">
-                                <button type="button" onclick="editLieu({{ lieu.pk }})"
-                                   class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#dce3ef] text-xs font-medium text-[#1e293b] hover:bg-[#f8f9fc] transition-colors">
-                                    <i class="bx bx-edit text-sm"></i> Modifier
-                                </button>
-                                <button type="button" onclick="toggleLieu({{ lieu.pk }}, {{ lieu.is_active|yesno:'false,true' }})"
-                                   class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors
-                                   {% if lieu.is_active %}border border-amber-200 text-amber-700 hover:bg-amber-50
-                                   {% else %}border border-emerald-200 text-emerald-700 hover:bg-emerald-50{% endif %}">
-                                    <i class="bx bx-{% if lieu.is_active %}pause{% else %}play{% endif %} text-sm"></i>
-                                    {% if lieu.is_active %}D&#xE9;sactiver{% else %}Activer{% endif %}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {% include "distribution/partials/lieu_card.html" %}
                 {% endfor %}
             </div>
             {% else %}
@@ -133,18 +92,6 @@
         </div>
     </div>
 </section>
-{% endblock %}
 
-{% block javascripts %}
-<script>
-function editLieu(lieuId) {
-    alert('&#xC9;dition du lieu ' + lieuId + ' - &#xC0; impl&#xE9;menter');
-}
-function toggleLieu(lieuId, isActive) {
-    const action = isActive ? 'd&#xE9;sactiver' : 'activer';
-    if (confirm('Voulez-vous ' + action + ' ce lieu ?')) {
-        alert('Toggle du lieu ' + lieuId + ' - &#xC0; impl&#xE9;menter');
-    }
-}
-</script>
+<div id="lieu-modal"></div>
 {% endblock %}

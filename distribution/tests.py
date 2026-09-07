@@ -147,3 +147,137 @@ class DistributionCRUDTests(TestCase):
         self.client.login(username="admin", password="admin123")
         response = self.client.get(reverse("distribution:campagne_list"))
         self.assertEqual(response.status_code, 200)
+
+
+class LieuViewsTests(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(
+            username="admin", password="admin123"
+        )
+        self.normal_user = User.objects.create_user(
+            username="normal", password="testpass123"
+        )
+        self.commune = Commune.objects.create(name="Testville")
+        self.lieu = Lieu.objects.create(
+            commune=self.commune, name="M\u00e9diath\u00e8que"
+        )
+
+    def test_edit_modal_requires_login(self):
+        url = reverse(
+            "distribution:lieu_edit_modal",
+            args=[self.commune.pk, self.lieu.pk],
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 302)
+
+    def test_edit_modal_denied_for_normal_user(self):
+        url = reverse(
+            "distribution:lieu_edit_modal",
+            args=[self.commune.pk, self.lieu.pk],
+        )
+        self.client.login(username="normal", password="testpass123")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 302)
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 403)
+
+    def test_edit_modal_superuser_ok(self):
+        url = reverse(
+            "distribution:lieu_edit_modal",
+            args=[self.commune.pk, self.lieu.pk],
+        )
+        self.client.login(username="admin", password="admin123")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Modifier le lieu", response.content.decode())
+        self.assertIn(self.lieu.name, response.content.decode())
+
+    def test_update_success(self):
+        url = reverse(
+            "distribution:lieu_update",
+            args=[self.commune.pk, self.lieu.pk],
+        )
+        self.client.login(username="admin", password="admin123")
+        response = self.client.post(
+            url,
+            {
+                "name": "Biblioth\u00e8que du Centre",
+                "description": "Nouveau lieu",
+                "is_active": False,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(data["lieu_id"], self.lieu.pk)
+        self.assertIn("lieu-card", data["card_html"])
+        self.lieu.refresh_from_db()
+        self.assertEqual(self.lieu.name, "Biblioth\u00e8que du Centre")
+        self.assertEqual(self.lieu.description, "Nouveau lieu")
+        self.assertFalse(self.lieu.is_active)
+
+    def test_update_duplicate_name(self):
+        Lieu.objects.create(commune=self.commune, name="Autre lieu")
+        url = reverse(
+            "distribution:lieu_update",
+            args=[self.commune.pk, self.lieu.pk],
+        )
+        self.client.login(username="admin", password="admin123")
+        response = self.client.post(
+            url,
+            {"name": "Autre lieu", "description": "", "is_active": True},
+        )
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn("error", data)
+        self.assertIn("name", data["errors"])
+
+    def test_update_denied_for_normal_user(self):
+        url = reverse(
+            "distribution:lieu_update",
+            args=[self.commune.pk, self.lieu.pk],
+        )
+        self.client.login(username="normal", password="testpass123")
+        response = self.client.post(
+            url,
+            {"name": "Autre nom", "description": "", "is_active": True},
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_toggle(self):
+        url = reverse(
+            "distribution:lieu_toggle",
+            args=[self.commune.pk, self.lieu.pk],
+        )
+        self.client.login(username="admin", password="admin123")
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 200)
+        self.lieu.refresh_from_db()
+        self.assertFalse(self.lieu.is_active)
+        self.assertIn("Inactif", response.content.decode())
+        self.assertIn("Activer", response.content.decode())
+
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 200)
+        self.lieu.refresh_from_db()
+        self.assertTrue(self.lieu.is_active)
+
+    def test_toggle_denied_for_normal_user(self):
+        url = reverse(
+            "distribution:lieu_toggle",
+            args=[self.commune.pk, self.lieu.pk],
+        )
+        self.client.login(username="normal", password="testpass123")
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_commune_detail_shows_inactive_lieux(self):
+        Lieu.objects.create(
+            commune=self.commune, name="Ancien lieu", is_active=False
+        )
+        self.client.login(username="admin", password="admin123")
+        response = self.client.get(
+            reverse("distribution:commune_detail", args=[self.commune.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Ancien lieu", response.content.decode())

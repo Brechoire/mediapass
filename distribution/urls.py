@@ -29,4 +29,10 @@ urlpatterns = [
     path('communes/create/', views.commune_create, name='commune_create'),
     path('communes/<int:pk>/', views.commune_detail, name='commune_detail'),
     path('communes/<int:commune_pk>/lieux/create/', views.lieu_create, name='lieu_create'),
+    path('communes/<int:commune_pk>/lieux/<int:pk>/edit/', views.lieu_edit_modal,
+         name='lieu_edit_modal'),
+    path('communes/<int:commune_pk>/lieux/<int:pk>/update/', views.lieu_update,
+         name='lieu_update'),
+    path('communes/<int:commune_pk>/lieux/<int:pk>/toggle/', views.lieu_toggle,
+         name='lieu_toggle'),
 ]

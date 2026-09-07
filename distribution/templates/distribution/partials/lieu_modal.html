@@ -1,0 +1,124 @@
+{% load widget_tweaks %}
+<div id="lieu-modal" class="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="lieu-modal-title">
+    <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" onclick="closeLieuModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-xl border border-[#dce3ef] w-full max-w-md mx-4 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-[#dce3ef]">
+            <div>
+                <h3 id="lieu-modal-title" class="text-lg font-bold text-[#1e293b] flex items-center gap-2">
+                    <i class="bx bx-edit text-[#4a6fa5]"></i>
+                    Modifier le lieu
+                </h3>
+                <p class="text-xs text-[#b0bedb] mt-0.5">{{ commune.name }}</p>
+            </div>
+            <button type="button" onclick="closeLieuModal()" class="p-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer" aria-label="Fermer">
+                <i class="bx bx-x text-xl text-[#7a8fa0]"></i>
+            </button>
+        </div>
+        <div class="p-6">
+            <form id="lieu-update-form"
+                  hx-post="{% url 'distribution:lieu_update' commune.pk lieu.pk %}"
+                  hx-target="#lieu-modal"
+                  hx-swap="innerHTML"
+                  novalidate>
+                {% csrf_token %}
+                <div class="space-y-4">
+                    <div>
+                        <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
+                            <i class="bx bx-map-pin mr-1"></i> {{ form.name.label }}
+                        </label>
+                        {{ form.name|add_class:"tw-input w-full" }}
+                        <div id="name-errors" class="text-red-600 text-xs mt-1.5 hidden"></div>
+                    </div>
+                    <div>
+                        <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-[#4a6fa5] mb-1.5">
+                            <i class="bx bx-text mr-1"></i> {{ form.description.label }}
+                        </label>
+                        {{ form.description|add_class:"tw-input w-full" }}
+                        <div id="description-errors" class="text-red-600 text-xs mt-1.5 hidden"></div>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            {{ form.is_active|add_class:"w-4 h-4 text-[#4a6fa5] bg-gray-100 border-gray-300 rounded focus:ring-[#4a6fa5]" }}
+                            <label for="{{ form.is_active.id_for_label }}" class="text-sm font-medium text-[#1e293b]">
+                                {{ form.is_active.label }}
+                            </label>
+                        </div>
+                        <p class="text-xs text-[#b0bedb] mt-1.5">Un lieu inactif n'apparaît plus dans les campagnes de distribution.</p>
+                    </div>
+                    <div id="form-errors" class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 hidden"></div>
+                </div>
+                <div class="mt-6 flex gap-3 justify-end">
+                    <button type="button" onclick="closeLieuModal()"
+                            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#5a6f80] hover:bg-white hover:border-[#b0bedb] transition-all">
+                        Annuler
+                    </button>
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-all shadow-sm">
+                        <i class="bx bx-save"></i>
+                        Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    var modal = document.getElementById('lieu-modal');
+    if (!modal) return;
+
+    var form = document.getElementById('lieu-update-form');
+
+    function closeLieuModal() {
+        var m = document.getElementById('lieu-modal');
+        if (m) m.remove();
+    }
+    window.closeLieuModal = closeLieuModal;
+
+    function showFieldErrors(fieldId, messages) {
+        var el = document.getElementById(fieldId);
+        if (!el) return;
+        el.textContent = (messages || []).join(' ');
+        el.classList.remove('hidden');
+    }
+
+    function hideErrors() {
+        ['name-errors', 'description-errors', 'form-errors'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+        });
+    }
+
+    if (form) {
+        form.addEventListener('htmx:beforeRequest', function() {
+            hideErrors();
+        });
+        form.addEventListener('htmx:afterRequest', function(evt) {
+            var xhr = evt.detail.xhr;
+            if (!xhr) return;
+            var resp;
+            try {
+                resp = JSON.parse(xhr.responseText);
+            } catch (e) {
+                return;
+            }
+            if (resp.success) {
+                var card = document.getElementById('lieu-card-' + resp.lieu_id);
+                if (card && resp.card_html) {
+                    card.outerHTML = resp.card_html;
+                }
+                closeLieuModal();
+            } else if (resp.error) {
+                var errors = resp.errors || {};
+                showFieldErrors('name-errors', errors.name);
+                showFieldErrors('description-errors', errors.description);
+                var formErrors = document.getElementById('form-errors');
+                if (formErrors) {
+                    formErrors.textContent = resp.error;
+                    formErrors.classList.remove('hidden');
+                }
+            }
+        });
+    }
+})();
+</script>
