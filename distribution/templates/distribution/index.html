@@ -180,7 +180,7 @@
                             <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Statut</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Progression</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden md:table-cell">P&#xE9;riode</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden lg:table-cell">Cr&#xE9;&#xE9;e par</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden lg:table-cell">Documents</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
@@ -223,13 +223,20 @@
                                             style="width: {% widthratio campagne.lieux_distribues campagne.total_lieux 100 %}%"></div>
                                     </div>
                                     <span class="text-xs font-semibold text-[#b0bedb] min-w-[50px] text-right">{{ campagne.lieux_distribues }}/{{ campagne.total_lieux }}</span>
+                                    {% if campagne.total_quantite %}<span class="text-xs font-semibold text-emerald-700 min-w-[50px] text-right">{{ campagne.quantite_distribuee }}/{{ campagne.total_quantite }} docs</span>{% endif %}
                                 </div>
                             </td>
                             <td class="px-4 py-4 text-sm text-[#b0bedb] hidden md:table-cell">
                                 {{ campagne.start_date|date:"d/m/Y" }}<span class="mx-1">&#x2192;</span>{{ campagne.end_date|date:"d/m/Y" }}
                             </td>
-                            <td class="px-4 py-4 text-sm text-[#1e293b] hidden lg:table-cell">
-                                {{ campagne.created_by.get_full_name|default:campagne.created_by.username }}
+                            <td class="px-4 py-4 text-sm hidden lg:table-cell">
+                                {% if campagne.total_quantite %}
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <i class="bx bx-copy"></i> {{ campagne.quantite_distribuee }}/{{ campagne.total_quantite }} docs distribu&#xE9;s
+                                </span>
+                                {% else %}
+                                <span class="text-[#b0bedb]">—</span>
+                                {% endif %}
                             </td>
                             <td class="px-4 py-4 text-right">
                                 <a href="{% url 'distribution:campagne_detail' campagne.pk %}"

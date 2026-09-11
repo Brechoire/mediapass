@@ -2,7 +2,10 @@ from django.contrib import admin
 from django.utils import timezone
 from django.utils.html import format_html
 from django.db.models import Count, Q
-from .models import Commune, Lieu, CampagneDistribution, Distribution
+from .models import (
+    Commune, Lieu, CampagneDistribution, Distribution,
+    CampagneLieuExclusion,
+)
 
 
 @admin.register(Commune)
@@ -76,7 +79,8 @@ class DistributionInline(admin.TabularInline):
     model = Distribution
     extra = 0
     fields = [
-        'lieu', 'is_distributed', 'distributed_by', 'distributed_at', 'notes'
+        'lieu', 'is_distributed', 'quantite', 'distributed_by',
+        'distributed_at', 'notes'
     ]
     readonly_fields = ['distributed_at']
     can_delete = False
@@ -135,7 +139,10 @@ class CampagneDistributionAdmin(admin.ModelAdmin):
     def progression_display(self, obj):
         if obj.total_lieux == 0:
             return "Aucun lieu"
-        return f"{obj.lieux_distribues}/{obj.total_lieux} ({obj.progression}%)"
+        text = f"{obj.lieux_distribues}/{obj.total_lieux} ({obj.progression}%)"
+        if obj.total_quantite:
+            text += f" · {obj.quantite_distribuee}/{obj.total_quantite} flyers"
+        return text
     progression_display.short_description = 'Progression'
 
     def is_completed_display(self, obj):
@@ -185,7 +192,7 @@ class CampagneDistributionAdmin(admin.ModelAdmin):
 @admin.register(Distribution)
 class DistributionAdmin(admin.ModelAdmin):
     list_display = [
-        'campagne', 'lieu', 'is_distributed_display',
+        'campagne', 'lieu', 'is_distributed_display', 'quantite',
         'distributed_by', 'distributed_at', 'created_at'
     ]
     list_filter = [
@@ -202,7 +209,7 @@ class DistributionAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Distribution', {
-            'fields': ('campagne', 'lieu', 'is_distributed')
+            'fields': ('campagne', 'lieu', 'is_distributed', 'quantite')
         }),
         ('Détails', {
             'fields': ('distributed_by', 'distributed_at', 'notes')
@@ -269,6 +276,24 @@ class DistributionAdmin(admin.ModelAdmin):
         if obj.is_distributed and not obj.distributed_by:
             obj.distributed_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(CampagneLieuExclusion)
+class CampagneLieuExclusionAdmin(admin.ModelAdmin):
+    list_display = [
+        'campagne', 'lieu', 'excluded_by', 'excluded_at'
+    ]
+    list_filter = ['campagne', 'excluded_at']
+    search_fields = [
+        'campagne__name', 'lieu__name', 'lieu__commune__name'
+    ]
+    ordering = ['-excluded_at']
+    list_per_page = 50
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'campagne', 'lieu__commune', 'excluded_by'
+        )
 
 
 # Configuration de l'interface d'administration

@@ -167,6 +167,41 @@ class CampagneDistribution(models.Model):
         return self.distributions.filter(is_distributed=True).count()
 
     @property
+    def total_quantite(self):
+        """Somme des quantités (flyers/documents) prévues pour la campagne"""
+        if hasattr(self, '_total_quantite') and self._total_quantite is not None:
+            return self._total_quantite
+        from django.db.models import Sum
+        from django.db.models.functions import Coalesce
+        return self.distributions.aggregate(
+            total=Coalesce(Sum('quantite'), 0)
+        )['total']
+
+    @property
+    def quantite_distribuee(self):
+        """Somme des quantités des lieux où la distribution est validée"""
+        if (
+            hasattr(self, '_quantite_distribuee')
+            and self._quantite_distribuee is not None
+        ):
+            return self._quantite_distribuee
+        from django.db.models import Q, Sum
+        from django.db.models.functions import Coalesce
+        return self.distributions.aggregate(
+            total=Coalesce(
+                Sum('quantite', filter=Q(is_distributed=True)), 0
+            )
+        )['total']
+
+    @property
+    def progression_quantite(self):
+        """Pourcentage de documents distribués vs prévus"""
+        total = self.total_quantite
+        if total == 0:
+            return 0
+        return round((self.quantite_distribuee / total) * 100, 1)
+
+    @property
     def progression(self):
         """Retourne le pourcentage de progression"""
         total = self.total_lieux
@@ -217,7 +252,15 @@ class Distribution(models.Model):
         help_text="Cochez si le flyer a été distribué dans ce lieu",
         db_index=True
     )
-    
+
+    quantite = models.PositiveIntegerField(
+        default=0,
+        validators=[MinValueValidator(0)],
+        verbose_name="Quantité",
+        help_text="Nombre de flyers/documents à distribuer dans ce lieu",
+        db_index=True
+    )
+
     distributed_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -267,3 +310,51 @@ class Distribution(models.Model):
             self.distributed_at = None
             self.distributed_by = None
         super().save(*args, **kwargs)
+
+
+class CampagneLieuExclusion(models.Model):
+    """Trace les lieux retirés d'une campagne.
+
+    La ligne Distribution est supprimée physiquement ; cette trace
+    empêche sync_campagne_lieux de recréer le lieu dans la campagne
+    et permet de le réintégrer depuis l'interface.
+    """
+
+    campagne = models.ForeignKey(
+        CampagneDistribution,
+        on_delete=models.CASCADE,
+        related_name='lieux_exclus',
+        verbose_name="Campagne",
+        db_index=True
+    )
+
+    lieu = models.ForeignKey(
+        Lieu,
+        on_delete=models.CASCADE,
+        related_name='exclusions_campagne',
+        verbose_name="Lieu",
+        db_index=True
+    )
+
+    excluded_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='lieux_exclus',
+        verbose_name="Retiré par"
+    )
+
+    excluded_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Date du retrait"
+    )
+
+    class Meta:
+        verbose_name = "Lieu retiré d'une campagne"
+        verbose_name_plural = "Lieux retirés des campagnes"
+        ordering = ['campagne', 'lieu__commune__name', 'lieu__name']
+        unique_together = ['campagne', 'lieu']
+
+    def __str__(self):
+        return f"{self.campagne.name} - {self.lieu} (retiré)"
