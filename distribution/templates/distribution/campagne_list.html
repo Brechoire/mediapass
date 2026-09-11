@@ -18,10 +18,12 @@
                 </div>
                 <p class="text-white/70 text-sm">G&#xE9;rez vos campagnes de distribution de flyers</p>
             </div>
+            {% if can_manage %}
             <a href="{% url 'distribution:campagne_create' %}"
                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#2f4d75] text-sm font-semibold hover:bg-white/90 transition-all shadow-sm">
                 <i class="bx bx-plus"></i> Nouvelle campagne
             </a>
+            {% endif %}
         </div>
     </div>
 </section>
@@ -37,10 +39,12 @@
                     <label class="block text-sm font-medium text-[#1e293b] mb-2">Recherche</label>
                     {{ search_form.search|add_class:"tw-input w-full" }}
                 </div>
+                {% if can_manage %}
                 <div>
                     <label class="block text-sm font-medium text-[#1e293b] mb-2">Statut</label>
                     {{ search_form.status|add_class:"tw-input w-full" }}
                 </div>
+                {% endif %}
                 <div>
                     <label class="block text-sm font-medium text-[#1e293b] mb-2">Commune</label>
                     {{ search_form.commune|add_class:"tw-input w-full" }}
@@ -200,10 +204,12 @@
                             Commencez par cr&#xE9;er votre premi&#xE8;re campagne de distribution.
                         {% endif %}
                     </p>
+                    {% if can_manage %}
                     <a href="{% url 'distribution:campagne_create' %}"
                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4a6fa5] text-white font-medium text-sm hover:bg-[#3d5f8f] transition-all shadow-sm">
                         <i class="bx bx-plus"></i> Cr&#xE9;er une campagne
                     </a>
+                    {% endif %}
                 </div>
             {% endif %}
         </div>

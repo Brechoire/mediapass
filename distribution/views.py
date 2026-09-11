@@ -24,11 +24,52 @@ from .forms import (
 )
 
 
+DISTRIBUTION_AGENT_GROUP = 'distribution'
+
+
+def is_distribution_agent(user):
+    """Vérifie si l'utilisateur est membre du groupe « distribution ».
+
+    Cumulable avec d'autres groupes : seule l'appartenance au groupe
+    compte, quels que soient les autres groupes de l'utilisateur.
+    """
+    return (
+        user.is_authenticated
+        and user.groups.filter(name=DISTRIBUTION_AGENT_GROUP).exists()
+    )
+
+
+def is_distribution_manager(user):
+    """Vérifie si l'utilisateur a le plein accès à la gestion des distributions.
+
+    Superuser uniquement, ou membre d'au moins un groupe hors
+    « mediatheque » et hors « distribution ». Tout membre du groupe
+    « distribution » (même cumulé avec un autre groupe) n'est jamais
+    manager : pas de boutons Modifier/Supprimer, pas d'accès aux vues
+    de gestion.
+    """
+    if not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    if is_distribution_agent(user):
+        return False
+    return user.groups.exclude(name='mediatheque').exists()
+
+
+def can_access_distribution(user):
+    """Accès restreint aux distributions : manager OU agent.
+
+    Condition en OU additif : l'appartenance au groupe « distribution »
+    ouvre l'accès restreint en plus des droits des autres groupes,
+    sans jamais les retirer.
+    """
+    return is_distribution_manager(user) or is_distribution_agent(user)
+
+
 def is_admin_excluding_mediatheque(user):
-    """Vérifie si l'utilisateur est un super utilisateur ou un administrateur (exclut le groupe mediatheque)"""
-    return (user.is_authenticated and
-            (user.is_superuser or
-             (user.groups.exists() and not user.groups.filter(name='mediatheque').exists())))
+    """Alias historique : plein accès gestion (voir is_distribution_manager)."""
+    return is_distribution_manager(user)
 
 
 # Plafond de sécurité pour une quantité de flyers/documents par lieu.
@@ -120,8 +161,11 @@ def _parse_quantite(value):
 @login_required
 def index(request):
     """Page d'accueil de la gestion des distributions"""
-    if not is_admin_excluding_mediatheque(request.user):
+    if not can_access_distribution(request.user):
         return redirect('distribution:access_denied')
+    if not is_distribution_manager(request.user):
+        # Agents « distribution » : directement vers les campagnes en cours.
+        return redirect('distribution:campagne_list')
     
     # Récupérer les campagnes récentes avec annotations
     campagnes = CampagneDistribution.objects.select_related(
@@ -154,8 +198,10 @@ def index(request):
 @login_required
 def campagne_list(request):
     """Liste des campagnes de distribution"""
-    if not is_admin_excluding_mediatheque(request.user):
+    if not can_access_distribution(request.user):
         return redirect('distribution:access_denied')
+
+    can_manage = is_distribution_manager(request.user)
     
     # Formulaire de recherche
     search_form = SearchForm(request.GET)
@@ -178,7 +224,7 @@ def campagne_list(request):
                 Q(description__icontains=search)
             )
         
-        if status:
+        if status and can_manage:
             today = timezone.localdate()
             if status == 'active':
                 campagnes = campagnes.filter(
@@ -194,6 +240,13 @@ def campagne_list(request):
         
         if commune:
             campagnes = campagnes.filter(distributions__lieu__commune=commune).distinct()
+
+    if not can_manage:
+        # Agents « distribution » : seules les campagnes en cours,
+        # quel que soit le filtre statut demandé.
+        campagnes = campagnes.filter(
+            status='active', end_date__gte=timezone.localdate()
+        )
     
     # Tri : date de fin croissante (la plus proche en premier),
     # campagnes déjà terminées en bas de liste
@@ -214,16 +267,19 @@ def campagne_list(request):
     context = {
         'page_obj': page_obj,
         'search_form': search_form,
+        'can_manage': can_manage,
     }
-    
+
     return render(request, 'distribution/campagne_list.html', context)
 
 
 @login_required
 def campagne_detail(request, pk):
     """Détail d'une campagne avec gestion des distributions"""
-    if not is_admin_excluding_mediatheque(request.user):
+    if not can_access_distribution(request.user):
         return redirect('distribution:access_denied')
+
+    can_manage = is_distribution_manager(request.user)
     
     campagne = get_object_or_404(
         CampagneDistribution.objects.select_related('created_by').annotate(
@@ -232,6 +288,10 @@ def campagne_detail(request, pk):
             **_quantite_annotations()
         ), pk=pk
     )
+
+    if not can_manage and campagne.effective_status != 'active':
+        # Agents « distribution » : seules les campagnes en cours.
+        return redirect('distribution:access_denied')
 
     # Récupérer les distributions existantes groupées par commune
     distributions = campagne.distributions.select_related('lieu__commune').order_by(
@@ -264,6 +324,7 @@ def campagne_detail(request, pk):
         'campagne': campagne,
         'communes_data': communes_data,
         'lieux_exclus': lieux_exclus,
+        'can_manage': can_manage,
     }
 
     return render(request, 'distribution/campagne_detail.html', context)
@@ -272,7 +333,7 @@ def campagne_detail(request, pk):
 @login_required
 def campagne_create(request):
     """Créer une nouvelle campagne"""
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         return redirect('distribution:access_denied')
     
     if request.method == 'POST':
@@ -311,7 +372,7 @@ def campagne_create(request):
 @login_required
 def campagne_edit(request, pk):
     """Modifier une campagne"""
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         return redirect('distribution:access_denied')
     
     campagne = get_object_or_404(CampagneDistribution, pk=pk)
@@ -339,7 +400,7 @@ def campagne_delete(request, pk):
     Seules les lignes Distribution de cette campagne sont effacées
     (CASCADE) : les lieux, communes et autres campagnes sont conservés.
     """
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         return redirect('distribution:access_denied')
 
     campagne = get_object_or_404(
@@ -372,11 +433,17 @@ def campagne_delete(request, pk):
 @require_POST
 def toggle_distribution(request, pk):
     """Basculer le statut de distribution d'un lieu (AJAX)"""
-    if not is_admin_excluding_mediatheque(request.user):
+    if not can_access_distribution(request.user):
         return JsonResponse({'error': 'Accès refusé'}, status=403)
-    
+
     try:
         distribution = get_object_or_404(Distribution, pk=pk)
+        if (not is_distribution_manager(request.user)
+                and distribution.campagne.effective_status != 'active'):
+            return JsonResponse(
+                {'error': 'Campagne terminée, validation impossible'},
+                status=403,
+            )
         distribution.is_distributed = not distribution.is_distributed
         
         if distribution.is_distributed:
@@ -437,11 +504,17 @@ def toggle_distribution(request, pk):
 @require_POST
 def force_validate_distribution(request, pk):
     """Forcer la validation d'un lieu (AJAX) - ne désactive jamais"""
-    if not is_admin_excluding_mediatheque(request.user):
+    if not can_access_distribution(request.user):
         return JsonResponse({'error': 'Accès refusé'}, status=403)
-    
+
     try:
         distribution = get_object_or_404(Distribution, pk=pk)
+        if (not is_distribution_manager(request.user)
+                and distribution.campagne.effective_status != 'active'):
+            return JsonResponse(
+                {'error': 'Campagne terminée, validation impossible'},
+                status=403,
+            )
         distribution.is_distributed = True
         distribution.distributed_by = request.user
         distribution.save()
@@ -509,11 +582,17 @@ def bulk_update_distributions(request, pk):
       distributed_at=None (logique Distribution.save()).
     Seules les distributions de la campagne `pk` sont touchées.
     """
-    if not is_admin_excluding_mediatheque(request.user):
+    if not can_access_distribution(request.user):
         return JsonResponse({'error': 'Accès refusé'}, status=403)
 
     try:
         campagne = get_object_or_404(CampagneDistribution, pk=pk)
+        if (not is_distribution_manager(request.user)
+                and campagne.effective_status != 'active'):
+            return JsonResponse(
+                {'error': 'Campagne terminée, validation impossible'},
+                status=403,
+            )
 
         try:
             payload = json.loads(request.body.decode('utf-8') or '{}')
@@ -604,7 +683,7 @@ def update_distribution_quantite(request, campagne_pk, pk):
     Seule la distribution `pk` de la campagne `campagne_pk` est touchée.
     Réponse : nouvelle quantité + totaux campagne et commune pour MAJ temps réel.
     """
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         return JsonResponse({'error': 'Accès refusé'}, status=403)
 
     try:
@@ -660,7 +739,7 @@ def bulk_set_quantites(request, pk):
     - "only_zero" : ne remplit que les lignes encore à 0.
     1 UPDATE en transaction + 1 aggregate + 1 requête par-commune.
     """
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         return JsonResponse({'error': 'Accès refusé'}, status=403)
 
     try:
@@ -720,7 +799,7 @@ def retirer_lieu_campagne(request, pk, dist_pk):
     synchronisation ne recrée pas le lieu. Le lieu lui-même est conservé.
     Idempotent : un retrait déjà effectué renvoie success/removed=False.
     """
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         return JsonResponse({'error': 'Accès refusé'}, status=403)
 
     try:
@@ -783,7 +862,7 @@ def reintegrer_lieu_campagne(request, pk, lieu_pk):
     Supprime la trace d'exclusion et recrée la ligne Distribution
     (quantité 0, non distribuée). 404 si aucune exclusion n'existe.
     """
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         return JsonResponse({'error': 'Accès refusé'}, status=403)
 
     try:
@@ -833,7 +912,7 @@ def reintegrer_lieu_campagne(request, pk, lieu_pk):
 @require_POST
 def sync_campagne_lieux(request, pk):
     """Synchroniser les lieux d'une campagne avec tous les lieux actifs"""
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         return JsonResponse({'error': 'Accès refusé'}, status=403)
     
     try:
@@ -896,7 +975,7 @@ def sync_campagne_lieux(request, pk):
 @login_required
 def commune_list(request):
     """Liste des communes"""
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         return redirect('distribution:access_denied')
     
     communes = Commune.objects.annotate(
@@ -910,7 +989,7 @@ def commune_list(request):
 @login_required
 def commune_detail(request, pk):
     """Détail d'une commune avec ses lieux"""
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         return redirect('distribution:access_denied')
     
     commune = get_object_or_404(Commune, pk=pk)
@@ -926,7 +1005,7 @@ def commune_detail(request, pk):
 @login_required
 def commune_create(request):
     """Créer une nouvelle commune"""
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         return redirect('distribution:access_denied')
     
     if request.method == 'POST':
@@ -947,7 +1026,7 @@ def lieu_create(request, commune_pk):
     """Créer un nouveau lieu dans une commune"""
     logger.debug("lieu_create called for commune %s by user %s", commune_pk, request.user)
 
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         logger.warning("Access denied for user %s on commune %s", request.user, commune_pk)
         return redirect('distribution:access_denied')
 
@@ -976,7 +1055,7 @@ def lieu_create(request, commune_pk):
 @login_required
 def lieu_edit_modal(request, commune_pk, pk):
     """Vue HTMX : retourne le fragment HTML de la modale d'édition d'un lieu"""
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         if request.headers.get('HX-Request'):
             return JsonResponse({'error': 'Accès refusé'}, status=403)
         return redirect('distribution:access_denied')
@@ -996,7 +1075,7 @@ def lieu_edit_modal(request, commune_pk, pk):
 @require_POST
 def lieu_update(request, commune_pk, pk):
     """Vue HTMX : met à jour un lieu depuis la modale d'édition"""
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         return JsonResponse({'error': 'Accès refusé'}, status=403)
 
     lieu = get_object_or_404(Lieu, pk=pk, commune_id=commune_pk)
@@ -1030,7 +1109,7 @@ def lieu_update(request, commune_pk, pk):
 @require_POST
 def lieu_toggle(request, commune_pk, pk):
     """Vue HTMX : active/désactive un lieu"""
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         return JsonResponse({'error': 'Accès refusé'}, status=403)
 
     lieu = get_object_or_404(Lieu, pk=pk, commune_id=commune_pk)
@@ -1055,7 +1134,7 @@ def lieu_delete(request, commune_pk, pk):
     (CASCADE) : il disparaît des lieux globaux et de toutes les campagnes.
     La commune et les autres lieux sont conservés.
     """
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         return redirect('distribution:access_denied')
 
     commune = get_object_or_404(Commune, pk=commune_pk)
@@ -1099,7 +1178,7 @@ def lieu_delete(request, commune_pk, pk):
 @login_required
 def statistics(request):
     """Page des statistiques"""
-    if not is_admin_excluding_mediatheque(request.user):
+    if not is_distribution_manager(request.user):
         return redirect('distribution:access_denied')
     
     # Statistiques générales

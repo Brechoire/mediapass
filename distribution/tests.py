@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 import html
+import json
 
 from django.contrib.auth.models import Group, User
 from django.test import TestCase
@@ -1333,3 +1334,324 @@ class LieuDeleteTests(TestCase):
         ).content.decode()
         self.assertIn("Supprimer", content)
         self.assertIn(self.url, content)
+
+
+class DistributionAgentAccessTests(TestCase):
+    """Accès restreint du groupe « distribution » (cumulable, OU additif)."""
+
+    def setUp(self):
+        self.dist_group, _ = Group.objects.get_or_create(name="distribution")
+        self.mediatheque_group, _ = Group.objects.get_or_create(
+            name="mediatheque"
+        )
+        self.comm_group, _ = Group.objects.get_or_create(name="communication")
+
+        self.admin = User.objects.create_superuser(
+            username="admin", password="admin123"
+        )
+        self.agent = User.objects.create_user(
+            username="agent", password="testpass123"
+        )
+        self.agent.groups.add(self.dist_group)
+        self.cumul_med = User.objects.create_user(
+            username="cumul_med", password="testpass123"
+        )
+        self.cumul_med.groups.add(self.mediatheque_group, self.dist_group)
+        self.cumul_comm = User.objects.create_user(
+            username="cumul_comm", password="testpass123"
+        )
+        self.cumul_comm.groups.add(self.comm_group, self.dist_group)
+        self.med_only = User.objects.create_user(
+            username="med_only", password="testpass123"
+        )
+        self.med_only.groups.add(self.mediatheque_group)
+        self.normal = User.objects.create_user(
+            username="normal", password="testpass123"
+        )
+
+        self.commune = Commune.objects.create(name="Testville")
+        self.lieu = Lieu.objects.create(
+            commune=self.commune, name="Médiathèque"
+        )
+        self.autre_lieu = Lieu.objects.create(
+            commune=self.commune, name="Mairie"
+        )
+        today = timezone.localdate()
+        self.active = self._make_campagne(
+            "Campagne active", "active", today - timedelta(days=10),
+            today + timedelta(days=10),
+        )
+        self.draft = self._make_campagne(
+            "Campagne brouillon", "draft", today + timedelta(days=1),
+            today + timedelta(days=30),
+        )
+        self.expired = self._make_campagne(
+            "Campagne échue", "active", today - timedelta(days=30),
+            today - timedelta(days=1),
+        )
+        self.cancelled = self._make_campagne(
+            "Campagne annulée", "cancelled", today - timedelta(days=10),
+            today + timedelta(days=10),
+        )
+        self.dist_active = Distribution.objects.create(
+            campagne=self.active, lieu=self.lieu, quantite=25
+        )
+        self.dist_expired = Distribution.objects.create(
+            campagne=self.expired, lieu=self.lieu, quantite=10
+        )
+
+    def _make_campagne(self, name, status, start_date, end_date):
+        return CampagneDistribution.objects.create(
+            name=name, created_by=self.admin, status=status,
+            start_date=start_date, end_date=end_date,
+        )
+
+    def _login(self, username):
+        self.client.login(username=username, password="testpass123")
+
+    # -- Helpers de permission -------------------------------------------
+    def test_helpers_agent_only(self):
+        from distribution.views import (
+            can_access_distribution, is_distribution_agent,
+            is_distribution_manager,
+        )
+        self.assertTrue(is_distribution_agent(self.agent))
+        self.assertFalse(is_distribution_manager(self.agent))
+        self.assertTrue(can_access_distribution(self.agent))
+
+    def test_helpers_cumuls(self):
+        from distribution.views import (
+            can_access_distribution, is_distribution_agent,
+            is_distribution_manager,
+        )
+        # mediatheque + distribution : agent, pas manager.
+        self.assertTrue(is_distribution_agent(self.cumul_med))
+        self.assertFalse(is_distribution_manager(self.cumul_med))
+        self.assertTrue(can_access_distribution(self.cumul_med))
+        # communication + distribution : veto distribution, reste agent.
+        self.assertTrue(is_distribution_agent(self.cumul_comm))
+        self.assertFalse(is_distribution_manager(self.cumul_comm))
+        self.assertTrue(can_access_distribution(self.cumul_comm))
+        # mediatheque seule : toujours exclue.
+        self.assertFalse(can_access_distribution(self.med_only))
+        # Sans groupe : refusé.
+        self.assertFalse(can_access_distribution(self.normal))
+
+    # -- Liste ------------------------------------------------------------
+    def test_list_agent_only_active(self):
+        self._login("agent")
+        response = self.client.get(reverse("distribution:campagne_list"))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("Campagne active", content)
+        self.assertNotIn("Campagne brouillon", content)
+        self.assertNotIn("Campagne échue", content)
+        self.assertNotIn("Campagne annulée", content)
+        self.assertNotIn("Nouvelle campagne", content)
+
+    def test_list_agent_ignores_status_filter(self):
+        self._login("agent")
+        response = self.client.get(
+            reverse("distribution:campagne_list") + "?status=completed"
+        )
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("Campagne active", content)
+        self.assertNotIn("Campagne échue", content)
+
+    def test_list_cumul_mediatheque_distribution_ok(self):
+        self._login("cumul_med")
+        response = self.client.get(reverse("distribution:campagne_list"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_list_denied_without_distribution_group(self):
+        for username in ("normal", "med_only"):
+            self._login(username)
+            response = self.client.get(reverse("distribution:campagne_list"))
+            self.assertEqual(response.status_code, 302)
+
+    # -- Détail -----------------------------------------------------------
+    def test_detail_agent_active_ok_readonly(self):
+        self._login("agent")
+        response = self.client.get(
+            reverse("distribution:campagne_detail", args=[self.active.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        # Validation possible…
+        self.assertIn("distribution-checkbox", content)
+        self.assertIn("Valider les s", content)
+        # …mais aucune action de gestion.
+        self.assertNotIn("Modifier la campagne", content)
+        self.assertNotIn('id="sync-lieux-btn"', content)
+        self.assertNotIn('class="quantite-input', content)
+        self.assertIn("25", content)
+
+    def test_detail_agent_non_active_denied(self):
+        self._login("agent")
+        for campagne in (self.draft, self.expired, self.cancelled):
+            response = self.client.get(
+                reverse("distribution:campagne_detail", args=[campagne.pk])
+            )
+            self.assertEqual(response.status_code, 302)
+
+    # -- Validation -------------------------------------------------------
+    def test_toggle_agent_ok(self):
+        self._login("agent")
+        url = reverse(
+            "distribution:toggle_distribution", args=[self.dist_active.pk]
+        )
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertTrue(data["is_distributed"])
+        self.dist_active.refresh_from_db()
+        self.assertTrue(self.dist_active.is_distributed)
+        self.assertEqual(self.dist_active.distributed_by, self.agent)
+        self.assertIsNotNone(self.dist_active.distributed_at)
+
+    def test_toggle_agent_expired_403(self):
+        self._login("agent")
+        url = reverse(
+            "distribution:toggle_distribution", args=[self.dist_expired.pk]
+        )
+        self.assertEqual(self.client.post(url).status_code, 403)
+
+    def test_force_validate_agent_ok(self):
+        self._login("agent")
+        url = reverse(
+            "distribution:force_validate_distribution",
+            args=[self.dist_active.pk],
+        )
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["success"])
+        self.dist_active.refresh_from_db()
+        self.assertTrue(self.dist_active.is_distributed)
+        self.assertEqual(self.dist_active.distributed_by, self.agent)
+
+    def test_bulk_validate_agent_ok(self):
+        self._login("agent")
+        url = reverse(
+            "distribution:bulk_update_distributions", args=[self.active.pk]
+        )
+        response = self.client.post(
+            url,
+            data=json.dumps(
+                {"ids": [self.dist_active.pk], "action": "validate"}
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["updated_count"], 1)
+        self.dist_active.refresh_from_db()
+        self.assertTrue(self.dist_active.is_distributed)
+
+    def test_bulk_agent_expired_403(self):
+        self._login("agent")
+        url = reverse(
+            "distribution:bulk_update_distributions", args=[self.expired.pk]
+        )
+        response = self.client.post(
+            url,
+            data=json.dumps(
+                {"ids": [self.dist_expired.pk], "action": "validate"}
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    # -- Gestion interdite aux agents --------------------------------------
+    def test_agent_cannot_manage_ajax(self):
+        self._login("agent")
+        quantite_url = reverse(
+            "distribution:update_distribution_quantite",
+            args=[self.active.pk, self.dist_active.pk],
+        )
+        self.assertEqual(
+            self.client.post(
+                quantite_url, data=json.dumps({"quantite": 50}),
+                content_type="application/json",
+            ).status_code, 403,
+        )
+        bulk_q_url = reverse(
+            "distribution:bulk_set_quantites", args=[self.active.pk]
+        )
+        self.assertEqual(
+            self.client.post(
+                bulk_q_url, data=json.dumps({"quantite": 70, "scope": "all"}),
+                content_type="application/json",
+            ).status_code, 403,
+        )
+        sync_url = reverse(
+            "distribution:sync_campagne_lieux", args=[self.active.pk]
+        )
+        self.assertEqual(self.client.post(sync_url).status_code, 403)
+        retirer_url = reverse(
+            "distribution:retirer_lieu_campagne",
+            args=[self.active.pk, self.dist_active.pk],
+        )
+        self.assertEqual(self.client.post(retirer_url).status_code, 403)
+        reintegrer_url = reverse(
+            "distribution:reintegrer_lieu_campagne",
+            args=[self.active.pk, self.autre_lieu.pk],
+        )
+        self.assertEqual(self.client.post(reintegrer_url).status_code, 403)
+        # Rien n'a été modifié.
+        self.dist_active.refresh_from_db()
+        self.assertEqual(self.dist_active.quantite, 25)
+
+    def test_agent_cannot_manage_pages(self):
+        self._login("agent")
+        # L'index redirige vers les campagnes en cours.
+        self.assertRedirects(
+            self.client.get(reverse("distribution:index")),
+            reverse("distribution:campagne_list"),
+        )
+        for url in (
+            reverse("distribution:campagne_create"),
+            reverse(
+                "distribution:campagne_edit", args=[self.active.pk]
+            ),
+            reverse(
+                "distribution:campagne_delete", args=[self.active.pk]
+            ),
+            reverse("distribution:commune_list"),
+            reverse("distribution:commune_create"),
+            reverse("distribution:statistics"),
+        ):
+            self.assertEqual(self.client.get(url).status_code, 302)
+
+    # -- Cumul communication : veto distribution sur la gestion ---------------
+    def test_cumul_communication_limited_to_agent(self):
+        # Même avec le groupe communication, l'appartenance à
+        # « distribution » interdit la gestion (pas de Modifier/Supprimer).
+        self.client.login(username="cumul_comm", password="testpass123")
+        self.assertEqual(
+            self.client.get(
+                reverse("distribution:campagne_create")
+            ).status_code, 302,
+        )
+        content = self.client.get(
+            reverse("distribution:campagne_detail", args=[self.active.pk])
+        ).content.decode()
+        self.assertNotIn("Modifier la campagne", content)
+        self.assertIn("distribution-checkbox", content)
+
+    # -- Redirection post-login ----------------------------------------------
+    def test_login_redirects_agent_to_campagne_list(self):
+        response = self.client.post(
+            reverse("login"),
+            {"username": "agent", "password": "testpass123"},
+        )
+        self.assertRedirects(
+            response, reverse("distribution:campagne_list")
+        )
+
+    def test_login_keeps_default_for_manager(self):
+        response = self.client.post(
+            reverse("login"),
+            {"username": "admin", "password": "admin123"},
+        )
+        self.assertRedirects(response, "/")
