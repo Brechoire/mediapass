@@ -196,7 +196,7 @@
                         {% if heatmap_hebdo %}
                         <a href="{% url 'distribution:campagne_detail' focus.pk %}" class="group relative block p-[3px] rounded" aria-label="Semaine du {{ semaine.lundi|date:'d/m/Y' }} : {{ semaine.n }} validation{{ semaine.n|pluralize }}">
                             <span class="block w-3.5 h-3.5 rounded {% if semaine.n >= 10 %}bg-emerald-700{% elif semaine.n >= 6 %}bg-emerald-500{% elif semaine.n >= 3 %}bg-emerald-300{% elif semaine.n >= 1 %}bg-emerald-100{% else %}bg-[#e8eef7]{% endif %}"></span>
-                            <span class="pointer-events-none absolute z-10 hidden group-hover:block group-focus-within:block bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[240px] rounded-xl border border-[#dce3ef] bg-white shadow-lg px-3 py-2 text-xs text-[#1e293b]">
+                            <span class="pointer-events-none absolute z-20 hidden group-hover:block group-focus-within:block top-full mt-2 {% if forloop.first %}left-0{% elif forloop.last %}right-0{% else %}left-1/2 -translate-x-1/2{% endif %} w-max max-w-[240px] rounded-xl border border-[#dce3ef] bg-white shadow-lg px-3 py-2 text-xs text-[#1e293b]">
                                 <span class="font-semibold">Sem. du {{ semaine.lundi|date:"d/m/Y" }}</span><br>
                                 <span class="text-[#5a6f80]">{{ semaine.n }} validation{{ semaine.n|pluralize }}</span>
                             </span>
@@ -207,7 +207,7 @@
                         {% with n=jour.noms|length %}
                         <a href="#jour-{{ jour.date|date:'Y-m-d' }}" class="group relative block p-[3px] rounded" aria-label="{{ jour.date|date:'d/m/Y' }} : {{ n }} validation{{ n|pluralize }}">
                             <span class="block w-3.5 h-3.5 rounded {% if n >= 10 %}bg-emerald-700{% elif n >= 6 %}bg-emerald-500{% elif n >= 3 %}bg-emerald-300{% elif n >= 1 %}bg-emerald-100{% else %}bg-[#e8eef7]{% endif %}"></span>
-                            <span class="pointer-events-none absolute z-10 hidden group-hover:block group-focus-within:block bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 rounded-xl border border-[#dce3ef] bg-white shadow-lg px-3 py-2 text-xs text-[#1e293b]">
+                            <span class="pointer-events-none absolute z-20 hidden group-hover:block group-focus-within:block {% if forloop.counter0 < 2 %}top-full mt-2{% else %}bottom-full mb-2{% endif %} {% if forloop.parentloop.first %}left-0{% elif forloop.parentloop.last %}right-0{% else %}left-1/2 -translate-x-1/2{% endif %} w-52 rounded-xl border border-[#dce3ef] bg-white shadow-lg px-3 py-2 text-xs text-left text-[#1e293b]">
                                 <span class="font-semibold">{{ jour.date|date:"l d/m/Y" }}</span><br>
                                 <span class="text-[#5a6f80]">{{ n }} lieu{{ n|pluralize:"x" }}</span>
                                 {% if n %}
