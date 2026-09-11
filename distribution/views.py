@@ -1499,6 +1499,10 @@ def statistics(request):
                 )
                 if commune.commune_total else None
             )
+            commune.pct_css = (
+                f"{commune.pct_lieux:.1f}"
+                if commune.pct_lieux is not None else "0"
+            )
         focus_restants_qs = Distribution.objects.filter(
             campagne=campagne_filtre, is_distributed=False
         ).select_related('lieu__commune').order_by(
@@ -1541,6 +1545,12 @@ def statistics(request):
                 commune.commune_distribues / commune.commune_total * 100, 1
             )
             if commune.commune_total else None
+        )
+        # Chaîne à point décimal pour les style="width: …%" (le rendu
+        # localisé FR utilise une virgule, invalide en CSS).
+        commune.pct_css = (
+            f"{commune.pct_lieux:.1f}" if commune.pct_lieux is not None
+            else "0"
         )
         commune.docs_en_attente = (
             commune.commune_docs_total - commune.commune_docs_distribues

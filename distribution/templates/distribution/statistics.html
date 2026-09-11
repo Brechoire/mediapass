@@ -194,26 +194,15 @@
                     <div class="flex flex-col gap-1">
                         <span class="text-[10px] leading-4 h-4 text-[#b0bedb] whitespace-nowrap" aria-hidden="true">{{ semaine.mois }}</span>
                         {% if heatmap_hebdo %}
-                        <a href="{% url 'distribution:campagne_detail' focus.pk %}" class="group relative block p-[3px] rounded" aria-label="Semaine du {{ semaine.lundi|date:'d/m/Y' }} : {{ semaine.n }} validation{{ semaine.n|pluralize }}">
+                        <a href="{% url 'distribution:campagne_detail' focus.pk %}" class="group relative block p-[3px] rounded heatmap-cell" aria-label="Semaine du {{ semaine.lundi|date:'d/m/Y' }} : {{ semaine.n }} validation{{ semaine.n|pluralize }}"{% if semaine.n %} data-tip-date="Sem. du {{ semaine.lundi|date:'d/m/Y' }}" data-tip-n="{{ semaine.n }}" data-tip-unit="validation" data-tip-lieux="" data-tip-suite=""{% endif %}>
                             <span class="block w-3.5 h-3.5 rounded group-hover:ring-2 group-hover:ring-offset-1 group-hover:ring-[#4a6fa5] {% if semaine.n >= 10 %}bg-emerald-700{% elif semaine.n >= 6 %}bg-emerald-500{% elif semaine.n >= 3 %}bg-emerald-300{% elif semaine.n >= 1 %}bg-emerald-100{% else %}bg-[#e8eef7]{% endif %}"></span>
-                            <span class="pointer-events-none fixed z-50 hidden group-hover:block group-focus-within:block bottom-4 right-4 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-[#dce3ef] bg-white shadow-xl px-3 py-2 text-xs text-left text-[#1e293b]">
-                                <span class="font-semibold">Sem. du {{ semaine.lundi|date:"d/m/Y" }}</span><br>
-                                <span class="text-[#5a6f80]">{{ semaine.n }} validation{{ semaine.n|pluralize }}</span>
-                            </span>
                         </a>
                         {% else %}
                         {% for jour in semaine.jours %}
                         {% if jour %}
                         {% with n=jour.noms|length %}
-                        <a href="#jour-{{ jour.date|date:'Y-m-d' }}" class="group relative block p-[3px] rounded" aria-label="{{ jour.date|date:'d/m/Y' }} : {{ n }} validation{{ n|pluralize }}">
+                        <a href="#jour-{{ jour.date|date:'Y-m-d' }}" class="group relative block p-[3px] rounded heatmap-cell" aria-label="{{ jour.date|date:'d/m/Y' }} : {{ n }} validation{{ n|pluralize }}"{% if n %} data-tip-date="{{ jour.date|date:'l d/m/Y' }}" data-tip-n="{{ n }}" data-tip-unit="lieu" data-tip-lieux="{% for nom in jour.noms|slice:':5' %}{{ nom|escape }}{% if not forloop.last %}|{% endif %}{% endfor %}" data-tip-suite="{% if n > 5 %}+{{ n|add:'-5' }} autre{{ n|add:'-5'|pluralize }}{% endif %}"{% endif %}>
                             <span class="block w-3.5 h-3.5 rounded group-hover:ring-2 group-hover:ring-offset-1 group-hover:ring-[#4a6fa5] {% if n >= 10 %}bg-emerald-700{% elif n >= 6 %}bg-emerald-500{% elif n >= 3 %}bg-emerald-300{% elif n >= 1 %}bg-emerald-100{% else %}bg-[#e8eef7]{% endif %}"></span>
-                            <span class="pointer-events-none fixed z-50 hidden group-hover:block group-focus-within:block bottom-4 right-4 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-[#dce3ef] bg-white shadow-xl px-3 py-2 text-xs text-left text-[#1e293b]">
-                                <span class="font-semibold">{{ jour.date|date:"l d/m/Y" }}</span><br>
-                                <span class="text-[#5a6f80]">{{ n }} lieu{{ n|pluralize:"x" }}</span>
-                                {% if n %}
-                                <span class="block mt-1 text-[#1e293b]">{% for nom in jour.noms|slice:":5" %}• {{ nom }}<br>{% endfor %}{% if n > 5 %}<span class="text-[#5a6f80]">+{{ n|add:"-5" }} autre{{ n|add:"-5"|pluralize }}</span>{% endif %}</span>
-                                {% endif %}
-                            </span>
                         </a>
                         {% endwith %}
                         {% else %}
@@ -249,7 +238,7 @@
                         <li class="px-4 py-3 flex items-center gap-3">
                             <a href="{% url 'distribution:commune_detail' commune.pk %}" class="text-sm font-medium text-[#1e293b] hover:text-[#4a6fa5]">{{ commune.name }}</a>
                             <div class="flex-1 h-2 bg-[#e8eef7] rounded-full overflow-hidden">
-                                <div class="h-full rounded-full bg-[#4a6fa5]" style="width: {% if commune.pct_lieux != None %}{{ commune.pct_lieux }}{% else %}0{% endif %}%"></div>
+                                <div class="h-full rounded-full bg-[#4a6fa5]" style="width: {{ commune.pct_css }}%"></div>
                             </div>
                             <span class="text-xs font-semibold text-[#b0bedb] min-w-[44px] text-right">{% if commune.pct_lieux != None %}{{ commune.pct_lieux }}%{% else %}—{% endif %}</span>
                         </li>
@@ -323,7 +312,7 @@
                                         {% if commune.pct_lieux != None %}
                                         <div class="flex items-center gap-3">
                                             <div class="flex-1 h-2 bg-[#e8eef7] rounded-full overflow-hidden">
-                                                <div class="h-full rounded-full {% if commune.pct_lieux >= 100 %}bg-emerald-500{% elif commune.pct_lieux >= 50 %}bg-[#4a6fa5]{% else %}bg-amber-500{% endif %}" style="width: {{ commune.pct_lieux }}%"></div>
+                                                <div class="h-full rounded-full {% if commune.pct_lieux >= 100 %}bg-emerald-500{% elif commune.pct_lieux >= 50 %}bg-[#4a6fa5]{% else %}bg-amber-500{% endif %}" style="width: {{ commune.pct_css }}%"></div>
                                             </div>
                                             <span class="text-xs font-medium text-[#b0bedb] min-w-[44px] text-right">{{ commune.pct_lieux }}%</span>
                                         </div>
@@ -717,4 +706,78 @@
         </div>
     </div>
 </section>
+
+<div id="heatmap-tip" class="pointer-events-none fixed z-50 hidden w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-[#dce3ef] bg-white shadow-xl px-3 py-2 text-xs text-left text-[#1e293b]" role="status"></div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+(function() {
+    var tip = document.getElementById('heatmap-tip');
+    if (!tip) return;
+
+    function hide() { tip.classList.add('hidden'); }
+
+    function show(cell) {
+        var n = parseInt(cell.getAttribute('data-tip-n') || '0', 10);
+        if (!n) return;
+        tip.textContent = '';
+        var title = document.createElement('span');
+        title.className = 'font-semibold';
+        title.textContent = cell.getAttribute('data-tip-date') || '';
+        tip.appendChild(title);
+        tip.appendChild(document.createElement('br'));
+        var count = document.createElement('span');
+        count.className = 'text-[#5a6f80]';
+        var unit = cell.getAttribute('data-tip-unit') || 'lieu';
+        count.textContent = n + ' ' + unit + (n > 1 ? (unit === 'lieu' ? 'x' : 's') : '');
+        tip.appendChild(count);
+        var lieux = (cell.getAttribute('data-tip-lieux') || '').split('|').filter(Boolean);
+        if (lieux.length) {
+            var list = document.createElement('span');
+            list.className = 'block mt-1';
+            lieux.forEach(function(nom) {
+                list.appendChild(document.createTextNode('• ' + nom));
+                list.appendChild(document.createElement('br'));
+            });
+            var suite = cell.getAttribute('data-tip-suite') || '';
+            if (suite) {
+                var more = document.createElement('span');
+                more.className = 'text-[#5a6f80]';
+                more.textContent = suite;
+                list.appendChild(more);
+            }
+            tip.appendChild(list);
+        }
+        tip.classList.remove('hidden');
+        var rect = cell.getBoundingClientRect();
+        var left = rect.left + rect.width / 2 - tip.offsetWidth / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - tip.offsetWidth - 8));
+        var top = rect.top - tip.offsetHeight - 8;
+        if (top < 8) top = rect.bottom + 8;
+        tip.style.left = left + 'px';
+        tip.style.top = Math.max(8, top) + 'px';
+    }
+
+    document.addEventListener('mouseover', function(e) {
+        var cell = e.target.closest ? e.target.closest('.heatmap-cell[data-tip-n]') : null;
+        if (!cell || (e.relatedTarget && cell.contains(e.relatedTarget))) return;
+        show(cell);
+    });
+    document.addEventListener('mouseout', function(e) {
+        var cell = e.target.closest ? e.target.closest('.heatmap-cell[data-tip-n]') : null;
+        if (cell && (!e.relatedTarget || !cell.contains(e.relatedTarget))) hide();
+    });
+    document.addEventListener('focusin', function(e) {
+        var cell = e.target.closest ? e.target.closest('.heatmap-cell[data-tip-n]') : null;
+        if (cell) show(cell);
+    });
+    document.addEventListener('focusout', hide);
+    document.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') hide();
+    });
+})();
+</script>
 {% endblock %}
