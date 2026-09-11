@@ -1,14 +1,14 @@
-<div id="lieu-card-{{ lieu.pk }}" class="bg-white rounded-2xl border {% if lieu.is_active %}border-[#dce3ef]{% else %}border-gray-200 bg-gray-50/50{% endif %} hover:shadow-md transition-shadow">
+<div id="lieu-card-{{ lieu.pk }}" class="bg-white rounded-2xl border {% if lieu.is_active %}border-[#dce3ef]{% else %}border-red-200 bg-red-50/60{% endif %} hover:shadow-md transition-shadow">
     <div class="p-5">
         <div class="flex items-start justify-between mb-4">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center">
-                    <i class="bx bx-current-location text-lg {% if lieu.is_active %}text-[#4a6fa5]{% else %}text-gray-400{% endif %}"></i>
+                <div class="w-10 h-10 rounded-xl {% if lieu.is_active %}bg-[#e8eef7]{% else %}bg-red-100{% endif %} flex items-center justify-center">
+                    <i class="bx bx-current-location text-lg {% if lieu.is_active %}text-[#4a6fa5]{% else %}text-red-400{% endif %}"></i>
                 </div>
                 <div>
                     <h3 class="text-sm font-semibold text-[#1e293b]">{{ lieu.name }}</h3>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {% if lieu.is_active %}bg-emerald-50 text-emerald-700 border border-emerald-200{% else %}bg-gray-100 text-gray-600 border border-gray-200{% endif %}">
-                        <span class="w-1.5 h-1.5 rounded-full {% if lieu.is_active %}bg-emerald-500{% else %}bg-gray-400{% endif %} mr-1"></span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {% if lieu.is_active %}bg-emerald-50 text-emerald-700 border border-emerald-200{% else %}bg-red-100 text-red-700 border border-red-300{% endif %}">
+                        <span class="w-1.5 h-1.5 rounded-full {% if lieu.is_active %}bg-emerald-500{% else %}bg-red-500{% endif %} mr-1"></span>
                         {% if lieu.is_active %}Actif{% else %}Inactif{% endif %}
                     </span>
                 </div>
@@ -19,17 +19,17 @@
         <p class="text-xs text-[#b0bedb] mb-4">{{ lieu.description }}</p>
         {% endif %}
 
-        <div class="flex items-center justify-between pt-3 border-t border-[#dce3ef]">
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[#dce3ef]">
             <div class="flex items-center text-xs text-[#b0bedb]">
                 <i class="bx bx-time mr-1"></i>
                 {{ lieu.created_at|date:"d/m/Y" }}
             </div>
-            <div class="flex items-center gap-1.5">
+            <div class="flex flex-wrap items-center gap-1.5">
                 <button type="button"
                         hx-get="{% url 'distribution:lieu_edit_modal' commune.pk lieu.pk %}"
                         hx-target="#lieu-modal"
                         hx-swap="innerHTML"
-                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#dce3ef] text-xs font-medium text-[#1e293b] hover:bg-[#f8f9fc] transition-colors">
+                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#dce3ef] text-xs font-medium text-[#1e293b] hover:bg-[#f8f9fc] transition-colors whitespace-nowrap">
                     <i class="bx bx-edit text-sm"></i> Modifier
                 </button>
                 <button type="button"
@@ -37,12 +37,16 @@
                         hx-target="#lieu-card-{{ lieu.pk }}"
                         hx-swap="outerHTML"
                         hx-confirm="{% if lieu.is_active %}Voulez-vous désactiver ce lieu ?{% else %}Voulez-vous activer ce lieu ?{% endif %}"
-                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors
+                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap
                         {% if lieu.is_active %}border border-amber-200 text-amber-700 hover:bg-amber-50
                         {% else %}border border-emerald-200 text-emerald-700 hover:bg-emerald-50{% endif %}">
                     <i class="bx bx-{% if lieu.is_active %}pause{% else %}play{% endif %} text-sm"></i>
                     {% if lieu.is_active %}Désactiver{% else %}Activer{% endif %}
                 </button>
+                <a href="{% url 'distribution:lieu_delete' commune.pk lieu.pk %}"
+                   class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-200 text-xs font-medium text-red-700 hover:bg-red-50 transition-colors whitespace-nowrap">
+                    <i class="bx bx-trash text-sm"></i> Supprimer
+                </a>
             </div>
         </div>
     </div>

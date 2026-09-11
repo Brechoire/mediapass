@@ -334,6 +334,26 @@
         }
       });
     </script>
+    <script>
+      // CSRF global pour HTMX : Django refuse sinon les hx-post en 403.
+      // Lit le cookie csrftoken (lisible : CSRF_COOKIE_HTTPONLY=False),
+      // avec repli sur un champ csrf caché présent dans la page.
+      document.addEventListener('htmx:configRequest', function(event) {
+        var token = null;
+        var cookies = document.cookie ? document.cookie.split('; ') : [];
+        for (var i = 0; i < cookies.length; i++) {
+          if (cookies[i].indexOf('csrftoken=') === 0) {
+            token = decodeURIComponent(cookies[i].slice('csrftoken='.length));
+            break;
+          }
+        }
+        if (!token) {
+          var field = document.querySelector('[name=csrfmiddlewaretoken]');
+          if (field) token = field.value;
+        }
+        if (token) event.detail.headers['X-CSRFToken'] = token;
+      });
+    </script>
 
     {% block javascripts %}{% endblock %}
 </body>

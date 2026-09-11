@@ -1,0 +1,68 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Supprimer {{ lieu.name }} - Distribution{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#a53a3a] via-[#8f2f2f] to-[#752626]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <i class="bx bx-trash text-2xl text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-white">Supprimer le lieu</h1>
+                <p class="text-white/70 text-sm mt-1">{{ commune.name }} &gt; {{ lieu.name }}</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-error-circle mr-1.5 text-red-600"></i>Confirmation de suppression</h2>
+        </div>
+
+        <div class="p-6">
+            <div class="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6">
+                <p class="text-sm text-red-800 font-semibold mb-3">
+                    Voulez-vous vraiment supprimer d&#xE9;finitivement le lieu &#xAB; {{ lieu.name }} &#xBB; ({{ commune.name }}) ?
+                </p>
+                <ul class="text-sm text-red-700 space-y-1">
+                    <li><i class="bx bx-mail-send mr-1"></i>{{ stats.total }} distribution(s) dans {{ campagnes|length }} campagne(s), dont {{ stats.distribuees }} distribu&#xE9;e(s)</li>
+                    {% if stats.quantite %}<li><i class="bx bx-copy mr-1"></i>{{ stats.quantite }} document(s) pr&#xE9;vu(s) au total</li>{% endif %}
+                    {% if campagnes %}
+                    <li><i class="bx bx-list-ul mr-1"></i>Campagnes concern&#xE9;es : {{ campagnes|join:", " }}</li>
+                    {% endif %}
+                </ul>
+            </div>
+
+            <div class="bg-[#e8eef7] rounded-2xl p-5 border border-[#dce3ef] mb-6">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0">
+                        <i class="bx bx-info-circle text-xl text-[#4a6fa5]"></i>
+                    </div>
+                    <p class="text-sm text-[#4a6fa5]">
+                        Le lieu dispara&#xEE;tra des lieux globaux et de toutes les campagnes. La commune et les autres lieux sont conserv&#xE9;s. Cette action est irr&#xE9;versible.
+                    </p>
+                </div>
+            </div>
+
+            <form method="post" class="flex flex-col sm:flex-row gap-4 justify-between">
+                {% csrf_token %}
+                <a href="{% url 'distribution:commune_detail' commune.pk %}"
+                   class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#dce3ef] text-[#1e293b] hover:bg-[#f8f9fc] transition-colors text-sm font-medium">
+                    <i class="bx bx-arrow-back"></i> Annuler
+                </a>
+                <button type="submit"
+                   class="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors text-sm font-semibold shadow-sm">
+                    <i class="bx bx-trash"></i>
+                    Supprimer d&#xE9;finitivement
+                </button>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}
