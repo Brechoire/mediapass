@@ -552,6 +552,47 @@ class StatisticsJournalTests(TestCase):
         self.assertEqual(response.context["journal"], [])
         self.assertIsNone(response.context["jour_max"])
 
+    def test_focus_campagne_heatmap(self):
+        response = self.client.get(
+            reverse("distribution:statistics"),
+            {"campagne": self.campagne.pk},
+        )
+        self.assertEqual(response.status_code, 200)
+        focus = response.context["focus"]
+        self.assertEqual(focus.pk, self.campagne.pk)
+        self.assertEqual(response.context["focus_jours_actifs"], 1)
+        pic = response.context["focus_pic"]
+        self.assertEqual(pic["day"], self.jour.date())
+        self.assertEqual(pic["n"], 4)
+        noms = []
+        for semaine in response.context["heatmap_semaines"]:
+            for jour in semaine["jours"]:
+                if jour and jour["date"] == self.jour.date():
+                    noms = jour["noms"]
+        self.assertEqual(len(noms), 4)
+        self.assertEqual(response.context["focus_restants_count"], 0)
+        communes = {
+            c.name: c for c in response.context["focus_communes"]
+        }
+        self.assertEqual(communes["Testville"].pct_lieux, 100.0)
+
+    def test_focus_campagne_sans_validation(self):
+        vide = CampagneDistribution.objects.create(
+            name="Campagne vide",
+            created_by=self.admin,
+            start_date=timezone.localdate() - timedelta(days=5),
+            end_date=timezone.localdate() + timedelta(days=5),
+            status="active",
+        )
+        response = self.client.get(
+            reverse("distribution:statistics"),
+            {"campagne": vide.pk},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["focus_jours_actifs"], 0)
+        self.assertIsNone(response.context["focus_pic"])
+        self.assertTrue(response.context["heatmap_semaines"])
+
 
 class CampagneProgressionBarTests(TestCase):
     def setUp(self):

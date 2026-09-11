@@ -1355,6 +1355,158 @@ def statistics(request):
         d.distributed_at.date() for d in journal_lignes
     }) - len(journal)
 
+    # --- Focus campagne : heatmap calendaire + restants --------------------
+    focus = None
+    heatmap_semaines = []
+    heatmap_hebdo = False
+    focus_pic = None
+    focus_jours_actifs = 0
+    focus_heatmap_resume = ''
+    focus_communes = []
+    focus_restants = []
+    focus_restants_count = 0
+    focus_validateurs_count = 0
+    if campagne_filtre:
+        focus = CampagneDistribution.objects.annotate(
+            _total_lieux=Count('distributions'),
+            _lieux_distribues=Count(
+                'distributions',
+                filter=Q(distributions__is_distributed=True),
+            ),
+            _lignes_zero=Count(
+                'distributions', filter=Q(distributions__quantite=0)
+            ),
+            **_quantite_annotations()
+        ).get(pk=campagne_filtre.pk)
+        focus.jours_restants = (focus.end_date - today).days
+        focus_validateurs_count = Distribution.objects.filter(
+            campagne=campagne_filtre,
+            is_distributed=True,
+            distributed_by__isnull=False,
+        ).values('distributed_by').distinct().count()
+
+        debut_heat = focus.start_date or (today - timedelta(days=89))
+        fin_heat = min(focus.end_date or today, today)
+        if debut_heat > fin_heat:
+            debut_heat = today - timedelta(days=89)
+            fin_heat = today
+        jours_heat = (fin_heat - debut_heat).days + 1
+        heatmap_hebdo = jours_heat > 26 * 7
+        distribues_campagne = Distribution.objects.filter(
+            campagne=campagne_filtre, is_distributed=True
+        ).select_related('lieu')
+        par_jour_focus = {}
+        for dist in distribues_campagne:
+            if not dist.distributed_at:
+                continue
+            jour = dist.distributed_at.date()
+            if jour < debut_heat or jour > fin_heat:
+                continue
+            par_jour_focus.setdefault(jour, []).append(dist.lieu.name)
+        focus_jours_actifs = len(par_jour_focus)
+        pic_jour = max(
+            par_jour_focus, key=lambda j: len(par_jour_focus[j]),
+            default=None,
+        )
+        if pic_jour:
+            focus_pic = {
+                'day': pic_jour, 'n': len(par_jour_focus[pic_jour])
+            }
+            focus_heatmap_resume = (
+                f"{focus_jours_actifs} jour(s) actif(s), "
+                f"pic le {pic_jour.strftime('%d/%m/%Y')} "
+                f"avec {len(par_jour_focus[pic_jour])} lieu(x)."
+            )
+        if heatmap_hebdo:
+            # Repli hebdomadaire pour les campagnes très longues.
+            semaine_courante = None
+            for offset in range(jours_heat):
+                jour = debut_heat + timedelta(days=offset)
+                lundi = jour - timedelta(days=jour.weekday())
+                if lundi != semaine_courante:
+                    semaine_courante = lundi
+                    heatmap_semaines.append(
+                        {'lundi': lundi, 'jours': []}
+                    )
+                noms = par_jour_focus.get(jour, [])
+                heatmap_semaines[-1]['jours'].append(
+                    {'date': jour, 'noms': noms}
+                )
+            for semaine in heatmap_semaines:
+                semaine['n'] = sum(
+                    len(j['noms']) for j in semaine['jours']
+                )
+        else:
+            premier_lundi = (
+                debut_heat - timedelta(days=debut_heat.weekday())
+            )
+            nb_semaines = (
+                (fin_heat - premier_lundi).days // 7 + 1
+            )
+            for sem in range(nb_semaines):
+                jours = []
+                for wd in range(7):
+                    jour = premier_lundi + timedelta(days=sem * 7 + wd)
+                    if jour < debut_heat or jour > fin_heat:
+                        jours.append(None)
+                    else:
+                        noms = par_jour_focus.get(jour, [])
+                        jours.append({'date': jour, 'noms': noms})
+                heatmap_semaines.append({'jours': jours})
+
+        mois_fr = [
+            'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.',
+            'août', 'sept.', 'oct.', 'nov.', 'déc.',
+        ]
+        mois_precedent = None
+        for semaine in heatmap_semaines:
+            if heatmap_hebdo:
+                mois = semaine['lundi'].month
+            else:
+                visibles = [j for j in semaine['jours'] if j]
+                mois = visibles[0]['date'].month if visibles else None
+            semaine['mois'] = (
+                mois_fr[mois - 1]
+                if mois and mois != mois_precedent else ''
+            )
+            if mois:
+                mois_precedent = mois
+
+        focus_communes = list(
+            Commune.objects.filter(
+                lieux__distributions__campagne=campagne_filtre
+            ).annotate(
+                commune_total=Count(
+                    'lieux__distributions',
+                    filter=Q(
+                        lieux__distributions__campagne=campagne_filtre
+                    ),
+                ),
+                commune_distribues=Count(
+                    'lieux__distributions',
+                    filter=Q(
+                        lieux__distributions__campagne=campagne_filtre,
+                        lieux__distributions__is_distributed=True,
+                    ),
+                ),
+            ).distinct().order_by('name')
+        )[:10]
+        for commune in focus_communes:
+            commune.pct_lieux = (
+                round(
+                    commune.commune_distribues
+                    / commune.commune_total * 100, 1
+                )
+                if commune.commune_total else None
+            )
+        focus_restants_qs = Distribution.objects.filter(
+            campagne=campagne_filtre, is_distributed=False
+        ).select_related('lieu__commune').order_by(
+            'lieu__commune__name', 'lieu__name'
+        )
+        focus_restants_count = focus_restants_qs.count()
+        focus_restants = list(focus_restants_qs[:10])
+
     # Durée moyenne des campagnes terminées (jours).
     durees = [
         (c.end_date - c.start_date).days
@@ -1486,6 +1638,16 @@ def statistics(request):
         'jour_max': jour_max,
         'journal': journal,
         'journal_jours_sup': journal_jours_sup,
+        'focus': focus,
+        'heatmap_semaines': heatmap_semaines,
+        'heatmap_hebdo': heatmap_hebdo,
+        'focus_pic': focus_pic,
+        'focus_jours_actifs': focus_jours_actifs,
+        'focus_heatmap_resume': focus_heatmap_resume,
+        'focus_communes': focus_communes,
+        'focus_restants': focus_restants,
+        'focus_restants_count': focus_restants_count,
+        'focus_validateurs_count': focus_validateurs_count,
         'validations_non_datees': validations_non_datees,
         'validations_futures': validations_futures,
         'duree_moyenne': duree_moyenne,

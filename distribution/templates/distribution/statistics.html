@@ -144,6 +144,141 @@
         </div>
     </div>
 
+    {% if focus %}
+    <!-- Focus campagne : heatmap des validations -->
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef] flex flex-wrap items-center gap-2 justify-between">
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-crosshair mr-1.5 text-[#4a6fa5]"></i>Focus : {{ focus.name }}</h2>
+            <div class="flex flex-wrap gap-2">
+                <a href="{% url 'distribution:campagne_detail' focus.pk %}"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-xl bg-[#e8eef7] text-[#4a6fa5] text-xs font-semibold hover:bg-[#dce3ef] transition-colors">
+                    Voir la campagne <i class="bx bx-chevron-right"></i>
+                </a>
+                <a href="{% url 'distribution:statistics' %}"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-xl border border-[#dce3ef] text-[#1e293b] text-xs font-semibold hover:bg-[#f8f9fc] transition-colors">
+                    <i class="bx bx-x"></i> Toutes campagnes
+                </a>
+            </div>
+        </div>
+        <div class="p-5">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                <div class="p-4 rounded-xl bg-[#f8f9fc] border border-[#dce3ef]">
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieux</p>
+                    <p class="text-2xl font-bold text-[#4a6fa5] mt-1">{{ focus.progression }}%</p>
+                    <p class="text-xs text-[#b0bedb] mt-1">{{ focus.lieux_distribues }}/{{ focus.total_lieux }}</p>
+                </div>
+                <div class="p-4 rounded-xl bg-[#f8f9fc] border border-[#dce3ef]">
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Documents</p>
+                    <p class="text-2xl font-bold text-emerald-700 mt-1">{% if focus.total_quantite %}{{ focus.progression_quantite }}%{% else %}—{% endif %}</p>
+                    <p class="text-xs text-[#b0bedb] mt-1">{% if focus.total_quantite %}{{ focus.quantite_distribuee }}/{{ focus.total_quantite }}{% else %}non chiffré{% endif %}</p>
+                </div>
+                <div class="p-4 rounded-xl bg-[#f8f9fc] border border-[#dce3ef]">
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Échéance</p>
+                    <p class="text-2xl font-bold mt-1 {% if focus.jours_restants < 0 %}text-red-600{% elif focus.jours_restants < 7 %}text-[#e67e22]{% else %}text-[#1e293b]{% endif %}">
+                        {% if focus.effective_status == 'completed' %}Terminée{% elif focus.jours_restants < 0 %}J+{{ focus.jours_restants|cut:"-" }}{% else %}J-{{ focus.jours_restants }}{% endif %}
+                    </p>
+                    <p class="text-xs text-[#b0bedb] mt-1">{{ focus_validateurs_count }} validateur{{ focus_validateurs_count|pluralize }}</p>
+                </div>
+                <div class="p-4 rounded-xl bg-[#f8f9fc] border border-[#dce3ef]">
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Jours actifs</p>
+                    <p class="text-2xl font-bold text-[#1e293b] mt-1">{{ focus_jours_actifs }}</p>
+                    <p class="text-xs text-[#b0bedb] mt-1">{% if focus_pic %}pic le {{ focus_pic.day|date:"d/m" }} ({{ focus_pic.n }}){% else %}aucune validation{% endif %}</p>
+                </div>
+            </div>
+
+            <h3 class="text-sm font-semibold text-[#1e293b] mb-3"><i class="bx bx-calendar mr-1.5 text-[#4a6fa5]"></i>Validations par jour — {{ focus.start_date|date:"d/m/Y" }} → {{ focus.end_date|date:"d/m/Y" }}{% if heatmap_hebdo %} (vue hebdomadaire){% endif %}</h3>
+            {% if heatmap_semaines %}
+            <div class="overflow-x-auto">
+                <div class="inline-flex gap-1" role="img" aria-label="Heatmap des validations de {{ focus.name }}. {{ focus_heatmap_resume }}">
+                    {% for semaine in heatmap_semaines %}
+                    <div class="flex flex-col gap-1">
+                        <span class="text-[10px] leading-4 h-4 text-[#b0bedb] whitespace-nowrap" aria-hidden="true">{{ semaine.mois }}</span>
+                        {% if heatmap_hebdo %}
+                        <a href="{% url 'distribution:campagne_detail' focus.pk %}" class="group relative block p-[3px] rounded" aria-label="Semaine du {{ semaine.lundi|date:'d/m/Y' }} : {{ semaine.n }} validation{{ semaine.n|pluralize }}">
+                            <span class="block w-3.5 h-3.5 rounded {% if semaine.n >= 10 %}bg-emerald-700{% elif semaine.n >= 6 %}bg-emerald-500{% elif semaine.n >= 3 %}bg-emerald-300{% elif semaine.n >= 1 %}bg-emerald-100{% else %}bg-[#e8eef7]{% endif %}"></span>
+                            <span class="pointer-events-none absolute z-10 hidden group-hover:block group-focus-within:block bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[240px] rounded-xl border border-[#dce3ef] bg-white shadow-lg px-3 py-2 text-xs text-[#1e293b]">
+                                <span class="font-semibold">Sem. du {{ semaine.lundi|date:"d/m/Y" }}</span><br>
+                                <span class="text-[#5a6f80]">{{ semaine.n }} validation{{ semaine.n|pluralize }}</span>
+                            </span>
+                        </a>
+                        {% else %}
+                        {% for jour in semaine.jours %}
+                        {% if jour %}
+                        {% with n=jour.noms|length %}
+                        <a href="#jour-{{ jour.date|date:'Y-m-d' }}" class="group relative block p-[3px] rounded" aria-label="{{ jour.date|date:'d/m/Y' }} : {{ n }} validation{{ n|pluralize }}">
+                            <span class="block w-3.5 h-3.5 rounded {% if n >= 10 %}bg-emerald-700{% elif n >= 6 %}bg-emerald-500{% elif n >= 3 %}bg-emerald-300{% elif n >= 1 %}bg-emerald-100{% else %}bg-[#e8eef7]{% endif %}"></span>
+                            <span class="pointer-events-none absolute z-10 hidden group-hover:block group-focus-within:block bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 rounded-xl border border-[#dce3ef] bg-white shadow-lg px-3 py-2 text-xs text-[#1e293b]">
+                                <span class="font-semibold">{{ jour.date|date:"l d/m/Y" }}</span><br>
+                                <span class="text-[#5a6f80]">{{ n }} lieu{{ n|pluralize:"x" }}</span>
+                                {% if n %}
+                                <span class="block mt-1 text-[#1e293b]">{% for nom in jour.noms|slice:":5" %}• {{ nom }}<br>{% endfor %}{% if n > 5 %}<span class="text-[#5a6f80]">+{{ n|add:"-5" }} autre{{ n|add:"-5"|pluralize }}</span>{% endif %}</span>
+                                {% endif %}
+                            </span>
+                        </a>
+                        {% endwith %}
+                        {% else %}
+                        <span class="block p-[3px]" aria-hidden="true"><span class="block w-3.5 h-3.5"></span></span>
+                        {% endif %}
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5 mt-3" aria-hidden="true">
+                <span class="text-xs text-[#b0bedb]">Moins</span>
+                <span class="w-3.5 h-3.5 rounded bg-[#e8eef7]"></span>
+                <span class="w-3.5 h-3.5 rounded bg-emerald-100"></span>
+                <span class="w-3.5 h-3.5 rounded bg-emerald-300"></span>
+                <span class="w-3.5 h-3.5 rounded bg-emerald-500"></span>
+                <span class="w-3.5 h-3.5 rounded bg-emerald-700"></span>
+                <span class="text-xs text-[#b0bedb]">Plus</span>
+                <span class="sr-only">Échelle : 0, 1-2, 3-5, 6-9, 10 et plus.</span>
+            </div>
+            <p class="sr-only">{{ focus_heatmap_resume }}</p>
+            {% else %}
+            <p class="text-sm text-[#b0bedb] text-center py-6">Aucune validation sur cette campagne — voyez les lieux restants ci-dessous.</p>
+            {% endif %}
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <div>
+                    <h3 class="text-sm font-semibold text-[#1e293b] mb-3">Communes de la campagne</h3>
+                    {% if focus_communes %}
+                    <ul class="divide-y divide-[#dce3ef] rounded-xl border border-[#dce3ef]">
+                        {% for commune in focus_communes %}
+                        <li class="px-4 py-3 flex items-center gap-3">
+                            <a href="{% url 'distribution:commune_detail' commune.pk %}" class="text-sm font-medium text-[#1e293b] hover:text-[#4a6fa5]">{{ commune.name }}</a>
+                            <div class="flex-1 h-2 bg-[#e8eef7] rounded-full overflow-hidden">
+                                <div class="h-full rounded-full bg-[#4a6fa5]" style="width: {% if commune.pct_lieux != None %}{{ commune.pct_lieux }}{% else %}0{% endif %}%"></div>
+                            </div>
+                            <span class="text-xs font-semibold text-[#b0bedb] min-w-[44px] text-right">{% if commune.pct_lieux != None %}{{ commune.pct_lieux }}%{% else %}—{% endif %}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-sm text-[#b0bedb]">Aucune commune liée.</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-[#1e293b] mb-3">Reste à distribuer ({{ focus_restants_count }})</h3>
+                    {% if focus_restants %}
+                    <ul class="divide-y divide-[#dce3ef] rounded-xl border border-[#dce3ef]">
+                        {% for dist in focus_restants %}
+                        <li class="px-4 py-2.5 text-sm text-[#1e293b]">{{ dist.lieu.commune.name }} › {{ dist.lieu.name }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% if focus_restants_count > 10 %}
+                    <a href="{% url 'distribution:campagne_detail' focus.pk %}" class="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-[#4a6fa5] hover:underline min-h-[44px]">Voir les {{ focus_restants_count|add:"-10" }} autres sur la campagne <i class="bx bx-chevron-right"></i></a>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-sm font-medium text-emerald-700"><i class="bx bx-check-circle mr-1"></i>Tout est distribué sur cette campagne.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div class="lg:col-span-2">
             <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm">
