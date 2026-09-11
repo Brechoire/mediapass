@@ -1314,13 +1314,15 @@ def statistics(request):
     # --- Par commune : taux plutôt que volume -----------------------------
     communes_stats = list(
         Commune.objects.annotate(
-            _total=Count('lieux__distributions'),
-            _distribues=Count(
+            commune_total=Count('lieux__distributions'),
+            commune_distribues=Count(
                 'lieux__distributions',
                 filter=Q(lieux__distributions__is_distributed=True),
             ),
-            _docs_total=Coalesce(Sum('lieux__distributions__quantite'), 0),
-            _docs_distribues=Coalesce(
+            commune_docs_total=Coalesce(
+                Sum('lieux__distributions__quantite'), 0
+            ),
+            commune_docs_distribues=Coalesce(
                 Sum(
                     'lieux__distributions__quantite',
                     filter=Q(lieux__distributions__is_distributed=True),
@@ -1330,12 +1332,16 @@ def statistics(request):
     )
     for commune in communes_stats:
         commune.pct_lieux = (
-            round(commune._distribues / commune._total * 100, 1)
-            if commune._total else None
+            round(
+                commune.commune_distribues / commune.commune_total * 100, 1
+            )
+            if commune.commune_total else None
         )
-        commune.docs_en_attente = commune._docs_total - commune._docs_distribues
+        commune.docs_en_attente = (
+            commune.commune_docs_total - commune.commune_docs_distribues
+        )
     communes_stats.sort(
-        key=lambda c: (c._total == 0, -(c.pct_lieux or 0))
+        key=lambda c: (c.commune_total == 0, -(c.pct_lieux or 0))
     )
     communes_stats = communes_stats[:10]
 
@@ -1348,7 +1354,7 @@ def statistics(request):
             _lieux_distribues=Count(
                 'distributions', filter=Q(distributions__is_distributed=True)
             ),
-            _lignes_zero=Count(
+            lignes_zero=Count(
                 'distributions', filter=Q(distributions__quantite=0)
             ),
             **_quantite_annotations()
@@ -1362,7 +1368,7 @@ def statistics(request):
             _lieux_distribues=Count(
                 'distributions', filter=Q(distributions__is_distributed=True)
             ),
-            _lignes_zero=Count(
+            lignes_zero=Count(
                 'distributions', filter=Q(distributions__quantite=0)
             ),
             **_quantite_annotations()

@@ -175,14 +175,14 @@
                                             </div>
                                             <div>
                                                 <a href="{% url 'distribution:commune_detail' commune.pk %}" class="text-sm font-medium text-[#1e293b] hover:text-[#4a6fa5] transition-colors">{{ commune.name }}</a>
-                                                {% if commune.pct_lieux != None and commune.pct_lieux < 50 and commune._total %}
+                                                {% if commune.pct_lieux != None and commune.pct_lieux < 50 and commune.commune_total %}
                                                 <span class="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">À la traîne</span>
                                                 {% endif %}
                                             </div>
                                         </div>
                                     </td>
                                     <td class="px-4 py-4 text-center">
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ commune._distribues }}/{{ commune._total }}</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ commune.commune_distribues }}/{{ commune.commune_total }}</span>
                                     </td>
                                     <td class="px-4 py-4 min-w-[140px]">
                                         {% if commune.pct_lieux != None %}
@@ -353,8 +353,8 @@
                         <tr class="hover:bg-[#f8f9fc] transition-colors">
                             <td class="px-4 py-4">
                                 <div class="text-sm font-medium text-[#1e293b]">{{ campagne.name }}</div>
-                                {% if campagne._lignes_zero %}
-                                <div class="text-xs text-[#e67e22] mt-0.5">{{ campagne._lignes_zero }} lieu{{ campagne._lignes_zero|pluralize:"x" }} sans quantité</div>
+                                {% if campagne.lignes_zero %}
+                                <div class="text-xs text-[#e67e22] mt-0.5">{{ campagne.lignes_zero }} lieu{{ campagne.lignes_zero|pluralize:"x" }} sans quantité</div>
                                 {% endif %}
                             </td>
                             <td class="px-4 py-4 text-center">
