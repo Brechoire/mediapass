@@ -1281,26 +1281,79 @@ def statistics(request):
         or lieux_jamais_rows or communes_vides
     )
 
-    # --- Rythme : validations des 30 derniers jours -----------------------
-    debut = today - timedelta(days=29)
+    # --- Rythme : validations par jour (période + campagne filtrables) -----
+    try:
+        periode = int(request.GET.get('periode', 30))
+    except (TypeError, ValueError):
+        periode = 30
+    if periode not in (7, 30, 90):
+        periode = 30
+    campagne_filtre = None
+    if request.GET.get('campagne'):
+        campagne_filtre = get_object_or_404(
+            CampagneDistribution, pk=request.GET.get('campagne')
+        )
+    rythme_q = Q(is_distributed=True)
+    if campagne_filtre:
+        rythme_q &= Q(campagne=campagne_filtre)
+    debut = today - timedelta(days=periode - 1)
     par_jour = {
         row['day']: row['n']
         for row in (
             Distribution.objects.filter(
-                is_distributed=True, distributed_at__date__gte=debut
+                rythme_q,
+                distributed_at__date__gte=debut,
+                distributed_at__date__lte=today,
             ).annotate(day=TruncDate('distributed_at')).values('day').annotate(
                 n=Count('id')
             ).order_by('day')
         )
     }
-    rythme_30j = [
-        {'day': debut + timedelta(days=i), 'n': par_jour.get(debut + timedelta(days=i), 0)}
-        for i in range(30)
+    rythme_points = [
+        {
+            'day': debut + timedelta(days=i),
+            'n': par_jour.get(debut + timedelta(days=i), 0),
+        }
+        for i in range(periode)
     ]
-    rythme_max = max([p['n'] for p in rythme_30j] + [0])
+    rythme_max = max([p['n'] for p in rythme_points] + [0])
+    rythme_total = sum(p['n'] for p in rythme_points)
+    rythme_moyenne = round(rythme_total / periode, 1) if periode else 0
+    jour_max = max(rythme_points, key=lambda p: p['n'])
+    if not jour_max['n']:
+        jour_max = None
     validations_non_datees = Distribution.objects.filter(
-        is_distributed=True, distributed_at__isnull=True
+        rythme_q, distributed_at__isnull=True
     ).count()
+    validations_futures = Distribution.objects.filter(
+        rythme_q, distributed_at__date__gt=today
+    ).count()
+    campagnes_choix = CampagneDistribution.objects.order_by(
+        'status', 'end_date'
+    ).only('id', 'name', 'status', 'end_date')
+
+    # --- Journal : quels lieux, quels jours (14 derniers jours affichés) --
+    from itertools import groupby
+    journal_lignes = list(
+        Distribution.objects.filter(
+            rythme_q,
+            distributed_at__date__gte=debut,
+            distributed_at__date__lte=today,
+        ).select_related(
+            'lieu__commune', 'campagne', 'distributed_by'
+        ).order_by('-distributed_at')
+    )
+    journal = []
+    for day, lignes in groupby(
+        journal_lignes, key=lambda d: d.distributed_at.date()
+    ):
+        lignes = list(lignes)
+        journal.append({'day': day, 'items': lignes, 'n': len(lignes)})
+        if len(journal) >= 14:
+            break
+    journal_jours_sup = len({
+        d.distributed_at.date() for d in journal_lignes
+    }) - len(journal)
 
     # Durée moyenne des campagnes terminées (jours).
     durees = [
@@ -1423,9 +1476,18 @@ def statistics(request):
         'lieux_jamais_count': lieux_jamais_count,
         'communes_vides': communes_vides,
         'has_alertes': has_alertes,
-        'rythme_30j': rythme_30j,
+        'periode': periode,
+        'campagne_filtre': campagne_filtre,
+        'campagnes_choix': campagnes_choix,
+        'rythme_30j': rythme_points,
         'rythme_max': rythme_max,
+        'rythme_total': rythme_total,
+        'rythme_moyenne': rythme_moyenne,
+        'jour_max': jour_max,
+        'journal': journal,
+        'journal_jours_sup': journal_jours_sup,
         'validations_non_datees': validations_non_datees,
+        'validations_futures': validations_futures,
         'duree_moyenne': duree_moyenne,
         'communes_stats': communes_stats,
         'campagnes_table': campagnes_table,

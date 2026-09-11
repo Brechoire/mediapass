@@ -223,15 +223,49 @@
         <div class="lg:col-span-1 space-y-6">
             <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm">
                 <div class="px-6 py-4 border-b border-[#dce3ef]">
-                    <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-trending-up mr-1.5 text-[#4a6fa5]"></i>Rythme — 30 derniers jours</h2>
+                    <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-trending-up mr-1.5 text-[#4a6fa5]"></i>Rythme des validations</h2>
                 </div>
                 <div class="p-5">
+                    <form method="get" class="flex flex-wrap items-center gap-2 mb-4" aria-label="Filtrer l'historique">
+                        <div class="inline-flex rounded-xl border border-[#dce3ef] overflow-hidden" role="group" aria-label="Période">
+                            <a href="?periode=7{% if campagne_filtre %}&campagne={{ campagne_filtre.pk }}{% endif %}"
+                               {% if periode == 7 %}aria-current="true"{% endif %}
+                               class="px-3 py-2 min-h-[44px] inline-flex items-center text-xs font-semibold {% if periode == 7 %}bg-[#4a6fa5] text-white{% else %}text-[#1e293b] hover:bg-[#f8f9fc]{% endif %}">7 j</a>
+                            <a href="?periode=30{% if campagne_filtre %}&campagne={{ campagne_filtre.pk }}{% endif %}"
+                               {% if periode == 30 %}aria-current="true"{% endif %}
+                               class="px-3 py-2 min-h-[44px] inline-flex items-center text-xs font-semibold {% if periode == 30 %}bg-[#4a6fa5] text-white{% else %}text-[#1e293b] hover:bg-[#f8f9fc]{% endif %}">30 j</a>
+                            <a href="?periode=90{% if campagne_filtre %}&campagne={{ campagne_filtre.pk }}{% endif %}"
+                               {% if periode == 90 %}aria-current="true"{% endif %}
+                               class="px-3 py-2 min-h-[44px] inline-flex items-center text-xs font-semibold {% if periode == 90 %}bg-[#4a6fa5] text-white{% else %}text-[#1e293b] hover:bg-[#f8f9fc]{% endif %}">90 j</a>
+                        </div>
+                        <label for="rythme-campagne" class="sr-only">Filtrer par campagne</label>
+                        <select id="rythme-campagne" name="campagne" onchange="this.form.submit()"
+                                class="tw-input text-sm min-h-[44px] max-w-[220px]">
+                            <option value="">Toutes campagnes</option>
+                            {% for c in campagnes_choix %}
+                            <option value="{{ c.pk }}" {% if campagne_filtre and campagne_filtre.pk == c.pk %}selected{% endif %}>{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="hidden" name="periode" value="{{ periode }}">
+                    </form>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 mb-4">
+                        <span class="text-xs text-[#b0bedb]">Total : <span class="font-semibold text-[#1e293b]">{{ rythme_total }} lieu{{ rythme_total|pluralize:"x" }}</span></span>
+                        <span class="text-xs text-[#b0bedb]">Moyenne : <span class="font-semibold text-[#1e293b]">{{ rythme_moyenne }}/j</span></span>
+                        {% if jour_max %}
+                        <span class="text-xs text-[#b0bedb]">Pic : <a href="#jour-{{ jour_max.day|date:'Y-m-d' }}" class="font-semibold text-[#4a6fa5] underline">{{ jour_max.day|date:"d/m/Y" }} ({{ jour_max.n }})</a></span>
+                        {% endif %}
+                    </div>
                     {% if rythme_max %}
-                    <div class="flex items-end gap-1 h-24" role="img" aria-label="Validations par jour sur 30 jours, maximum {{ rythme_max }} par jour">
+                    <div class="flex items-end gap-1 h-24" role="img" aria-label="Validations par jour sur {{ periode }} jours, maximum {{ rythme_max }} par jour">
                         {% for point in rythme_30j %}
-                        <div class="flex-1 rounded-t {% if point.n %}bg-[#4a6fa5]{% else %}bg-[#e8eef7]{% endif %}"
-                             title="{{ point.day|date:'d/m/Y' }} : {{ point.n }} validation{{ point.n|pluralize }}"
-                             style="height: {% if rythme_max %}{% widthratio point.n rythme_max 100 %}{% else %}0{% endif %}%"></div>
+                        {% if point.n %}
+                        <a href="#jour-{{ point.day|date:'Y-m-d' }}" class="flex-1 rounded-t bg-[#4a6fa5] hover:bg-[#3d5f8f] min-h-[8px] block"
+                           title="{{ point.day|date:'d/m/Y' }} : {{ point.n }} validation{{ point.n|pluralize }} — voir le détail"
+                           style="height: {% widthratio point.n rythme_max 100 %}%" aria-label="{{ point.day|date:'d/m/Y' }} : {{ point.n }} validations"></a>
+                        {% else %}
+                        <div class="flex-1 rounded-t bg-[#e8eef7] min-h-[4px]"
+                             title="{{ point.day|date:'d/m/Y' }} : aucune validation"></div>
+                        {% endif %}
                         {% endfor %}
                     </div>
                     <div class="flex justify-between mt-2">
@@ -239,10 +273,13 @@
                         <span class="text-xs text-[#b0bedb]">aujourd'hui</span>
                     </div>
                     {% else %}
-                    <p class="text-sm text-[#b0bedb] text-center py-6">Aucune validation ces 30 derniers jours.</p>
+                    <p class="text-sm text-[#b0bedb] text-center py-6">Aucune validation sur {{ periode }} jours{% if campagne_filtre %} pour {{ campagne_filtre.name }}{% endif %}.</p>
                     {% endif %}
                     {% if validations_non_datees %}
                     <p class="text-xs text-[#b0bedb] mt-3">{{ validations_non_datees }} validation{{ validations_non_datees|pluralize }} ancienne{{ validations_non_datees|pluralize }} sans date.</p>
+                    {% endif %}
+                    {% if validations_futures %}
+                    <p class="text-xs text-[#b0bedb] mt-2">{{ validations_futures }} validation{{ validations_futures|pluralize }} à une date future (horloge décalée ?).</p>
                     {% endif %}
                     {% if duree_moyenne %}
                     <p class="text-xs text-[#b0bedb] mt-2">Durée moyenne d'une campagne terminée : <span class="font-semibold text-[#1e293b]">{{ duree_moyenne }} jours</span>.</p>
@@ -321,6 +358,48 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Journal : quels lieux, quels jours -->
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef] flex items-center justify-between">
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-calendar-check mr-1.5 text-[#00a86b]"></i>Journal des validations{% if campagne_filtre %} — {{ campagne_filtre.name }}{% endif %}</h2>
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ rythme_total }} lieu{{ rythme_total|pluralize:"x" }} sur {{ periode }} j</span>
+        </div>
+        <div class="p-5">
+            {% if journal %}
+            <div class="space-y-3">
+                {% for jour in journal %}
+                <details id="jour-{{ jour.day|date:'Y-m-d' }}" class="rounded-xl border border-[#dce3ef] scroll-mt-24" {% if forloop.first %}open{% endif %}>
+                    <summary class="px-4 py-3 min-h-[44px] cursor-pointer list-none flex items-center gap-3 font-semibold text-sm text-[#1e293b] hover:bg-[#f8f9fc] rounded-xl">
+                        <i class="bx bx-calendar text-[#4a6fa5]" aria-hidden="true"></i>
+                        {{ jour.day|date:"l d/m/Y" }}
+                        <span class="ml-auto inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">{{ jour.n }} lieu{{ jour.n|pluralize:"x" }}</span>
+                    </summary>
+                    <ul class="divide-y divide-[#dce3ef] px-4 pb-2">
+                        {% for dist in jour.items %}
+                        <li class="py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <div class="min-w-0">
+                                <p class="text-sm font-medium text-[#1e293b]">{{ dist.lieu.commune.name }} › {{ dist.lieu.name }}</p>
+                                <p class="text-xs text-[#b0bedb]">{{ dist.campagne.name }} · {% if dist.distributed_by %}{{ dist.distributed_by.get_full_name|default:dist.distributed_by.username }}{% else %}—{% endif %}{% if dist.distributed_at %} · {{ dist.distributed_at|date:"H:i" }}{% endif %}</p>
+                            </div>
+                            <a href="{% url 'distribution:campagne_detail' dist.campagne.pk %}"
+                               class="ml-auto inline-flex items-center gap-1 px-2.5 py-1.5 min-h-[44px] rounded-lg bg-[#e8eef7] text-[#4a6fa5] text-xs font-semibold hover:bg-[#dce3ef] transition-colors">
+                                Voir <i class="bx bx-chevron-right" aria-hidden="true"></i>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </details>
+                {% endfor %}
+            </div>
+            {% if journal_jours_sup %}
+            <p class="text-xs text-[#b0bedb] mt-3">+ {{ journal_jours_sup }} jour{{ journal_jours_sup|pluralize }} avec validations dans la période (14 derniers affichés).</p>
+            {% endif %}
+            {% else %}
+            <p class="text-sm text-[#b0bedb] text-center py-6">Aucune validation datée sur {{ periode }} jours{% if campagne_filtre %} pour {{ campagne_filtre.name }}{% endif %}.</p>
+            {% endif %}
         </div>
     </div>
 

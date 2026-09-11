@@ -480,6 +480,79 @@ class CampagneExpirationTests(TestCase):
         self.assertIn("Testville", communes)
 
 
+class StatisticsJournalTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username="admin", password="admin123"
+        )
+        self.commune = Commune.objects.create(name="Testville")
+        self.campagne = CampagneDistribution.objects.create(
+            name="Campagne journal",
+            created_by=self.admin,
+            start_date=timezone.localdate() - timedelta(days=5),
+            end_date=timezone.localdate() + timedelta(days=5),
+            status="active",
+        )
+        self.jour = timezone.now() - timedelta(days=2)
+        for i in range(4):
+            lieu = Lieu.objects.create(
+                commune=self.commune, name=f"Lieu {i}"
+            )
+            Distribution.objects.create(
+                campagne=self.campagne,
+                lieu=lieu,
+                is_distributed=True,
+                distributed_by=self.admin,
+                distributed_at=self.jour,
+            )
+        self.client.login(username="admin", password="admin123")
+
+    def test_journal_regroupe_par_jour(self):
+        response = self.client.get(reverse("distribution:statistics"))
+        self.assertEqual(response.status_code, 200)
+        journal = response.context["journal"]
+        jour = next(
+            j for j in journal if j["day"] == self.jour.date()
+        )
+        self.assertEqual(jour["n"], 4)
+        self.assertEqual(len(jour["items"]), 4)
+        jour_max = response.context["jour_max"]
+        self.assertEqual(jour_max["day"], self.jour.date())
+        self.assertEqual(jour_max["n"], 4)
+        content = response.content.decode()
+        self.assertIn("Journal des validations", content)
+        self.assertIn(
+            f"jour-{self.jour.date().isoformat()}", content
+        )
+
+    def test_periode_parametrique(self):
+        response = self.client.get(
+            reverse("distribution:statistics"), {"periode": 7}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["rythme_30j"]), 7)
+        self.assertEqual(response.context["periode"], 7)
+        response = self.client.get(
+            reverse("distribution:statistics"), {"periode": 45}
+        )
+        self.assertEqual(response.context["periode"], 30)
+
+    def test_filtre_campagne(self):
+        autre = CampagneDistribution.objects.create(
+            name="Autre campagne",
+            created_by=self.admin,
+            start_date=timezone.localdate() - timedelta(days=5),
+            end_date=timezone.localdate() + timedelta(days=5),
+            status="active",
+        )
+        response = self.client.get(
+            reverse("distribution:statistics"), {"campagne": autre.pk}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["journal"], [])
+        self.assertIsNone(response.context["jour_max"])
+
+
 class CampagneProgressionBarTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser(
