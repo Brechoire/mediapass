@@ -49,8 +49,9 @@
            class="block bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Termin&#xE9;es</p>
-                    <p class="text-3xl font-bold text-[#00a86b] mt-1">{{ campagnes_terminees }}</p>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieux distribués</p>
+                    <p class="text-3xl font-bold text-[#00a86b] mt-1">{% if taux_lieux_pct != None %}{{ taux_lieux_pct }}%{% else %}—{% endif %}</p>
+                    <p class="text-xs text-[#b0bedb] mt-1">{{ distributions_distribuees }}/{{ distributions_total }} lieux</p>
                 </div>
                 <div class="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center">
                     <i class="bx bx-check-circle text-xl text-[#00a86b]"></i>
@@ -61,14 +62,86 @@
            class="block bg-white rounded-2xl border border-[#dce3ef] p-5 shadow-sm hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieux actifs</p>
-                    <p class="text-3xl font-bold text-[#8e44ad] mt-1">{{ total_lieux }}</p>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Documents</p>
+                    <p class="text-3xl font-bold text-[#8e44ad] mt-1">{% if taux_docs_pct != None %}{{ taux_docs_pct }}%{% else %}—{% endif %}</p>
+                    <p class="text-xs text-[#b0bedb] mt-1">{{ flyers_distribues }}/{{ flyers_prevus }} docs</p>
                 </div>
                 <div class="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center">
-                    <i class="bx bx-map text-xl text-[#8e44ad]"></i>
+                    <i class="bx bx-copy text-xl text-[#8e44ad]"></i>
                 </div>
             </div>
         </a>
+    </div>
+
+    <!-- Pilotage : où agir -->
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-error mr-1.5 text-[#e67e22]"></i>Pilotage — où agir</h2>
+        </div>
+        <div class="p-5">
+            {% if has_alertes %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {% for campagne in expiring_soon %}
+                <a href="{% url 'distribution:campagne_detail' campagne.pk %}"
+                   class="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 hover:shadow-md transition-shadow">
+                    <i class="bx bx-time text-2xl text-[#e67e22] shrink-0"></i>
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-[#1e293b] truncate">{{ campagne.name }}</p>
+                        <p class="text-xs text-amber-700">Expire dans {{ campagne.jours_restants }} jour{{ campagne.jours_restants|pluralize }} — {{ campagne.lieux_distribues }}/{{ campagne.total_lieux }} lieux</p>
+                    </div>
+                    <i class="bx bx-chevron-right ml-auto text-amber-700"></i>
+                </a>
+                {% endfor %}
+                {% for campagne in never_started %}
+                <a href="{% url 'distribution:campagne_detail' campagne.pk %}"
+                   class="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 hover:shadow-md transition-shadow">
+                    <i class="bx bx-flag text-2xl text-red-600 shrink-0"></i>
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-[#1e293b] truncate">{{ campagne.name }}</p>
+                        <p class="text-xs text-red-700">Aucun lieu distribué sur {{ campagne.total_lieux }} — jamais démarrée</p>
+                    </div>
+                    <i class="bx bx-chevron-right ml-auto text-red-700"></i>
+                </a>
+                {% endfor %}
+                {% for campagne in no_quantite %}
+                <a href="{% url 'distribution:campagne_detail' campagne.pk %}"
+                   class="flex items-center gap-3 p-4 rounded-xl bg-blue-50 border border-blue-200 hover:shadow-md transition-shadow">
+                    <i class="bx bx-calculator text-2xl text-[#4a6fa5] shrink-0"></i>
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-[#1e293b] truncate">{{ campagne.name }}</p>
+                        <p class="text-xs text-[#4a6fa5]">Aucune quantité saisie pour {{ campagne.total_lieux }} lieux</p>
+                    </div>
+                    <i class="bx bx-chevron-right ml-auto text-[#4a6fa5]"></i>
+                </a>
+                {% endfor %}
+                {% if lieux_jamais_count %}
+                <div class="flex items-center gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200">
+                    <i class="bx bx-ghost text-2xl text-gray-500 shrink-0"></i>
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-[#1e293b]">{{ lieux_jamais_count }} lieu{{ lieux_jamais_count|pluralize:"x" }} jamais distribué{{ lieux_jamais_count|pluralize }}</p>
+                        <p class="text-xs text-gray-500">{% for lieu in lieux_jamais_rows %}{{ lieu.commune.name }} › {{ lieu.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if lieux_jamais_count > 5 %}…{% endif %}</p>
+                    </div>
+                </div>
+                {% endif %}
+                {% for commune in communes_vides %}
+                <a href="{% url 'distribution:commune_detail' commune.pk %}"
+                   class="flex items-center gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200 hover:shadow-md transition-shadow">
+                    <i class="bx bx-buildings text-2xl text-gray-500 shrink-0"></i>
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-[#1e293b] truncate">{{ commune.name }}</p>
+                        <p class="text-xs text-gray-500">Aucun lieu actif dans cette commune</p>
+                    </div>
+                    <i class="bx bx-chevron-right ml-auto text-gray-500"></i>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                <i class="bx bx-check-circle text-2xl text-[#00a86b] shrink-0"></i>
+                <p class="text-sm font-medium text-emerald-800">Tout est à jour — aucune campagne à risque, aucun angle mort.</p>
+            </div>
+            {% endif %}
+        </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -76,42 +149,59 @@
             <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm">
                 <div class="px-6 py-4 border-b border-[#dce3ef]">
                     <div class="flex items-center justify-between">
-                        <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-buildings mr-1.5 text-[#4a6fa5]"></i>Top 5 des communes</h2>
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">Par nombre de lieux</span>
+                        <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-buildings mr-1.5 text-[#4a6fa5]"></i>Communes — taux de distribution</h2>
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">Les plus en retard d'abord</span>
                     </div>
                 </div>
                 <div class="p-5">
-                    {% if top_communes %}
+                    {% if communes_stats %}
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-[#dce3ef]">
                             <thead>
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Commune</th>
                                     <th class="px-4 py-3 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieux</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">R&#xE9;partition</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Distribué</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden md:table-cell">Docs en attente</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-[#dce3ef]">
-                                {% for commune in top_communes %}
+                                {% for commune in communes_stats %}
                                 <tr class="hover:bg-[#f8f9fc] transition-colors">
                                     <td class="px-4 py-4">
                                         <div class="flex items-center gap-3">
                                             <div class="w-8 h-8 rounded-lg bg-[#e8eef7] flex items-center justify-center">
                                                 <i class="bx bx-buildings text-sm text-[#4a6fa5]"></i>
                                             </div>
-                                            <a href="{% url 'distribution:commune_detail' commune.pk %}" class="text-sm font-medium text-[#1e293b] hover:text-[#4a6fa5] transition-colors">{{ commune.name }}</a>
+                                            <div>
+                                                <a href="{% url 'distribution:commune_detail' commune.pk %}" class="text-sm font-medium text-[#1e293b] hover:text-[#4a6fa5] transition-colors">{{ commune.name }}</a>
+                                                {% if commune.pct_lieux != None and commune.pct_lieux < 50 and commune._total %}
+                                                <span class="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">À la traîne</span>
+                                                {% endif %}
+                                            </div>
                                         </div>
                                     </td>
                                     <td class="px-4 py-4 text-center">
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ commune.lieux_count }}</span>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ commune._distribues }}/{{ commune._total }}</span>
                                     </td>
-                                    <td class="px-4 py-4">
+                                    <td class="px-4 py-4 min-w-[140px]">
+                                        {% if commune.pct_lieux != None %}
                                         <div class="flex items-center gap-3">
                                             <div class="flex-1 h-2 bg-[#e8eef7] rounded-full overflow-hidden">
-                                                <div class="h-full rounded-full bg-[#4a6fa5]" style="width: {% widthratio commune.lieux_count total_lieux 100 %}%"></div>
+                                                <div class="h-full rounded-full {% if commune.pct_lieux >= 100 %}bg-emerald-500{% elif commune.pct_lieux >= 50 %}bg-[#4a6fa5]{% else %}bg-amber-500{% endif %}" style="width: {{ commune.pct_lieux }}%"></div>
                                             </div>
-                                            <span class="text-xs font-medium text-[#b0bedb] min-w-[32px] text-right">{% widthratio commune.lieux_count total_lieux 100 %}%</span>
+                                            <span class="text-xs font-medium text-[#b0bedb] min-w-[44px] text-right">{{ commune.pct_lieux }}%</span>
                                         </div>
+                                        {% else %}
+                                        <span class="text-xs text-[#b0bedb]">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-4 text-sm hidden md:table-cell">
+                                        {% if commune.docs_en_attente %}
+                                        <span class="text-sm font-semibold text-[#e67e22]">{{ commune.docs_en_attente }} docs</span>
+                                        {% else %}
+                                        <span class="text-[#b0bedb]">—</span>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -130,7 +220,36 @@
             </div>
         </div>
 
-        <div class="lg:col-span-1">
+        <div class="lg:col-span-1 space-y-6">
+            <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm">
+                <div class="px-6 py-4 border-b border-[#dce3ef]">
+                    <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-trending-up mr-1.5 text-[#4a6fa5]"></i>Rythme — 30 derniers jours</h2>
+                </div>
+                <div class="p-5">
+                    {% if rythme_max %}
+                    <div class="flex items-end gap-1 h-24" role="img" aria-label="Validations par jour sur 30 jours, maximum {{ rythme_max }} par jour">
+                        {% for point in rythme_30j %}
+                        <div class="flex-1 rounded-t {% if point.n %}bg-[#4a6fa5]{% else %}bg-[#e8eef7]{% endif %}"
+                             title="{{ point.day|date:'d/m/Y' }} : {{ point.n }} validation{{ point.n|pluralize }}"
+                             style="height: {% if rythme_max %}{% widthratio point.n rythme_max 100 %}{% else %}0{% endif %}%"></div>
+                        {% endfor %}
+                    </div>
+                    <div class="flex justify-between mt-2">
+                        <span class="text-xs text-[#b0bedb]">{{ rythme_30j.0.day|date:"d/m" }}</span>
+                        <span class="text-xs text-[#b0bedb]">aujourd'hui</span>
+                    </div>
+                    {% else %}
+                    <p class="text-sm text-[#b0bedb] text-center py-6">Aucune validation ces 30 derniers jours.</p>
+                    {% endif %}
+                    {% if validations_non_datees %}
+                    <p class="text-xs text-[#b0bedb] mt-3">{{ validations_non_datees }} validation{{ validations_non_datees|pluralize }} ancienne{{ validations_non_datees|pluralize }} sans date.</p>
+                    {% endif %}
+                    {% if duree_moyenne %}
+                    <p class="text-xs text-[#b0bedb] mt-2">Durée moyenne d'une campagne terminée : <span class="font-semibold text-[#1e293b]">{{ duree_moyenne }} jours</span>.</p>
+                    {% endif %}
+                </div>
+            </div>
+
             <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm">
                 <div class="px-6 py-4 border-b border-[#dce3ef]">
                     <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-pie-chart mr-1.5 text-[#00a86b]"></i>R&#xE9;partition</h2>
@@ -155,13 +274,13 @@
                         </div>
                         <div class="text-center p-4 rounded-xl bg-purple-50 border border-purple-200 col-span-2">
                             <p class="text-2xl font-bold text-[#8e44ad]">{{ total_lieux }}</p>
-                            <p class="text-xs font-medium text-[#8e44ad] mt-1">Lieux actifs</p>
+                            <p class="text-xs font-medium text-[#8e44ad] mt-1">Lieux actifs ({{ total_communes }} communes)</p>
                         </div>
                     </div>
 
                     <div class="bg-[#f8f9fc] rounded-xl p-4 border border-[#dce3ef] mb-4">
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Campagnes</span>
+                            <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Campagnes ({{ total_campagnes }})</span>
                         </div>
                         <div class="w-full h-2.5 bg-[#e8eef7] rounded-full overflow-hidden flex">
                             <div class="h-full bg-[#e67e22] transition-all" style="width: {% if total_campagnes > 0 %}{% widthratio campagnes_actives total_campagnes 100 %}{% else %}0{% endif %}%"></div>
@@ -170,10 +289,10 @@
                             <div class="h-full bg-[#d46a78] transition-all" style="width: {% if total_campagnes > 0 %}{% widthratio campagnes_cancelled total_campagnes 100 %}{% else %}0{% endif %}%"></div>
                         </div>
                         <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-[#e67e22]"></span> En cours</span>
-                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-[#00a86b]"></span> Termin&#xE9;es</span>
-                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-gray-300"></span> Brouillons</span>
-                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-[#d46a78]"></span> Annul&#xE9;es</span>
+                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-[#e67e22]"></span> En cours ({{ campagnes_actives }})</span>
+                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-[#00a86b]"></span> Termin&#xE9;es ({{ campagnes_terminees }})</span>
+                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-gray-300"></span> Brouillons ({{ campagnes_drafts }})</span>
+                            <span class="flex items-center gap-1 text-xs text-[#b0bedb]"><span class="w-2 h-2 rounded-full bg-[#d46a78]"></span> Annul&#xE9;es ({{ campagnes_cancelled }})</span>
                         </div>
                     </div>
 
@@ -185,7 +304,7 @@
                             </span>
                         </div>
                         <div class="w-full h-2.5 bg-[#e8eef7] rounded-full overflow-hidden">
-                            <div class="h-full bg-[#4a6fa5] transition-all" style="width: {% widthratio distributions_distribuees distributions_total 100 %}%"></div>
+                            <div class="h-full bg-[#4a6fa5] transition-all" style="width: {% if distributions_total %}{% widthratio distributions_distribuees distributions_total 100 %}{% else %}0{% endif %}%"></div>
                         </div>
                     </div>
 
@@ -197,7 +316,7 @@
                             </span>
                         </div>
                         <div class="w-full h-2.5 bg-[#e8eef7] rounded-full overflow-hidden">
-                            <div class="h-full bg-emerald-500 transition-all" style="width: {% widthratio flyers_distribues flyers_prevus 100 %}%"></div>
+                            <div class="h-full bg-emerald-500 transition-all" style="width: {% if flyers_prevus %}{% widthratio flyers_distribues flyers_prevus 100 %}{% else %}0{% endif %}%"></div>
                         </div>
                     </div>
                 </div>
@@ -205,9 +324,10 @@
         </div>
     </div>
 
+    <!-- Par campagne : comparatif -->
     <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm mb-8">
         <div class="px-6 py-4 border-b border-[#dce3ef] flex items-center justify-between">
-            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-history mr-1.5 text-[#4a6fa5]"></i>Campagnes r&#xE9;centes</h2>
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-list-ul mr-1.5 text-[#4a6fa5]"></i>Campagnes — comparatif</h2>
             <a href="{% url 'distribution:campagne_list' %}"
                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#e8eef7] text-[#4a6fa5] text-xs font-semibold hover:bg-[#dce3ef] transition-colors">
                 Voir toutes <i class="bx bx-chevron-right"></i>
@@ -215,34 +335,27 @@
         </div>
 
         <div class="p-5">
-            {% if campagnes_recentes %}
+            {% if campagnes_table or dernieres_terminees %}
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-[#dce3ef]">
                     <thead>
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Campagne</th>
                             <th class="px-4 py-3 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Statut</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Progression</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden md:table-cell">P&#xE9;riode</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden lg:table-cell">Cr&#xE9;&#xE9;e par</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden md:table-cell">Échéance</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Lieux</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Docs</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-[#dce3ef]">
-                        {% for campagne in campagnes_recentes %}
+                        {% for campagne in campagnes_table %}
                         <tr class="hover:bg-[#f8f9fc] transition-colors">
                             <td class="px-4 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-lg bg-[#e8eef7] flex items-center justify-center shrink-0">
-                                        <i class="bx bx-mail-send text-sm text-[#4a6fa5]"></i>
-                                    </div>
-                                    <div>
-                                        <div class="text-sm font-medium text-[#1e293b]">{{ campagne.name }}</div>
-                                        {% if campagne.description %}
-                                        <div class="text-xs text-[#b0bedb] mt-0.5">{{ campagne.description|truncatechars:50 }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
+                                <div class="text-sm font-medium text-[#1e293b]">{{ campagne.name }}</div>
+                                {% if campagne._lignes_zero %}
+                                <div class="text-xs text-[#e67e22] mt-0.5">{{ campagne._lignes_zero }} lieu{{ campagne._lignes_zero|pluralize:"x" }} sans quantité</div>
+                                {% endif %}
                             </td>
                             <td class="px-4 py-4 text-center">
                                 {% if campagne.effective_status == 'active' %}
@@ -263,30 +376,59 @@
                                 </span>
                                 {% endif %}
                             </td>
+                            <td class="px-4 py-4 text-center hidden md:table-cell">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {% if campagne.jours_restants < 7 %}bg-amber-50 text-amber-700 border border-amber-200{% else %}bg-[#e8eef7] text-[#4a6fa5]{% endif %}">J-{{ campagne.jours_restants }}</span>
+                            </td>
                             <td class="px-4 py-4 min-w-[130px]">
                                 <div class="flex items-center gap-3">
                                     <div class="flex-1 h-2 bg-[#e8eef7] rounded-full overflow-hidden">
-                                        <div class="h-full rounded-full transition-all duration-500
-                                            {% if campagne.progression >= 100 %}bg-emerald-500
-                                            {% elif campagne.progression >= 50 %}bg-[#4a6fa5]
-                                            {% elif campagne.progression > 0 %}bg-amber-500
-                                            {% else %}bg-gray-300{% endif %}"
-                                            style="width: {% widthratio campagne.lieux_distribues campagne.total_lieux 100 %}%"></div>
+                                        <div class="h-full rounded-full {% if campagne.progression >= 100 %}bg-emerald-500{% elif campagne.progression >= 50 %}bg-[#4a6fa5]{% elif campagne.progression > 0 %}bg-amber-500{% else %}bg-gray-300{% endif %}"
+                                             style="width: {% if campagne.total_lieux %}{% widthratio campagne.lieux_distribues campagne.total_lieux 100 %}{% else %}0{% endif %}%"></div>
                                     </div>
                                     <span class="text-xs font-semibold text-[#b0bedb] min-w-[50px] text-right">{{ campagne.lieux_distribues }}/{{ campagne.total_lieux }}</span>
-                                    {% if campagne.total_quantite %}<span class="text-xs font-semibold text-emerald-700 min-w-[50px] text-right">{{ campagne.quantite_distribuee }}/{{ campagne.total_quantite }} docs</span>{% endif %}
                                 </div>
                             </td>
-                            <td class="px-4 py-4 text-sm text-[#b0bedb] hidden md:table-cell">
-                                {{ campagne.start_date|date:"d/m/Y" }} &#x2192; {{ campagne.end_date|date:"d/m/Y" }}
-                            </td>
-                            <td class="px-4 py-4 hidden lg:table-cell">
-                                <div class="flex items-center gap-2">
-                                    <div class="w-6 h-6 rounded-full bg-[#e8eef7] flex items-center justify-center">
-                                        <i class="bx bx-user text-xs text-[#4a6fa5]"></i>
+                            <td class="px-4 py-4 min-w-[130px]">
+                                {% if campagne.total_quantite %}
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-1 h-2 bg-[#e8eef7] rounded-full overflow-hidden">
+                                        <div class="h-full rounded-full bg-emerald-500"
+                                             style="width: {% widthratio campagne.quantite_distribuee campagne.total_quantite 100 %}%"></div>
                                     </div>
-                                    <span class="text-sm text-[#1e293b]">{{ campagne.created_by.get_full_name|default:campagne.created_by.username }}</span>
+                                    <span class="text-xs font-semibold text-emerald-700 min-w-[50px] text-right">{{ campagne.progression_quantite }}%</span>
                                 </div>
+                                {% else %}
+                                <span class="text-xs text-[#b0bedb]">Non chiffré</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-4 text-right">
+                                <a href="{% url 'distribution:campagne_detail' campagne.pk %}"
+                                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#e8eef7] text-[#4a6fa5] text-xs font-semibold hover:bg-[#dce3ef] transition-colors">
+                                    D&#xE9;tail <i class="bx bx-chevron-right"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% for campagne in dernieres_terminees %}
+                        <tr class="hover:bg-[#f8f9fc] transition-colors opacity-75">
+                            <td class="px-4 py-4">
+                                <div class="text-sm font-medium text-[#1e293b]">{{ campagne.name }}</div>
+                            </td>
+                            <td class="px-4 py-4 text-center">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Termin&#xE9;e
+                                </span>
+                            </td>
+                            <td class="px-4 py-4 text-center text-xs text-[#b0bedb] hidden md:table-cell">—</td>
+                            <td class="px-4 py-4 min-w-[130px]">
+                                <span class="text-xs font-semibold text-[#b0bedb]">{{ campagne.lieux_distribues }}/{{ campagne.total_lieux }} lieux</span>
+                            </td>
+                            <td class="px-4 py-4 min-w-[130px]">
+                                {% if campagne.total_quantite %}
+                                <span class="text-xs font-semibold text-emerald-700">{{ campagne.progression_quantite }}% docs</span>
+                                {% else %}
+                                <span class="text-xs text-[#b0bedb]">Non chiffré</span>
+                                {% endif %}
                             </td>
                             <td class="px-4 py-4 text-right">
                                 <a href="{% url 'distribution:campagne_detail' campagne.pk %}"
@@ -312,6 +454,52 @@
                 </a>
             </div>
             {% endif %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-trophy mr-1.5 text-[#e67e22]"></i>Top validateurs</h2>
+            </div>
+            <div class="p-5">
+                {% if top_validateurs %}
+                <ul class="divide-y divide-[#dce3ef]">
+                    {% for entry in top_validateurs %}
+                    <li class="flex items-center gap-3 py-3">
+                        <div class="w-9 h-9 rounded-full bg-[#e8eef7] flex items-center justify-center shrink-0">
+                            <i class="bx bx-user text-sm text-[#4a6fa5]"></i>
+                        </div>
+                        <span class="text-sm font-medium text-[#1e293b]">{% if entry.user %}{{ entry.user.get_full_name|default:entry.user.username }}{% else %}Utilisateur inconnu{% endif %}</span>
+                        <span class="ml-auto inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ entry.n }} lieu{{ entry.n|pluralize:"x" }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-sm text-[#b0bedb] text-center py-6">Aucune validation enregistrée pour l'instant.</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-history mr-1.5 text-[#4a6fa5]"></i>Dernières validations</h2>
+            </div>
+            <div class="p-5">
+                {% if dernieres_validations %}
+                <ul class="divide-y divide-[#dce3ef]">
+                    {% for dist in dernieres_validations %}
+                    <li class="py-3">
+                        <a href="{% url 'distribution:campagne_detail' dist.campagne.pk %}" class="block hover:bg-[#f8f9fc] rounded-xl px-2 -mx-2 transition-colors">
+                            <p class="text-sm font-medium text-[#1e293b]">{{ dist.lieu.commune.name }} › {{ dist.lieu.name }}</p>
+                            <p class="text-xs text-[#b0bedb] mt-0.5">{{ dist.campagne.name }} · {% if dist.distributed_by %}{{ dist.distributed_by.get_full_name|default:dist.distributed_by.username }}{% else %}—{% endif %}{% if dist.distributed_at %} · {{ dist.distributed_at|date:"d/m/Y H:i" }}{% endif %}</p>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-sm text-[#b0bedb] text-center py-6">Aucune validation enregistrée pour l'instant.</p>
+                {% endif %}
+            </div>
         </div>
     </div>
 </section>

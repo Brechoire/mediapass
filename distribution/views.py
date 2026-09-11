@@ -7,7 +7,7 @@ from django.views.decorators.http import require_POST
 from django.db import transaction
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Sum, Value, Case, When
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, TruncDate
 from django.conf import settings
 from django.utils import timezone
 import json
@@ -1183,10 +1183,12 @@ def lieu_delete(request, commune_pk, pk):
 
 @login_required
 def statistics(request):
-    """Page des statistiques"""
+    """Page des statistiques et du pilotage des distributions."""
     if not is_distribution_manager(request.user):
         return redirect('distribution:access_denied')
-    
+
+    from datetime import timedelta
+
     # Statistiques générales
     total_campagnes = CampagneDistribution.objects.count()
     today = timezone.localdate()
@@ -1215,30 +1217,184 @@ def statistics(request):
     distributions_distribuees = distributions_stats['distribuees']
     flyers_prevus = distributions_stats['flyers_prevus']
     flyers_distribues = distributions_stats['flyers_distribues']
+    taux_lieux_pct = (
+        round(distributions_distribuees / distributions_total * 100, 1)
+        if distributions_total else None
+    )
+    taux_docs_pct = (
+        round(flyers_distribues / flyers_prevus * 100, 1)
+        if flyers_prevus else None
+    )
 
     total_communes = Commune.objects.count()
     total_lieux = Lieu.objects.filter(is_active=True).count()
 
-    # Top des communes par nombre de lieux
-    top_communes = Commune.objects.annotate(
-        lieux_count=Count('lieux', filter=Q(lieux__is_active=True))
-    ).order_by('-lieux_count')[:5]
-
-    # Campagnes récentes (même tri que la liste : fin la plus proche
-    # en premier, campagnes expirées en bas)
-    campagnes_recentes = CampagneDistribution.objects.select_related(
-        'created_by'
+    # --- Pilotage : campagnes à risque -----------------------------------
+    base_active = CampagneDistribution.objects.filter(
+        status='active', end_date__gte=today
     ).annotate(
         _total_lieux=Count('distributions'),
-        _lieux_distribues=Count('distributions', filter=Q(distributions__is_distributed=True)),
-        **_quantite_annotations()
-    ).order_by(
-        Case(
-            When(end_date__lt=today, then=Value(1)),
-            default=Value(0),
+        _lieux_distribues=Count(
+            'distributions', filter=Q(distributions__is_distributed=True)
         ),
-        'end_date',
-    )[:5]
+        **_quantite_annotations()
+    )
+    expiring_soon = list(
+        base_active.filter(
+            end_date__lt=today + timedelta(days=7)
+        ).order_by('end_date')[:5]
+    )
+    for campagne in expiring_soon:
+        campagne.jours_restants = (campagne.end_date - today).days
+    never_started = list(
+        base_active.filter(_lieux_distribues=0).order_by('end_date')[:5]
+    )
+    no_quantite = [
+        c for c in base_active.order_by('end_date')[:50]
+        if c.total_lieux and not c.total_quantite
+    ][:5]
+
+    # Lieux jamais distribués mais présents dans au moins une campagne.
+    lieux_jamais_rows = list(
+        Lieu.objects.filter(is_active=True).annotate(
+            _nb_distribue=Count(
+                'distributions', filter=Q(distributions__is_distributed=True)
+            ),
+            _nb_lignes=Count('distributions'),
+        ).filter(_nb_distribue=0, _nb_lignes__gt=0).select_related(
+            'commune'
+        ).order_by('commune__name', 'name')[:5]
+    )
+    lieux_jamais_count = Lieu.objects.filter(is_active=True).annotate(
+        _nb_distribue=Count(
+            'distributions', filter=Q(distributions__is_distributed=True)
+        ),
+        _nb_lignes=Count('distributions'),
+    ).filter(_nb_distribue=0, _nb_lignes__gt=0).count()
+    communes_vides = list(
+        Commune.objects.annotate(
+            lieux_count=Count('lieux', filter=Q(lieux__is_active=True))
+        ).filter(lieux_count=0).order_by('name')[:5]
+    )
+    has_alertes = bool(
+        expiring_soon or never_started or no_quantite
+        or lieux_jamais_rows or communes_vides
+    )
+
+    # --- Rythme : validations des 30 derniers jours -----------------------
+    debut = today - timedelta(days=29)
+    par_jour = {
+        row['day']: row['n']
+        for row in (
+            Distribution.objects.filter(
+                is_distributed=True, distributed_at__date__gte=debut
+            ).annotate(day=TruncDate('distributed_at')).values('day').annotate(
+                n=Count('id')
+            ).order_by('day')
+        )
+    }
+    rythme_30j = [
+        {'day': debut + timedelta(days=i), 'n': par_jour.get(debut + timedelta(days=i), 0)}
+        for i in range(30)
+    ]
+    rythme_max = max([p['n'] for p in rythme_30j] + [0])
+    validations_non_datees = Distribution.objects.filter(
+        is_distributed=True, distributed_at__isnull=True
+    ).count()
+
+    # Durée moyenne des campagnes terminées (jours).
+    durees = [
+        (c.end_date - c.start_date).days
+        for c in CampagneDistribution.objects.filter(
+            Q(status='completed') | Q(status='active', end_date__lt=today)
+        ).exclude(start_date__isnull=True).exclude(end_date__isnull=True)[:200]
+    ]
+    duree_moyenne = round(sum(durees) / len(durees), 1) if durees else None
+
+    # --- Par commune : taux plutôt que volume -----------------------------
+    communes_stats = list(
+        Commune.objects.annotate(
+            _total=Count('lieux__distributions'),
+            _distribues=Count(
+                'lieux__distributions',
+                filter=Q(lieux__distributions__is_distributed=True),
+            ),
+            _docs_total=Coalesce(Sum('lieux__distributions__quantite'), 0),
+            _docs_distribues=Coalesce(
+                Sum(
+                    'lieux__distributions__quantite',
+                    filter=Q(lieux__distributions__is_distributed=True),
+                ), 0,
+            ),
+        ).order_by('name')
+    )
+    for commune in communes_stats:
+        commune.pct_lieux = (
+            round(commune._distribues / commune._total * 100, 1)
+            if commune._total else None
+        )
+        commune.docs_en_attente = commune._docs_total - commune._docs_distribues
+    communes_stats.sort(
+        key=lambda c: (c._total == 0, -(c.pct_lieux or 0))
+    )
+    communes_stats = communes_stats[:10]
+
+    # --- Par campagne : actives + 3 dernières terminées --------------------
+    campagnes_table = list(
+        CampagneDistribution.objects.select_related('created_by').filter(
+            status='active', end_date__gte=today
+        ).annotate(
+            _total_lieux=Count('distributions'),
+            _lieux_distribues=Count(
+                'distributions', filter=Q(distributions__is_distributed=True)
+            ),
+            _lignes_zero=Count(
+                'distributions', filter=Q(distributions__quantite=0)
+            ),
+            **_quantite_annotations()
+        ).order_by('end_date')
+    )
+    dernieres_terminees = list(
+        CampagneDistribution.objects.select_related('created_by').filter(
+            Q(status='completed') | Q(status='active', end_date__lt=today)
+        ).annotate(
+            _total_lieux=Count('distributions'),
+            _lieux_distribues=Count(
+                'distributions', filter=Q(distributions__is_distributed=True)
+            ),
+            _lignes_zero=Count(
+                'distributions', filter=Q(distributions__quantite=0)
+            ),
+            **_quantite_annotations()
+        ).order_by('-end_date')[:3]
+    )
+    for campagne in campagnes_table:
+        campagne.jours_restants = (campagne.end_date - today).days
+
+    # --- Contributeurs ------------------------------------------------------
+    from django.contrib.auth.models import User
+    top_validateurs_rows = list(
+        Distribution.objects.filter(
+            is_distributed=True, distributed_by__isnull=False
+        ).values('distributed_by').annotate(n=Count('id')).order_by('-n')[:5]
+    )
+    validateurs_users = {
+        u.pk: u for u in User.objects.filter(
+            pk__in=[r['distributed_by'] for r in top_validateurs_rows]
+        )
+    }
+    top_validateurs = [
+        {
+            'user': validateurs_users.get(r['distributed_by']),
+            'n': r['n'],
+        }
+        for r in top_validateurs_rows
+    ]
+    dernieres_validations = list(
+        Distribution.objects.filter(is_distributed=True).select_related(
+            'lieu__commune', 'campagne', 'distributed_by'
+        ).order_by('-distributed_at')[:5]
+    )
 
     context = {
         'total_campagnes': total_campagnes,
@@ -1250,12 +1406,28 @@ def statistics(request):
         'distributions_distribuees': distributions_distribuees,
         'flyers_prevus': flyers_prevus,
         'flyers_distribues': flyers_distribues,
+        'taux_lieux_pct': taux_lieux_pct,
+        'taux_docs_pct': taux_docs_pct,
         'total_communes': total_communes,
         'total_lieux': total_lieux,
-        'top_communes': top_communes,
-        'campagnes_recentes': campagnes_recentes,
+        'expiring_soon': expiring_soon,
+        'never_started': never_started,
+        'no_quantite': no_quantite,
+        'lieux_jamais_rows': lieux_jamais_rows,
+        'lieux_jamais_count': lieux_jamais_count,
+        'communes_vides': communes_vides,
+        'has_alertes': has_alertes,
+        'rythme_30j': rythme_30j,
+        'rythme_max': rythme_max,
+        'validations_non_datees': validations_non_datees,
+        'duree_moyenne': duree_moyenne,
+        'communes_stats': communes_stats,
+        'campagnes_table': campagnes_table,
+        'dernieres_terminees': dernieres_terminees,
+        'top_validateurs': top_validateurs,
+        'dernieres_validations': dernieres_validations,
     }
-    
+
     return render(request, 'distribution/statistics.html', context)
 
 

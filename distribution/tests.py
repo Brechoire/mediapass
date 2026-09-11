@@ -451,13 +451,33 @@ class CampagneExpirationTests(TestCase):
     def test_statistics_recent_ordered_by_end_date(self):
         response = self.client.get(reverse("distribution:statistics"))
         self.assertEqual(response.status_code, 200)
-        names = [
-            c.name for c in response.context["campagnes_recentes"]
+        names = [c.name for c in response.context["campagnes_table"]]
+        self.assertEqual(names, ["Campagne imminente", "Campagne future"])
+        terminees = [
+            c.name for c in response.context["dernieres_terminees"]
         ]
-        self.assertEqual(
-            names,
-            ["Campagne imminente", "Campagne future", "Campagne expir\u00e9e"],
+        self.assertEqual(terminees, ["Campagne expir\u00e9e"])
+
+    def test_statistics_pilotage_context(self):
+        response = self.client.get(reverse("distribution:statistics"))
+        self.assertEqual(response.status_code, 200)
+        # L'imminente (J-2) doit remonter dans les alertes d'échéance.
+        expiring = [c.name for c in response.context["expiring_soon"]]
+        self.assertIn("Campagne imminente", expiring)
+        # Les campagnes actives non expirées sans distribution sont
+        # « jamais démarrées » (l'expirée n'est plus dans les actives).
+        never = [c.name for c in response.context["never_started"]]
+        self.assertCountEqual(
+            never, ["Campagne imminente", "Campagne future"]
         )
+        # Rythme : toujours 30 points, taux calculés sans crash.
+        self.assertEqual(len(response.context["rythme_30j"]), 30)
+        self.assertIn("taux_lieux_pct", response.context)
+        self.assertIn("taux_docs_pct", response.context)
+        self.assertTrue(response.context["has_alertes"])
+        # La commune du lieu est présente dans le comparatif.
+        communes = [c.name for c in response.context["communes_stats"]]
+        self.assertIn("Testville", communes)
 
 
 class CampagneProgressionBarTests(TestCase):
