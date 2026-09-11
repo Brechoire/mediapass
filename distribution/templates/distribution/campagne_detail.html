@@ -24,6 +24,10 @@
                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#2f4d75] text-sm font-semibold hover:bg-white/90 transition-all shadow-sm">
                     <i class="bx bx-edit"></i> Modifier la campagne
                 </a>
+                <a href="{% url 'distribution:campagne_delete' campagne.pk %}"
+                   class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/90 text-white text-sm font-semibold hover:bg-red-600 transition-all shadow-sm">
+                    <i class="bx bx-trash"></i> Supprimer
+                </a>
                 <a href="{% url 'distribution:commune_list' %}"
                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 text-white text-sm font-semibold hover:bg-white/30 transition-all">
                     <i class="bx bx-buildings"></i> G&#xE9;rer les lieux
@@ -88,6 +92,13 @@
                         <div class="w-full bg-[#e8eef7] rounded-full h-3 mb-4">
                             <div id="global-progress-bar" class="bg-[#4a6fa5] h-3 rounded-full" style="width: {% widthratio campagne.lieux_distribues campagne.total_lieux 100 %}%"></div>
                         </div>
+                        <div class="text-center mb-2">
+                            <h4 id="global-docs-counter" class="text-xl font-bold text-emerald-700 mb-1">{{ campagne.quantite_distribuee }}/{{ campagne.total_quantite }} documents</h4>
+                            <p class="text-sm text-[#7a8fa0]">Documents distribu&#xE9;s (valid&#xE9;s / pr&#xE9;vus)</p>
+                        </div>
+                        <div class="w-full bg-[#e8eef7] rounded-full h-3 mb-4">
+                            <div id="global-docs-progress-bar" class="bg-emerald-500 h-3 rounded-full" style="width: {% widthratio campagne.quantite_distribuee campagne.total_quantite 100 %}%"></div>
+                        </div>
                         <div id="global-badge" data-expired="{% if campagne.effective_status == 'completed' %}true{% else %}false{% endif %}">
                         {% if campagne.is_completed %}
                             <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -137,6 +148,28 @@
                 </div>
                 {% endif %}
             </div>
+            {% if communes_data %}
+            <div class="mt-3 flex flex-col xl:flex-row xl:items-center gap-3 bg-[#f8f9fc] border border-[#dce3ef] rounded-xl px-4 py-3">
+                <div class="flex items-center gap-2 text-sm font-semibold text-[#1e293b] whitespace-nowrap">
+                    <i class="bx bx-copy text-[#4a6fa5]"></i>
+                    Quantit&#xE9; identique pour chaque lieu
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <input id="uniform-quantite" type="number" min="0" step="1" placeholder="Ex : 70"
+                           class="w-28 px-3 py-1.5 rounded-xl border border-[#dce3ef] text-sm text-[#1e293b]">
+                    <select id="uniform-scope" class="px-3 py-1.5 rounded-xl border border-[#dce3ef] text-sm text-[#1e293b]">
+                        <option value="all">Tous les lieux (&#xE9;craser)</option>
+                        <option value="only_zero">Seulement les lieux &#xE0; 0</option>
+                    </select>
+                    <button type="button" id="apply-uniform-btn"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#4a6fa5] text-white text-xs font-semibold hover:bg-[#3d5f8f] transition-colors">
+                        <i class="bx bx-check-double"></i>
+                        Appliquer
+                    </button>
+                </div>
+                <p id="uniform-preview" class="text-xs text-[#7a8fa0]" role="status"></p>
+            </div>
+            {% endif %}
         </div>
         <div class="p-5">
             {% if communes_data %}
@@ -152,30 +185,56 @@
                                 {{ data.lieux|length }} lieu{{ data.lieux|length|pluralize:"x" }}
                             </span>
                         </div>
-                        <div class="flex items-center gap-4">
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
                             <span class="text-sm text-[#7a8fa0]">
                                 <span id="commune-distributed-{{ forloop.counter }}">0</span>/{{ data.lieux|length }} distribu&#xE9;s
                             </span>
                             <div class="w-24 bg-[#e8eef7] rounded-full h-2">
                                 <div class="bg-[#4a6fa5] h-2 rounded-full" id="commune-progress-bar-{{ forloop.counter }}" style="width: 0%"></div>
                             </div>
+                            <span class="text-sm font-semibold text-emerald-700" id="commune-docs-{{ data.commune.id }}">{{ data.quantite_distribuee }}/{{ data.total_quantite }} docs</span>
+                            <div class="w-24 bg-[#e8eef7] rounded-full h-2">
+                                <div class="bg-emerald-500 h-2 rounded-full" id="commune-docs-bar-{{ data.commune.id }}" style="width: {% if data.total_quantite %}{% widthratio data.quantite_distribuee data.total_quantite 100 %}{% else %}0{% endif %}%"></div>
+                            </div>
                         </div>
                     </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {% for distribution in data.lieux %}
-                        <div class="bg-white border {% if distribution.is_distributed %}border-emerald-200{% else %}border-[#dce3ef]{% endif %} rounded-2xl shadow-sm hover:shadow-md transition-shadow distribution-card" data-distribution-id="{{ distribution.pk }}">
+                        <div class="bg-white border {% if distribution.is_distributed %}border-emerald-200{% else %}border-[#dce3ef]{% endif %} rounded-2xl shadow-sm hover:shadow-md transition-shadow distribution-card relative" data-distribution-id="{{ distribution.pk }}">
                             <div class="p-4">
                                 <div class="flex items-start justify-between mb-3">
                                     <h4 class="text-sm font-semibold text-[#1e293b]">{{ distribution.lieu.name }}</h4>
+                                    <span class="absolute bottom-2 right-2 inline-flex group/tip">
+                                        <button type="button" title="Retirer ce lieu de la campagne" aria-label="Retirer {{ distribution.lieu.name }} de la campagne" aria-describedby="tip-retirer-{{ distribution.pk }}"
+                                                class="retirer-lieu-btn w-6 h-6 rounded-full text-red-600 hover:text-red-800 hover:bg-red-50 transition-colors text-lg leading-none font-bold"
+                                                data-distribution-id="{{ distribution.pk }}"
+                                                data-commune-id="{{ data.commune.id }}"
+                                                data-lieu-name="{{ distribution.lieu.name }}"
+                                                data-quantite="{{ distribution.quantite|default:0 }}"
+                                                data-distributed="{% if distribution.is_distributed %}1{% else %}0{% endif %}">&#xD7;</button>
+                                        <span id="tip-retirer-{{ distribution.pk }}" role="tooltip"
+                                              class="pointer-events-none absolute bottom-full right-0 mb-2 hidden group-hover/tip:block w-56 px-3 py-2 rounded-xl bg-[#1e293b] text-white text-xs font-medium shadow-lg z-10">Retirer ce lieu de la campagne — il restera disponible dans sa commune et les autres campagnes.</span>
+                                    </span>
                                     <div class="flex items-center">
                                         <input class="w-4 h-4 text-[#4a6fa5] bg-gray-100 border-gray-300 rounded focus:ring-[#4a6fa5] distribution-checkbox" 
                                                type="checkbox" 
                                                data-distribution-id="{{ distribution.pk }}"
                                                data-commune-index="{{ forloop.parentloop.counter }}"
+                                               data-commune-id="{{ data.commune.id }}"
                                                {% if distribution.is_distributed %}checked{% endif %}>
                                         <label class="ml-2 text-xs text-[#7a8fa0]">Distribu&#xE9;</label>
                                     </div>
+                                </div>
+
+                                <div class="flex items-center gap-2 mb-3">
+                                    <label class="text-xs text-[#7a8fa0] whitespace-nowrap" for="quantite-{{ distribution.pk }}">Flyers/docs</label>
+                                    <input id="quantite-{{ distribution.pk }}"
+                                           class="quantite-input w-24 px-2 py-1 rounded-lg border border-[#dce3ef] text-sm text-[#1e293b]"
+                                           type="number" min="0" step="1"
+                                           value="{{ distribution.quantite|default:0 }}"
+                                           data-distribution-id="{{ distribution.pk }}"
+                                           data-commune-id="{{ data.commune.id }}">
                                 </div>
                                 
                                 {% if distribution.lieu.description %}
@@ -200,6 +259,26 @@
                     </div>
                 </div>
                 {% endfor %}
+            {% if lieux_exclus %}
+            <div class="mt-4 bg-[#f8f9fc] border border-[#dce3ef] rounded-2xl p-4">
+                <h3 class="text-sm font-semibold text-[#7a8fa0] mb-3">
+                    <i class="bx bx-hide mr-1.5"></i>Lieux retir&#xE9;s de cette campagne ({{ lieux_exclus|length }}) — non repris par la synchronisation
+                </h3>
+                <div class="flex flex-wrap gap-2">
+                    {% for exclusion in lieux_exclus %}
+                    <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#dce3ef] text-xs text-[#1e293b]">
+                        {{ exclusion.lieu.commune.name }} &gt; {{ exclusion.lieu.name }}
+                        <button type="button" title="R&#xE9;int&#xE9;grer ce lieu dans la campagne"
+                                class="reintegrer-lieu-btn inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#e8eef7] text-[#4a6fa5] font-semibold hover:bg-[#dce3ef] transition-colors"
+                                data-lieu-id="{{ exclusion.lieu.id }}"
+                                data-lieu-name="{{ exclusion.lieu.name }}">
+                            <i class="bx bx-undo"></i> R&#xE9;int&#xE9;grer
+                        </button>
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
             {% else %}
                 <div class="text-center py-16">
                     <div class="w-20 h-20 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4">
@@ -255,6 +334,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Attacher les événements
         attachSwitchEvents(checkboxes);
+        attachQuantiteEvents();
+        updateUniformPreview();
         return true;
     }
     
@@ -360,6 +441,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Outil quantité uniforme + comparateur
+    const uniformField = document.getElementById('uniform-quantite');
+    const uniformScope = document.getElementById('uniform-scope');
+    const applyUniformBtn = document.getElementById('apply-uniform-btn');
+    if (uniformField) {
+        uniformField.addEventListener('input', updateUniformPreview);
+    }
+    if (uniformScope) {
+        uniformScope.addEventListener('change', updateUniformPreview);
+    }
+    if (applyUniformBtn) {
+        applyUniformBtn.addEventListener('click', applyUniformQuantite);
+    }
+
     // Bouton de synchronisation des lieux
     const syncLieuxBtn = document.getElementById('sync-lieux-btn');
     if (syncLieuxBtn) {
@@ -416,6 +511,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         updateCardAppearance(distributionId, data.is_distributed);
                         updateCommuneProgress(communeIndex);
                         updateGlobalProgress();
+                        updateGlobalDocs(data.total_quantite, data.quantite_distribuee);
+                        updateCommuneDocs(data.commune_id, data.commune_total_quantite, data.commune_quantite_distribuee);
                         showAlert('Distribution mise à jour avec succès !', 'success');
                     } else {
                         // Revenir à l'état précédent en cas d'erreur
@@ -532,6 +629,42 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    function docsPercentage(distribuee, total) {
+        if (!total || total <= 0) return 0;
+        return Math.round((distribuee / total) * 100);
+    }
+
+    function updateGlobalDocs(total, distribuee) {
+        const counter = document.getElementById('global-docs-counter');
+        if (counter) {
+            counter.textContent = `${distribuee}/${total} documents`;
+        }
+        const bar = document.getElementById('global-docs-progress-bar');
+        if (bar) {
+            bar.style.width = `${docsPercentage(distribuee, total)}%`;
+        }
+    }
+
+    function updateCommuneDocs(communeId, total, distribuee) {
+        if (communeId === undefined || communeId === null) return;
+        const label = document.getElementById(`commune-docs-${communeId}`);
+        if (label) {
+            label.textContent = `${distribuee}/${total} docs`;
+        }
+        const bar = document.getElementById(`commune-docs-bar-${communeId}`);
+        if (bar) {
+            bar.style.width = `${docsPercentage(distribuee, total)}%`;
+        }
+    }
+
+    function refreshAllCommuneDocs(communesQuantites) {
+        if (!communesQuantites) return;
+        Object.keys(communesQuantites).forEach(communeId => {
+            const entry = communesQuantites[communeId];
+            updateCommuneDocs(communeId, entry.total, entry.distribuee);
+        });
+    }
+
     function refreshAllCommuneCounters() {
         document.querySelectorAll('[id^="commune-distributed-"]').forEach(counter => {
             const communeIndex = counter.id.split('-')[2];
@@ -588,6 +721,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 refreshAllCommuneCounters();
                 updateGlobalProgress();
+                updateGlobalDocs(data.total_quantite, data.quantite_distribuee);
+                refreshAllCommuneDocs(data.communes_quantites);
                 updateValidateButton();
                 const done = data.updated_count !== undefined ? data.updated_count : boxes.length;
                 showAlert(`${done} lieu(x) désélectionné(s) avec succès !`, 'success');
@@ -634,6 +769,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 refreshAllCommuneCounters();
                 updateGlobalProgress();
+                updateGlobalDocs(data.total_quantite, data.quantite_distribuee);
+                refreshAllCommuneDocs(data.communes_quantites);
                 updateValidateButton();
                 const done = data.updated_count !== undefined ? data.updated_count : boxes.length;
                 if (done < boxes.length) {
@@ -656,6 +793,279 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // --- Quantités par lieu (temps réel) ---
+    const QUANTITE_URL_TEMPLATE = `{% url 'distribution:update_distribution_quantite' campagne.pk 999999 %}`;
+    function quantiteUrl(distributionId) {
+        return QUANTITE_URL_TEMPLATE.replace('999999', distributionId);
+    }
+
+    function getQuantiteInputs() {
+        return Array.from(document.querySelectorAll('.quantite-input'));
+    }
+
+    function readQuantite(input) {
+        const raw = (input.value || '').trim();
+        if (raw === '') return {valid: false, error: 'Quantité vide'};
+        const value = Number(raw);
+        if (!Number.isInteger(value) || value < 0) {
+            return {valid: false, error: 'Entier positif ou nul attendu'};
+        }
+        return {valid: true, value: value};
+    }
+
+    function saveQuantite(input) {
+        const distributionId = input.dataset.distributionId;
+        const previous = input.dataset.previousValue !== undefined ? input.dataset.previousValue : input.defaultValue;
+        const parsed = readQuantite(input);
+        if (!parsed.valid) {
+            input.value = previous;
+            showAlert('Quantité invalide : ' + parsed.error, 'danger');
+            return;
+        }
+        if (String(parsed.value) === String(previous)) return;
+        input.disabled = true;
+        fetch(quantiteUrl(distributionId), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({quantite: parsed.value}),
+        })
+        .then(response => response.json().then(data => ({status: response.status, data: data})))
+        .then(({status, data}) => {
+            if (status >= 200 && status < 300 && data.success) {
+                input.dataset.previousValue = String(data.quantite);
+                input.value = data.quantite;
+                updateGlobalDocs(data.total_quantite, data.quantite_distribuee);
+                updateCommuneDocs(data.commune_id, data.commune_total_quantite, data.commune_quantite_distribuee);
+                updateUniformPreview();
+                showAlert('Quantité mise à jour !', 'success');
+            } else {
+                input.value = previous;
+                showAlert('Erreur : ' + ((data && data.error) || `HTTP ${status}`), 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            input.value = previous;
+            showAlert('Erreur lors de la mise à jour de la quantité', 'danger');
+        })
+        .finally(() => { input.disabled = false; });
+    }
+
+    function attachQuantiteEvents() {
+        getQuantiteInputs().forEach(input => {
+            input.dataset.previousValue = input.value;
+            let timer = null;
+            input.addEventListener('change', function() {
+                clearTimeout(timer);
+                timer = setTimeout(() => saveQuantite(input), 400);
+            });
+        });
+    }
+
+    // --- Quantité identique pour chaque lieu + comparateur ---
+    function currentQuantiteTotal() {
+        return getQuantiteInputs().reduce((sum, input) => {
+            const parsed = readQuantite(input);
+            return sum + (parsed.valid ? parsed.value : 0);
+        }, 0);
+    }
+
+    function updateUniformPreview() {
+        const field = document.getElementById('uniform-quantite');
+        const scopeSelect = document.getElementById('uniform-scope');
+        const preview = document.getElementById('uniform-preview');
+        if (!field || !scopeSelect || !preview) return;
+        const raw = (field.value || '').trim();
+        if (raw === '') { preview.textContent = ''; return; }
+        const value = Number(raw);
+        if (!Number.isInteger(value) || value < 0) {
+            preview.textContent = 'Saisissez un entier positif ou nul.';
+            return;
+        }
+        const inputs = getQuantiteInputs();
+        const scope = scopeSelect.value;
+        const concerned = scope === 'only_zero'
+            ? inputs.filter(i => Number(i.value) === 0)
+            : inputs;
+        const currentTotal = currentQuantiteTotal();
+        const newTotal = scope === 'only_zero'
+            ? currentTotal + concerned.length * value
+            : concerned.length * value;
+        const delta = newTotal - currentTotal;
+        const sign = delta >= 0 ? '+' : '';
+        preview.textContent =
+            `${concerned.length} lieu(x) concerné(s) · total actuel ${currentTotal} → ${newTotal} docs (${sign}${delta})`;
+    }
+
+    function applyUniformQuantite() {
+        const field = document.getElementById('uniform-quantite');
+        const scopeSelect = document.getElementById('uniform-scope');
+        const applyBtn = document.getElementById('apply-uniform-btn');
+        if (!field) return;
+        const raw = (field.value || '').trim();
+        const value = Number(raw);
+        if (raw === '' || !Number.isInteger(value) || value < 0) {
+            showAlert('Saisissez une quantité valide (entier ≥ 0).', 'danger');
+            return;
+        }
+        const scope = scopeSelect ? scopeSelect.value : 'all';
+        const inputs = getQuantiteInputs();
+        const concernedCount = scope === 'only_zero'
+            ? inputs.filter(i => Number(i.value) === 0).length
+            : inputs.length;
+        if (concernedCount === 0) {
+            showAlert('Aucun lieu concerné (aucune quantité à 0).', 'info');
+            return;
+        }
+        const overwritten = scope === 'all'
+            ? inputs.filter(i => Number(i.value) !== value && Number(i.value) > 0).length
+            : 0;
+        let message = `Appliquer ${value} documents à ${concernedCount} lieu(x) ?`;
+        if (overwritten > 0) {
+            message += ` ${overwritten} lieu(x) déjà renseigné(s) seront écrasé(s).`;
+        }
+        if (!confirm(message)) return;
+
+        if (applyBtn) {
+            applyBtn.disabled = true;
+            applyBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i>Application...';
+        }
+        fetch(`{% url 'distribution:bulk_set_quantites' campagne.pk %}`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({quantite: value, scope: scope}),
+        })
+        .then(response => response.json().then(data => ({status: response.status, data: data})))
+        .then(({status, data}) => {
+            if (status >= 200 && status < 300 && data.success) {
+                getQuantiteInputs().forEach(input => {
+                    if (scope === 'only_zero' && Number(input.value) !== 0) {
+                        return;  // Ligne déjà renseignée : conservée.
+                    }
+                    input.value = data.quantite;
+                    input.dataset.previousValue = String(data.quantite);
+                });
+                updateGlobalDocs(data.total_quantite, data.quantite_distribuee);
+                refreshAllCommuneDocs(data.communes_quantites);
+                updateUniformPreview();
+                showAlert(`${data.updated_count} lieu(x) mis à ${data.quantite} documents !`, 'success');
+            } else {
+                showAlert('Erreur : ' + ((data && data.error) || `HTTP ${status}`), 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showAlert("Erreur lors de l'application uniforme", 'danger');
+        })
+        .finally(() => {
+            if (applyBtn) {
+                applyBtn.disabled = false;
+                applyBtn.innerHTML = '<i class="bx bx-check-double me-1"></i>Appliquer';
+            }
+        });
+    }
+
+    // --- Retirer / réintégrer un lieu (croix sur la carte) ---
+    const RETIRER_URL_TEMPLATE = `{% url 'distribution:retirer_lieu_campagne' campagne.pk 999999 %}`;
+    const REINTEGRER_URL_TEMPLATE = `{% url 'distribution:reintegrer_lieu_campagne' campagne.pk 999999 %}`;
+
+    function removeDistributionCard(distributionId) {
+        const card = document.querySelector(`.distribution-card[data-distribution-id="${distributionId}"]`);
+        if (card) card.remove();
+    }
+
+    function retirerLieu(button) {
+        const distributionId = button.dataset.distributionId;
+        const lieuName = button.dataset.lieuName || 'ce lieu';
+        const quantite = Number(button.dataset.quantite || 0);
+        const distributed = button.dataset.distributed === '1';
+        let message = `Retirer "${lieuName}" de cette campagne ?`;
+        const bits = [];
+        if (distributed) bits.push('lieu validé');
+        if (quantite > 0) bits.push(`${quantite} document(s) prévu(s)`);
+        if (bits.length > 0) {
+            message += ` (${bits.join(', ')} — sortira des compteurs. Le lieu restera disponible ailleurs.)`;
+        } else {
+            message += ' Le lieu restera disponible ailleurs.';
+        }
+        if (!confirm(message)) return;
+        button.disabled = true;
+        fetch(RETIRER_URL_TEMPLATE.replace('999999', distributionId), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json().then(data => ({status: response.status, data: data})))
+        .then(({status, data}) => {
+            if (status >= 200 && status < 300 && data.success) {
+                if (data.removed !== false) removeDistributionCard(distributionId);
+                refreshAllCommuneCounters();
+                updateGlobalProgress();
+                updateGlobalDocs(data.total_quantite, data.quantite_distribuee);
+                if (data.commune_id !== undefined) {
+                    updateCommuneDocs(data.commune_id, data.commune_total_quantite, data.commune_quantite_distribuee);
+                }
+                updateValidateButton();
+                updateUniformPreview();
+                showAlert(`"${lieuName}" retiré de la campagne.`, 'success');
+                // Recharger pour actualiser la section « Lieux retirés ».
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                button.disabled = false;
+                showAlert('Erreur : ' + ((data && data.error) || `HTTP ${status}`), 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            button.disabled = false;
+            showAlert('Erreur lors du retrait du lieu', 'danger');
+        });
+    }
+
+    function reintegrerLieu(button) {
+        const lieuId = button.dataset.lieuId;
+        const lieuName = button.dataset.lieuName || 'ce lieu';
+        if (!confirm(`Réintégrer "${lieuName}" dans cette campagne ?`)) return;
+        button.disabled = true;
+        fetch(REINTEGRER_URL_TEMPLATE.replace('999999', lieuId), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json().then(data => ({status: response.status, data: data})))
+        .then(({status, data}) => {
+            if (status >= 200 && status < 300 && data.success) {
+                showAlert(`"${lieuName}" réintégré dans la campagne.`, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                button.disabled = false;
+                showAlert('Erreur : ' + ((data && data.error) || `HTTP ${status}`), 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            button.disabled = false;
+            showAlert('Erreur lors de la réintégration', 'danger');
+        });
+    }
+
+    document.addEventListener('click', function(event) {
+        const retirerBtn = event.target.closest('.retirer-lieu-btn');
+        if (retirerBtn) { retirerLieu(retirerBtn); return; }
+        const reintegrerBtn = event.target.closest('.reintegrer-lieu-btn');
+        if (reintegrerBtn) { reintegrerLieu(reintegrerBtn); }
+    });
+
     function syncCampagneLieux() {
         const syncBtn = document.getElementById('sync-lieux-btn');
         if (syncBtn) {

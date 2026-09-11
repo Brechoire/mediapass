@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, Http404
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 from django.db import transaction
@@ -12,7 +12,10 @@ from django.conf import settings
 from django.utils import timezone
 import json
 import logging
-from .models import Commune, Lieu, CampagneDistribution, Distribution
+from .models import (
+    Commune, Lieu, CampagneDistribution, Distribution,
+    CampagneLieuExclusion,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -28,6 +31,92 @@ def is_admin_excluding_mediatheque(user):
              (user.groups.exists() and not user.groups.filter(name='mediatheque').exists())))
 
 
+# Plafond de sécurité pour une quantité de flyers/documents par lieu.
+QUANTITE_MAX = 1000000
+
+
+def _quantite_annotations(prefix='distributions'):
+    """Annotations _total_quantite / _quantite_distribuee pour les campagnes.
+
+    Mêmes noms que les propriétés CampagneDistribution.total_quantite /
+    quantite_distribuee : 0 requête supplémentaire dans les templates.
+    """
+    return {
+        '_total_quantite': Coalesce(Sum(f'{prefix}__quantite'), 0),
+        '_quantite_distribuee': Coalesce(
+            Sum(
+                f'{prefix}__quantite',
+                filter=Q(**{f'{prefix}__is_distributed': True}),
+            ),
+            0,
+        ),
+    }
+
+
+def _campagne_quantite_totals(campagne):
+    """Totaux documents d'une campagne (1 requête aggregate)."""
+    return Distribution.objects.filter(
+        campagne=campagne
+    ).aggregate(
+        total_quantite=Coalesce(Sum('quantite'), 0),
+        quantite_distribuee=Coalesce(
+            Sum('quantite', filter=Q(is_distributed=True)), 0
+        ),
+    )
+
+
+def _commune_quantite_totals(campagne, commune_id):
+    """Totaux documents d'une commune dans une campagne (1 requête)."""
+    return Distribution.objects.filter(
+        campagne=campagne, lieu__commune_id=commune_id
+    ).aggregate(
+        total=Coalesce(Sum('quantite'), 0),
+        distribuee=Coalesce(
+            Sum('quantite', filter=Q(is_distributed=True)), 0
+        ),
+    )
+
+
+def _all_communes_quantites(campagne):
+    """Totaux documents par commune d'une campagne (1 requête).
+
+    Retourne {commune_id: {'commune_name': ..., 'total': ..., 'distribuee': ...}}.
+    """
+    rows = (
+        Distribution.objects.filter(campagne=campagne)
+        .values('lieu__commune_id', 'lieu__commune__name')
+        .annotate(
+            total=Coalesce(Sum('quantite'), 0),
+            distribuee=Coalesce(
+                Sum('quantite', filter=Q(is_distributed=True)), 0
+            ),
+        )
+    )
+    return {
+        row['lieu__commune_id']: {
+            'commune_name': row['lieu__commune__name'],
+            'total': row['total'],
+            'distribuee': row['distribuee'],
+        }
+        for row in rows
+    }
+
+
+def _parse_quantite(value):
+    """Valide une quantité saisie. Retourne (quantite, erreur)."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None, 'Quantité manquante'
+    try:
+        quantite = int(str(value).strip()) if isinstance(value, str) else int(value)
+    except (TypeError, ValueError):
+        return None, 'Quantité invalide (entier attendu)'
+    if isinstance(value, bool) or quantite < 0:
+        return None, 'La quantité doit être un entier positif ou nul'
+    if quantite > QUANTITE_MAX:
+        return None, f'La quantité ne peut pas dépasser {QUANTITE_MAX}'
+    return quantite, None
+
+
 @login_required
 def index(request):
     """Page d'accueil de la gestion des distributions"""
@@ -39,7 +128,8 @@ def index(request):
         'created_by'
     ).annotate(
         _total_lieux=Count('distributions'),
-        _lieux_distribues=Count('distributions', filter=Q(distributions__is_distributed=True))
+        _lieux_distribues=Count('distributions', filter=Q(distributions__is_distributed=True)),
+        **_quantite_annotations()
     ).order_by('-created_at')[:5]
     
     # Statistiques générales
@@ -73,7 +163,8 @@ def campagne_list(request):
         'created_by'
     ).annotate(
         _total_lieux=Count('distributions'),
-        _lieux_distribues=Count('distributions', filter=Q(distributions__is_distributed=True))
+        _lieux_distribues=Count('distributions', filter=Q(distributions__is_distributed=True)),
+        **_quantite_annotations()
     ).all()
     
     if search_form.is_valid():
@@ -137,31 +228,44 @@ def campagne_detail(request, pk):
     campagne = get_object_or_404(
         CampagneDistribution.objects.select_related('created_by').annotate(
             _total_lieux=Count('distributions'),
-            _lieux_distribues=Count('distributions', filter=Q(distributions__is_distributed=True))
+            _lieux_distribues=Count('distributions', filter=Q(distributions__is_distributed=True)),
+            **_quantite_annotations()
         ), pk=pk
     )
-    
+
     # Récupérer les distributions existantes groupées par commune
     distributions = campagne.distributions.select_related('lieu__commune').order_by(
         'lieu__commune__name', 'lieu__name'
     )
-    
-    # Grouper par commune
+
+    # Grouper par commune avec totaux documents (0 requête sup.)
     communes_data = {}
     for dist in distributions:
         commune_name = dist.lieu.commune.name
         if commune_name not in communes_data:
             communes_data[commune_name] = {
                 'commune': dist.lieu.commune,
-                'lieux': []
+                'lieux': [],
+                'total_quantite': 0,
+                'quantite_distribuee': 0,
             }
-        communes_data[commune_name]['lieux'].append(dist)
-    
+        entry = communes_data[commune_name]
+        entry['lieux'].append(dist)
+        entry['total_quantite'] += dist.quantite or 0
+        if dist.is_distributed:
+            entry['quantite_distribuee'] += dist.quantite or 0
+
+    # Lieux retirés de cette campagne (1 requête, pour réintégration).
+    lieux_exclus = campagne.lieux_exclus.select_related(
+        'lieu__commune'
+    ).order_by('lieu__commune__name', 'lieu__name')
+
     context = {
         'campagne': campagne,
         'communes_data': communes_data,
+        'lieux_exclus': lieux_exclus,
     }
-    
+
     return render(request, 'distribution/campagne_detail.html', context)
 
 
@@ -186,7 +290,8 @@ def campagne_create(request):
                     Distribution(
                         campagne=campagne,
                         lieu=lieu,
-                        is_distributed=False  # Par défaut, non distribué
+                        is_distributed=False,  # Par défaut, non distribué
+                        quantite=0,  # Quantité à saisir lieu par lieu
                     ) for lieu in lieux_actifs
                 ])
 
@@ -228,6 +333,42 @@ def campagne_edit(request, pk):
 
 
 @login_required
+def campagne_delete(request, pk):
+    """Supprimer une campagne (confirmation en GET, suppression en POST).
+
+    Seules les lignes Distribution de cette campagne sont effacées
+    (CASCADE) : les lieux, communes et autres campagnes sont conservés.
+    """
+    if not is_admin_excluding_mediatheque(request.user):
+        return redirect('distribution:access_denied')
+
+    campagne = get_object_or_404(
+        CampagneDistribution.objects.select_related('created_by').annotate(
+            _total_lieux=Count('distributions'),
+            _lieux_distribues=Count(
+                'distributions', filter=Q(distributions__is_distributed=True)
+            ),
+            **_quantite_annotations()
+        ), pk=pk
+    )
+
+    if request.method == 'POST':
+        name = campagne.name
+        lieux_count = campagne.total_lieux
+        campagne.delete()
+        messages.success(
+            request,
+            f'Campagne "{name}" supprimée. '
+            f'{lieux_count} lieu(x) retiré(s) de cette campagne, '
+            'les lieux et communes sont conservés.'
+        )
+        return redirect('distribution:campagne_list')
+
+    context = {'campagne': campagne}
+    return render(request, 'distribution/campagne_confirm_delete.html', context)
+
+
+@login_required
 @require_POST
 def toggle_distribution(request, pk):
     """Basculer le statut de distribution d'un lieu (AJAX)"""
@@ -259,20 +400,33 @@ def toggle_distribution(request, pk):
             campagne=distribution.campagne
         ).aggregate(
             total=Count('id'),
-            distribue=Count('id', filter=Q(is_distributed=True))
+            distribue=Count('id', filter=Q(is_distributed=True)),
+            total_quantite=Coalesce(Sum('quantite'), 0),
+            quantite_distribuee=Coalesce(
+                Sum('quantite', filter=Q(is_distributed=True)), 0
+            ),
         )
         total_lieux = campagne_stats['total']
         lieux_distribues = campagne_stats['distribue']
         progression = f"{lieux_distribues}/{total_lieux}"
         is_completed = lieux_distribues == total_lieux and total_lieux > 0
-        
+
+        commune_stats = _commune_quantite_totals(
+            distribution.campagne, distribution.lieu.commune_id
+        )
+
         return JsonResponse({
             'success': True,
             'is_distributed': distribution.is_distributed,
             'distributed_by': distributed_by_name,
             'distributed_at': distributed_at_iso,
             'progression': progression,
-            'is_completed': is_completed
+            'is_completed': is_completed,
+            'total_quantite': campagne_stats['total_quantite'],
+            'quantite_distribuee': campagne_stats['quantite_distribuee'],
+            'commune_id': distribution.lieu.commune_id,
+            'commune_total_quantite': commune_stats['total'],
+            'commune_quantite_distribuee': commune_stats['distribuee'],
         })
     
     except Exception as e:
@@ -306,20 +460,33 @@ def force_validate_distribution(request, pk):
             campagne=distribution.campagne
         ).aggregate(
             total=Count('id'),
-            distribue=Count('id', filter=Q(is_distributed=True))
+            distribue=Count('id', filter=Q(is_distributed=True)),
+            total_quantite=Coalesce(Sum('quantite'), 0),
+            quantite_distribuee=Coalesce(
+                Sum('quantite', filter=Q(is_distributed=True)), 0
+            ),
         )
         total_lieux = campagne_stats['total']
         lieux_distribues = campagne_stats['distribue']
         progression = f"{lieux_distribues}/{total_lieux}"
         is_completed = lieux_distribues == total_lieux and total_lieux > 0
-        
+
+        commune_stats = _commune_quantite_totals(
+            distribution.campagne, distribution.lieu.commune_id
+        )
+
         return JsonResponse({
             'success': True,
             'is_distributed': distribution.is_distributed,
             'distributed_by': distributed_by_name,
             'distributed_at': distributed_at_iso,
             'progression': progression,
-            'is_completed': is_completed
+            'is_completed': is_completed,
+            'total_quantite': campagne_stats['total_quantite'],
+            'quantite_distribuee': campagne_stats['quantite_distribuee'],
+            'commune_id': distribution.lieu.commune_id,
+            'commune_total_quantite': commune_stats['total'],
+            'commune_quantite_distribuee': commune_stats['distribuee'],
         })
     
     except Exception as e:
@@ -401,8 +568,13 @@ def bulk_update_distributions(request, pk):
                 campagne=campagne
             ).aggregate(
                 total=Count('id'),
-                distribue=Count('id', filter=Q(is_distributed=True))
+                distribue=Count('id', filter=Q(is_distributed=True)),
+                total_quantite=Coalesce(Sum('quantite'), 0),
+                quantite_distribuee=Coalesce(
+                    Sum('quantite', filter=Q(is_distributed=True)), 0
+                ),
             )
+            communes_quantites = _all_communes_quantites(campagne)
 
         total_lieux = campagne_stats['total']
         lieux_distribues = campagne_stats['distribue']
@@ -413,10 +585,247 @@ def bulk_update_distributions(request, pk):
             'distribue': lieux_distribues,
             'progression': f"{lieux_distribues}/{total_lieux}",
             'is_completed': lieux_distribues == total_lieux and total_lieux > 0,
+            'total_quantite': campagne_stats['total_quantite'],
+            'quantite_distribuee': campagne_stats['quantite_distribuee'],
+            'communes_quantites': communes_quantites,
         })
 
     except Exception as e:
         logger.exception("Erreur bulk_update_distributions campagne=%s", pk)
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def update_distribution_quantite(request, campagne_pk, pk):
+    """Mettre à jour la quantité d'une distribution (AJAX).
+
+    Corps JSON attendu : {"quantite": <entier >= 0>}.
+    Seule la distribution `pk` de la campagne `campagne_pk` est touchée.
+    Réponse : nouvelle quantité + totaux campagne et commune pour MAJ temps réel.
+    """
+    if not is_admin_excluding_mediatheque(request.user):
+        return JsonResponse({'error': 'Accès refusé'}, status=403)
+
+    try:
+        campagne = get_object_or_404(CampagneDistribution, pk=campagne_pk)
+        distribution = get_object_or_404(
+            Distribution, pk=pk, campagne=campagne
+        )
+
+        try:
+            payload = json.loads(request.body.decode('utf-8') or '{}')
+        except (ValueError, UnicodeDecodeError):
+            return JsonResponse({'error': 'Corps JSON invalide'}, status=400)
+
+        quantite, erreur = _parse_quantite(payload.get('quantite'))
+        if erreur:
+            return JsonResponse({'error': erreur}, status=400)
+
+        distribution.quantite = quantite
+        distribution.save(update_fields=['quantite', 'updated_at'])
+
+        totaux = _campagne_quantite_totals(campagne)
+        commune_stats = _commune_quantite_totals(
+            campagne, distribution.lieu.commune_id
+        )
+
+        return JsonResponse({
+            'success': True,
+            'quantite': distribution.quantite,
+            'total_quantite': totaux['total_quantite'],
+            'quantite_distribuee': totaux['quantite_distribuee'],
+            'commune_id': distribution.lieu.commune_id,
+            'commune_total_quantite': commune_stats['total'],
+            'commune_quantite_distribuee': commune_stats['distribuee'],
+        })
+
+    except Http404:
+        raise
+    except Exception as e:
+        logger.exception(
+            "Erreur update_distribution_quantite campagne=%s distribution=%s",
+            campagne_pk, pk,
+        )
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def bulk_set_quantites(request, pk):
+    """Appliquer une quantité identique à plusieurs lieux d'une campagne (AJAX).
+
+    Corps JSON attendu : {"quantite": <entier >= 0>, "scope": "all"|"only_zero"}.
+    - "all" : écrase toutes les quantités de la campagne.
+    - "only_zero" : ne remplit que les lignes encore à 0.
+    1 UPDATE en transaction + 1 aggregate + 1 requête par-commune.
+    """
+    if not is_admin_excluding_mediatheque(request.user):
+        return JsonResponse({'error': 'Accès refusé'}, status=403)
+
+    try:
+        campagne = get_object_or_404(CampagneDistribution, pk=pk)
+
+        try:
+            payload = json.loads(request.body.decode('utf-8') or '{}')
+        except (ValueError, UnicodeDecodeError):
+            return JsonResponse({'error': 'Corps JSON invalide'}, status=400)
+
+        quantite, erreur = _parse_quantite(payload.get('quantite'))
+        if erreur:
+            return JsonResponse({'error': erreur}, status=400)
+
+        scope = payload.get('scope', 'all')
+        if scope not in ('all', 'only_zero'):
+            return JsonResponse({'error': 'Scope invalide'}, status=400)
+
+        scoped = Distribution.objects.filter(campagne=campagne)
+        if scope == 'only_zero':
+            scoped = scoped.filter(quantite=0)
+
+        if scoped.count() > 1000:
+            return JsonResponse(
+                {'error': 'Trop de distributions (max 1000)'}, status=400
+            )
+
+        with transaction.atomic():
+            updated_count = scoped.update(quantite=quantite)
+            totaux = _campagne_quantite_totals(campagne)
+            communes_quantites = _all_communes_quantites(campagne)
+
+        return JsonResponse({
+            'success': True,
+            'updated_count': updated_count,
+            'quantite': quantite,
+            'scope': scope,
+            'total_quantite': totaux['total_quantite'],
+            'quantite_distribuee': totaux['quantite_distribuee'],
+            'communes_quantites': communes_quantites,
+        })
+
+    except Http404:
+        raise
+    except Exception as e:
+        logger.exception("Erreur bulk_set_quantites campagne=%s", pk)
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def retirer_lieu_campagne(request, pk, dist_pk):
+    """Retirer un lieu d'une campagne (AJAX).
+
+    Supprime physiquement la ligne Distribution (scoped à la campagne)
+    et mémorise le retrait dans CampagneLieuExclusion pour que la
+    synchronisation ne recrée pas le lieu. Le lieu lui-même est conservé.
+    Idempotent : un retrait déjà effectué renvoie success/removed=False.
+    """
+    if not is_admin_excluding_mediatheque(request.user):
+        return JsonResponse({'error': 'Accès refusé'}, status=403)
+
+    try:
+        campagne = get_object_or_404(CampagneDistribution, pk=pk)
+        distribution = Distribution.objects.filter(
+            pk=dist_pk
+        ).select_related('lieu__commune').first()
+        if distribution is None:
+            # Ligne inexistante (déjà retirée ou jamais créée) : idempotent.
+            totaux = _campagne_quantite_totals(campagne)
+            return JsonResponse({
+                'success': True,
+                'removed': False,
+                'total_quantite': totaux['total_quantite'],
+                'quantite_distribuee': totaux['quantite_distribuee'],
+            })
+        if distribution.campagne_id != campagne.pk:
+            return JsonResponse(
+                {'error': 'Distribution hors campagne'}, status=404
+            )
+
+        lieu = distribution.lieu
+        commune_id = lieu.commune_id
+        with transaction.atomic():
+            CampagneLieuExclusion.objects.get_or_create(
+                campagne=campagne, lieu=lieu,
+                defaults={'excluded_by': request.user},
+            )
+            distribution.delete()
+            totaux = _campagne_quantite_totals(campagne)
+            commune_stats = _commune_quantite_totals(campagne, commune_id)
+
+        return JsonResponse({
+            'success': True,
+            'removed': True,
+            'distribution_id': dist_pk,
+            'lieu_id': lieu.pk,
+            'commune_id': commune_id,
+            'total_quantite': totaux['total_quantite'],
+            'quantite_distribuee': totaux['quantite_distribuee'],
+            'commune_total_quantite': commune_stats['total'],
+            'commune_quantite_distribuee': commune_stats['distribuee'],
+        })
+
+    except Http404:
+        raise
+    except Exception as e:
+        logger.exception(
+            "Erreur retirer_lieu_campagne campagne=%s distribution=%s",
+            pk, dist_pk,
+        )
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def reintegrer_lieu_campagne(request, pk, lieu_pk):
+    """Réintégrer un lieu retiré dans une campagne (AJAX).
+
+    Supprime la trace d'exclusion et recrée la ligne Distribution
+    (quantité 0, non distribuée). 404 si aucune exclusion n'existe.
+    """
+    if not is_admin_excluding_mediatheque(request.user):
+        return JsonResponse({'error': 'Accès refusé'}, status=403)
+
+    try:
+        campagne = get_object_or_404(CampagneDistribution, pk=pk)
+        lieu = get_object_or_404(Lieu, pk=lieu_pk)
+        exclusion = CampagneLieuExclusion.objects.filter(
+            campagne=campagne, lieu=lieu
+        ).first()
+        if exclusion is None:
+            return JsonResponse(
+                {'error': 'Ce lieu n\'est pas retiré de cette campagne'},
+                status=404,
+            )
+
+        with transaction.atomic():
+            exclusion.delete()
+            distribution, _ = Distribution.objects.get_or_create(
+                campagne=campagne, lieu=lieu,
+                defaults={'is_distributed': False, 'quantite': 0},
+            )
+            totaux = _campagne_quantite_totals(campagne)
+            commune_stats = _commune_quantite_totals(
+                campagne, lieu.commune_id
+            )
+
+        return JsonResponse({
+            'success': True,
+            'distribution_id': distribution.pk,
+            'commune_id': lieu.commune_id,
+            'total_quantite': totaux['total_quantite'],
+            'quantite_distribuee': totaux['quantite_distribuee'],
+            'commune_total_quantite': commune_stats['total'],
+            'commune_quantite_distribuee': commune_stats['distribuee'],
+        })
+
+    except Http404:
+        raise
+    except Exception as e:
+        logger.exception(
+            "Erreur reintegrer_lieu_campagne campagne=%s lieu=%s",
+            pk, lieu_pk,
+        )
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -437,24 +846,47 @@ def sync_campagne_lieux(request, pk):
         existing_lieu_ids = set(
             campagne.distributions.values_list('lieu_id', flat=True)
         )
-        
+
+        # Lieux retirés de cette campagne : jamais recréés par la synchro.
+        excluded_lieu_ids = set(
+            campagne.lieux_exclus.values_list('lieu_id', flat=True)
+        )
+
         # Créer les distributions manquantes en une seule requête
         distributions_to_create = [
-            Distribution(campagne=campagne, lieu=lieu, is_distributed=False)
+            Distribution(
+                campagne=campagne, lieu=lieu,
+                is_distributed=False, quantite=0,
+            )
             for lieu in lieux_actifs
             if lieu.id not in existing_lieu_ids
+            and lieu.id not in excluded_lieu_ids
         ]
-        
+
+        skipped_count = len([
+            lieu for lieu in lieux_actifs
+            if lieu.id not in existing_lieu_ids
+            and lieu.id in excluded_lieu_ids
+        ])
+
         created_count = 0
         if distributions_to_create:
             with transaction.atomic():
                 created_count = len(Distribution.objects.bulk_create(distributions_to_create))
-        
+
+        message = (
+            f'{created_count} nouveau(x) lieu(x) ajouté(s) à la campagne'
+        )
+        if skipped_count:
+            message += (
+                f', {skipped_count} ignoré(s) car retiré(s) de la campagne'
+            )
+
         return JsonResponse({
             'success': True,
-            'message': f'{created_count} nouveau(x) lieu(x) '
-                       f'ajouté(s) à la campagne',
-            'created_count': created_count
+            'message': message,
+            'created_count': created_count,
+            'skipped_count': skipped_count,
         })
     
     except Exception as e:
@@ -640,9 +1072,15 @@ def statistics(request):
     distributions_stats = Distribution.objects.aggregate(
         total=Count('id'),
         distribuees=Count('id', filter=Q(is_distributed=True)),
+        flyers_prevus=Coalesce(Sum('quantite'), 0),
+        flyers_distribues=Coalesce(
+            Sum('quantite', filter=Q(is_distributed=True)), 0
+        ),
     )
     distributions_total = distributions_stats['total']
     distributions_distribuees = distributions_stats['distribuees']
+    flyers_prevus = distributions_stats['flyers_prevus']
+    flyers_distribues = distributions_stats['flyers_distribues']
 
     total_communes = Commune.objects.count()
     total_lieux = Lieu.objects.filter(is_active=True).count()
@@ -658,7 +1096,8 @@ def statistics(request):
         'created_by'
     ).annotate(
         _total_lieux=Count('distributions'),
-        _lieux_distribues=Count('distributions', filter=Q(distributions__is_distributed=True))
+        _lieux_distribues=Count('distributions', filter=Q(distributions__is_distributed=True)),
+        **_quantite_annotations()
     ).order_by(
         Case(
             When(end_date__lt=today, then=Value(1)),
@@ -675,6 +1114,8 @@ def statistics(request):
         'campagnes_cancelled': campagnes_cancelled,
         'distributions_total': distributions_total,
         'distributions_distribuees': distributions_distribuees,
+        'flyers_prevus': flyers_prevus,
+        'flyers_distribues': flyers_distribues,
         'total_communes': total_communes,
         'total_lieux': total_lieux,
         'top_communes': top_communes,

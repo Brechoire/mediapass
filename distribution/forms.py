@@ -116,9 +116,12 @@ class DistributionForm(forms.ModelForm):
     
     class Meta:
         model = Distribution
-        fields = ['is_distributed', 'distributed_by', 'notes']
+        fields = ['is_distributed', 'quantite', 'distributed_by', 'notes']
         widgets = {
             'is_distributed': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'quantite': forms.NumberInput(attrs={
+                'class': 'form-control', 'min': 0, 'step': 1,
+            }),
             'distributed_by': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={
                 'class': 'form-control',

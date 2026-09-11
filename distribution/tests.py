@@ -6,7 +6,9 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import CampagneDistribution, Commune, Distribution, Lieu
+from .models import (
+    CampagneDistribution, CampagneLieuExclusion, Commune, Distribution, Lieu
+)
 
 
 class CommuneModelTests(TestCase):
@@ -529,11 +531,12 @@ class BulkUpdateDistributionsTests(TestCase):
     def test_bulk_validate_sets_date_and_author(self):
         self.client.login(username="admin", password="admin123")
         ids = [d.pk for d in self.distributions[:2]]
-        with self.assertNumQueries(10):
+        with self.assertNumQueries(11):
             # Détail : session + user + campagne SELECT + 2 UPDATE ciblés
-            # + aggregate progression + savepoint/release + middleware
-            # analytics (SELECT anti-doublon + INSERT). Le cœur bulk reste
-            # 1 SELECT + 2 UPDATE + 1 aggregate contre N x 3 en fan-out.
+            # + aggregate progression (lieux + quantités) + totaux par
+            # commune + savepoint/release + middleware analytics
+            # (SELECT anti-doublon + INSERT). Le cœur bulk reste
+            # 1 SELECT + 2 UPDATE + 2 aggregates contre N x 3 en fan-out.
             response = self._post(ids, action="validate")
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -600,3 +603,593 @@ class BulkUpdateDistributionsTests(TestCase):
             self._post([self.distributions[0].pk], action="nope").status_code,
             400,
         )
+
+
+class DistributionQuantiteModelTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="testuser")
+        self.commune = Commune.objects.create(name="Anor")
+        self.lieu = Lieu.objects.create(commune=self.commune, name="Le36")
+        self.campagne1 = CampagneDistribution.objects.create(
+            name="Campagne 01",
+            created_by=self.user,
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+        )
+        self.campagne2 = CampagneDistribution.objects.create(
+            name="Campagne 02",
+            created_by=self.user,
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+        )
+
+    def test_quantite_defaults_to_zero(self):
+        dist = Distribution.objects.create(
+            campagne=self.campagne1, lieu=self.lieu
+        )
+        self.assertEqual(dist.quantite, 0)
+
+    def test_quantite_negative_rejected(self):
+        from django.core.exceptions import ValidationError
+        dist = Distribution(
+            campagne=self.campagne1, lieu=self.lieu, quantite=-1
+        )
+        with self.assertRaises(ValidationError):
+            dist.full_clean()
+
+    def test_quantite_independent_per_campagne(self):
+        Distribution.objects.create(
+            campagne=self.campagne1, lieu=self.lieu, quantite=50
+        )
+        Distribution.objects.create(
+            campagne=self.campagne2, lieu=self.lieu, quantite=20
+        )
+        self.assertEqual(
+            Distribution.objects.get(
+                campagne=self.campagne1, lieu=self.lieu
+            ).quantite,
+            50,
+        )
+        self.assertEqual(
+            Distribution.objects.get(
+                campagne=self.campagne2, lieu=self.lieu
+            ).quantite,
+            20,
+        )
+
+    def test_campagne_totaux_quantite(self):
+        autre_lieu = Lieu.objects.create(
+            commune=self.commune, name="Mairie"
+        )
+        Distribution.objects.create(
+            campagne=self.campagne1, lieu=self.lieu,
+            quantite=50, is_distributed=True,
+        )
+        Distribution.objects.create(
+            campagne=self.campagne1, lieu=autre_lieu, quantite=20
+        )
+        self.campagne1.refresh_from_db()
+        self.assertEqual(self.campagne1.total_quantite, 70)
+        self.assertEqual(self.campagne1.quantite_distribuee, 50)
+        self.assertEqual(self.campagne1.progression_quantite, 71.4)
+
+    def test_progression_quantite_zero_total(self):
+        self.assertEqual(self.campagne1.progression_quantite, 0)
+
+
+class UpdateQuantiteViewTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username="admin", password="admin123"
+        )
+        self.normal = User.objects.create_user(
+            username="normal", password="testpass123"
+        )
+        self.commune = Commune.objects.create(name="Anor")
+        self.lieu = Lieu.objects.create(commune=self.commune, name="Le36")
+        self.campagne = CampagneDistribution.objects.create(
+            name="Campagne 01",
+            created_by=self.admin,
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + timedelta(days=10),
+            status="active",
+        )
+        self.distribution = Distribution.objects.create(
+            campagne=self.campagne, lieu=self.lieu
+        )
+        self.url = reverse(
+            "distribution:update_distribution_quantite",
+            args=[self.campagne.pk, self.distribution.pk],
+        )
+
+    def _post(self, payload):
+        import json
+        return self.client.post(
+            self.url,
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+    def test_denied_for_normal_user(self):
+        self.client.login(username="normal", password="testpass123")
+        self.assertEqual(
+            self._post({"quantite": 50}).status_code, 403
+        )
+
+    def test_update_success_with_totals(self):
+        self.client.login(username="admin", password="admin123")
+        response = self._post({"quantite": 50})
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(data["quantite"], 50)
+        self.assertEqual(data["total_quantite"], 50)
+        self.assertEqual(data["quantite_distribuee"], 0)
+        self.assertEqual(data["commune_id"], self.commune.pk)
+        self.assertEqual(data["commune_total_quantite"], 50)
+        self.distribution.refresh_from_db()
+        self.assertEqual(self.distribution.quantite, 50)
+
+    def test_update_counts_distribuee_when_checked(self):
+        self.distribution.is_distributed = True
+        self.distribution.distributed_by = self.admin
+        self.distribution.save()
+        self.client.login(username="admin", password="admin123")
+        data = self._post({"quantite": 70}).json()
+        self.assertEqual(data["quantite_distribuee"], 70)
+        self.assertEqual(data["commune_quantite_distribuee"], 70)
+
+    def test_update_invalid_payload(self):
+        self.client.login(username="admin", password="admin123")
+        self.assertEqual(self._post({"quantite": -5}).status_code, 400)
+        self.assertEqual(
+            self._post({"quantite": "beaucoup"}).status_code, 400
+        )
+        self.assertEqual(self._post({}).status_code, 400)
+        self.distribution.refresh_from_db()
+        self.assertEqual(self.distribution.quantite, 0)
+
+    def test_update_scoped_to_campagne(self):
+        autre = CampagneDistribution.objects.create(
+            name="Autre campagne",
+            created_by=self.admin,
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + timedelta(days=5),
+            status="active",
+        )
+        bad_url = reverse(
+            "distribution:update_distribution_quantite",
+            args=[autre.pk, self.distribution.pk],
+        )
+        self.client.login(username="admin", password="admin123")
+        import json
+        response = self.client.post(
+            bad_url,
+            data=json.dumps({"quantite": 10}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 404)
+
+
+class BulkSetQuantitesTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username="admin", password="admin123"
+        )
+        self.normal = User.objects.create_user(
+            username="normal", password="testpass123"
+        )
+        self.commune = Commune.objects.create(name="Anor")
+        self.lieux = [
+            Lieu.objects.create(commune=self.commune, name=f"Lieu {i}")
+            for i in range(3)
+        ]
+        self.campagne = CampagneDistribution.objects.create(
+            name="Campagne 01",
+            created_by=self.admin,
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + timedelta(days=10),
+            status="active",
+        )
+        self.distributions = [
+            Distribution.objects.create(campagne=self.campagne, lieu=lieu)
+            for lieu in self.lieux
+        ]
+        self.url = reverse(
+            "distribution:bulk_set_quantites", args=[self.campagne.pk]
+        )
+
+    def _post(self, quantite, scope="all"):
+        import json
+        return self.client.post(
+            self.url,
+            data=json.dumps({"quantite": quantite, "scope": scope}),
+            content_type="application/json",
+        )
+
+    def test_denied_for_normal_user(self):
+        self.client.login(username="normal", password="testpass123")
+        self.assertEqual(self._post(70).status_code, 403)
+
+    def test_apply_all(self):
+        self.client.login(username="admin", password="admin123")
+        response = self._post(70, scope="all")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(data["updated_count"], 3)
+        self.assertEqual(data["total_quantite"], 210)
+        self.assertIn(str(self.commune.pk), data["communes_quantites"])
+        for dist in self.distributions:
+            dist.refresh_from_db()
+            self.assertEqual(dist.quantite, 70)
+
+    def test_apply_only_zero_preserves_filled(self):
+        self.distributions[0].quantite = 50
+        self.distributions[0].save(update_fields=["quantite"])
+        self.client.login(username="admin", password="admin123")
+        data = self._post(70, scope="only_zero").json()
+        self.assertEqual(data["updated_count"], 2)
+        self.assertEqual(data["total_quantite"], 190)
+        self.distributions[0].refresh_from_db()
+        self.assertEqual(self.distributions[0].quantite, 50)
+
+    def test_invalid_payload(self):
+        self.client.login(username="admin", password="admin123")
+        self.assertEqual(self._post(-1).status_code, 400)
+        self.assertEqual(self._post("x").status_code, 400)
+        self.assertEqual(self._post(10, scope="nope").status_code, 400)
+
+    def test_campagne_create_generates_zero_quantites(self):
+        self.client.login(username="admin", password="admin123")
+        response = self.client.post(
+            reverse("distribution:campagne_create"),
+            {
+                "name": "Nouvelle campagne",
+                "status": "active",
+                "start_date": timezone.localdate().isoformat(),
+                "end_date": (
+                    timezone.localdate() + timedelta(days=5)
+                ).isoformat(),
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        campagne = CampagneDistribution.objects.get(
+            name="Nouvelle campagne"
+        )
+        self.assertTrue(campagne.distributions.exists())
+        self.assertFalse(
+            campagne.distributions.exclude(quantite=0).exists()
+        )
+
+
+class CampagneDetailQuantiteTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username="admin", password="admin123"
+        )
+        self.commune = Commune.objects.create(name="Anor")
+        self.lieu = Lieu.objects.create(commune=self.commune, name="Le36")
+        self.campagne = CampagneDistribution.objects.create(
+            name="Campagne 01",
+            created_by=self.admin,
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + timedelta(days=10),
+            status="active",
+        )
+        Distribution.objects.create(
+            campagne=self.campagne, lieu=self.lieu, quantite=50
+        )
+        self.client.login(username="admin", password="admin123")
+
+    def test_detail_shows_quantite_inputs_and_counters(self):
+        response = self.client.get(
+            reverse("distribution:campagne_detail", args=[self.campagne.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("quantite-input", content)
+        self.assertIn("global-docs-counter", content)
+        self.assertIn(f"commune-docs-{self.commune.pk}", content)
+        self.assertIn("uniform-quantite", content)
+        self.assertIn("0/50 docs", html.unescape(content))
+        self.assertIn("0/50 documents", html.unescape(content))
+
+
+class CampagneDeleteTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username="admin", password="admin123"
+        )
+        self.normal = User.objects.create_user(
+            username="normal", password="testpass123"
+        )
+        self.commune = Commune.objects.create(name="Anor")
+        self.lieu = Lieu.objects.create(commune=self.commune, name="Le36")
+        self.autre_lieu = Lieu.objects.create(
+            commune=self.commune, name="Mairie"
+        )
+        today = timezone.localdate()
+        self.campagne = CampagneDistribution.objects.create(
+            name="Campagne en double",
+            created_by=self.admin,
+            start_date=today,
+            end_date=today + timedelta(days=10),
+            status="active",
+        )
+        self.doublon = CampagneDistribution.objects.create(
+            name="Campagne en double",
+            created_by=self.admin,
+            start_date=today,
+            end_date=today + timedelta(days=10),
+            status="active",
+        )
+        Distribution.objects.create(
+            campagne=self.campagne, lieu=self.lieu,
+            quantite=50, is_distributed=True,
+        )
+        Distribution.objects.create(
+            campagne=self.campagne, lieu=self.autre_lieu, quantite=20
+        )
+        Distribution.objects.create(
+            campagne=self.doublon, lieu=self.lieu, quantite=70
+        )
+        self.url = reverse(
+            "distribution:campagne_delete", args=[self.campagne.pk]
+        )
+
+    def test_get_shows_confirmation_without_deleting(self):
+        self.client.login(username="admin", password="admin123")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        content = html.unescape(response.content.decode())
+        self.assertIn("Supprimer la campagne", content)
+        self.assertIn("2 lieu(x)", content)
+        self.assertTrue(
+            CampagneDistribution.objects.filter(pk=self.campagne.pk).exists()
+        )
+
+    def test_post_deletes_campagne_only(self):
+        self.client.login(username="admin", password="admin123")
+        response = self.client.post(self.url, follow=True)
+        self.assertRedirects(response, reverse("distribution:campagne_list"))
+        self.assertFalse(
+            CampagneDistribution.objects.filter(pk=self.campagne.pk).exists()
+        )
+        # Distributions de la campagne supprimée : parties.
+        self.assertFalse(
+            Distribution.objects.filter(campagne_id=self.campagne.pk).exists()
+        )
+        # Lieux, commune et campagne en double : intacts.
+        self.assertTrue(Lieu.objects.filter(pk=self.lieu.pk).exists())
+        self.assertTrue(Lieu.objects.filter(pk=self.autre_lieu.pk).exists())
+        self.assertTrue(Commune.objects.filter(pk=self.commune.pk).exists())
+        doublon_dist = Distribution.objects.get(
+            campagne=self.doublon, lieu=self.lieu
+        )
+        self.assertEqual(doublon_dist.quantite, 70)
+        self.assertFalse(doublon_dist.is_distributed)
+
+    def test_delete_denied_for_normal_user(self):
+        self.client.login(username="normal", password="testpass123")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 302)
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            CampagneDistribution.objects.filter(pk=self.campagne.pk).exists()
+        )
+
+    def test_delete_requires_login(self):
+        response = self.client.get(self.url)
+        self.assertNotEqual(response.status_code, 200)
+        self.assertTrue(
+            CampagneDistribution.objects.filter(pk=self.campagne.pk).exists()
+        )
+
+    def test_delete_unknown_campagne_404(self):
+        self.client.login(username="admin", password="admin123")
+        url = reverse("distribution:campagne_delete", args=[999999])
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.assertEqual(self.client.post(url).status_code, 404)
+
+
+class RetirerLieuCampagneTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username="admin", password="admin123"
+        )
+        self.normal = User.objects.create_user(
+            username="normal", password="testpass123"
+        )
+        self.commune = Commune.objects.create(name="Anor")
+        self.lieu = Lieu.objects.create(commune=self.commune, name="Le36")
+        self.autre_lieu = Lieu.objects.create(
+            commune=self.commune, name="Mairie"
+        )
+        today = timezone.localdate()
+        self.campagne = CampagneDistribution.objects.create(
+            name="Campagne 01",
+            created_by=self.admin,
+            start_date=today,
+            end_date=today + timedelta(days=10),
+            status="active",
+        )
+        self.autre_campagne = CampagneDistribution.objects.create(
+            name="Campagne 02",
+            created_by=self.admin,
+            start_date=today,
+            end_date=today + timedelta(days=10),
+            status="active",
+        )
+        self.distribution = Distribution.objects.create(
+            campagne=self.campagne, lieu=self.lieu,
+            quantite=50, is_distributed=True,
+        )
+        Distribution.objects.create(
+            campagne=self.campagne, lieu=self.autre_lieu, quantite=20
+        )
+        Distribution.objects.create(
+            campagne=self.autre_campagne, lieu=self.lieu, quantite=70
+        )
+        self.url = reverse(
+            "distribution:retirer_lieu_campagne",
+            args=[self.campagne.pk, self.distribution.pk],
+        )
+
+    def test_denied_for_normal_user(self):
+        self.client.login(username="normal", password="testpass123")
+        self.assertEqual(self.client.post(self.url).status_code, 403)
+        self.assertTrue(
+            Distribution.objects.filter(pk=self.distribution.pk).exists()
+        )
+
+    def test_retirer_success_with_totals(self):
+        self.client.login(username="admin", password="admin123")
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertTrue(data["removed"])
+        self.assertEqual(data["commune_id"], self.commune.pk)
+        # Le lieu retiré (50 docs validés) sort des compteurs.
+        self.assertEqual(data["total_quantite"], 20)
+        self.assertEqual(data["quantite_distribuee"], 0)
+        self.assertEqual(data["commune_total_quantite"], 20)
+        # Ligne supprimée, exclusion tracée, lieu conservé.
+        self.assertFalse(
+            Distribution.objects.filter(pk=self.distribution.pk).exists()
+        )
+        exclusion = CampagneLieuExclusion.objects.get(
+            campagne=self.campagne, lieu=self.lieu
+        )
+        self.assertEqual(exclusion.excluded_by, self.admin)
+        self.assertTrue(Lieu.objects.filter(pk=self.lieu.pk).exists())
+        self.lieu.refresh_from_db()
+        self.assertTrue(self.lieu.is_active)
+        # Autre campagne intacte.
+        autre = Distribution.objects.get(
+            campagne=self.autre_campagne, lieu=self.lieu
+        )
+        self.assertEqual(autre.quantite, 70)
+
+    def test_retirer_idempotent(self):
+        self.client.login(username="admin", password="admin123")
+        self.assertEqual(self.client.post(self.url).status_code, 200)
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertFalse(data["removed"])
+
+    def test_retirer_scoped_to_campagne(self):
+        autre = Distribution.objects.get(
+            campagne=self.autre_campagne, lieu=self.lieu
+        )
+        bad_url = reverse(
+            "distribution:retirer_lieu_campagne",
+            args=[self.campagne.pk, autre.pk],
+        )
+        self.client.login(username="admin", password="admin123")
+        self.assertEqual(self.client.post(bad_url).status_code, 404)
+        self.assertTrue(Distribution.objects.filter(pk=autre.pk).exists())
+
+    def test_sync_skips_excluded_lieux(self):
+        self.client.login(username="admin", password="admin123")
+        self.client.post(self.url)
+        nouveau = Lieu.objects.create(
+            commune=self.commune, name="Salle des fêtes"
+        )
+        sync_url = reverse(
+            "distribution:sync_campagne_lieux", args=[self.campagne.pk]
+        )
+        response = self.client.post(sync_url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["created_count"], 1)
+        self.assertEqual(data["skipped_count"], 1)
+        self.assertIn("ignoré(s) car retiré(s)", data["message"])
+        # Le lieu retiré n'est pas recréé, le nouveau oui.
+        self.assertFalse(
+            Distribution.objects.filter(
+                campagne=self.campagne, lieu=self.lieu
+            ).exists()
+        )
+        self.assertTrue(
+            Distribution.objects.filter(
+                campagne=self.campagne, lieu=nouveau
+            ).exists()
+        )
+
+    def test_reintegrer_restores_zero_distribution(self):
+        self.client.login(username="admin", password="admin123")
+        self.client.post(self.url)
+        reintegrer_url = reverse(
+            "distribution:reintegrer_lieu_campagne",
+            args=[self.campagne.pk, self.lieu.pk],
+        )
+        response = self.client.post(reintegrer_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["success"])
+        restored = Distribution.objects.get(
+            campagne=self.campagne, lieu=self.lieu
+        )
+        self.assertEqual(restored.quantite, 0)
+        self.assertFalse(restored.is_distributed)
+        self.assertFalse(
+            CampagneLieuExclusion.objects.filter(
+                campagne=self.campagne, lieu=self.lieu
+            ).exists()
+        )
+
+    def test_reintegrer_without_exclusion_404(self):
+        self.client.login(username="admin", password="admin123")
+        reintegrer_url = reverse(
+            "distribution:reintegrer_lieu_campagne",
+            args=[self.campagne.pk, self.autre_lieu.pk],
+        )
+        self.assertEqual(self.client.post(reintegrer_url).status_code, 404)
+
+    def test_detail_shows_retirer_buttons_and_excluded(self):
+        self.client.login(username="admin", password="admin123")
+        detail_url = reverse(
+            "distribution:campagne_detail", args=[self.campagne.pk]
+        )
+        content = self.client.get(detail_url).content.decode()
+        self.assertIn("retirer-lieu-btn", content)
+        self.client.post(self.url)
+        content = self.client.get(detail_url).content.decode()
+        content = html.unescape(content)
+        self.assertIn("Lieux retirés de cette campagne (1)", content)
+        self.assertIn("Le36", content)
+        # Compteurs sans le lieu retiré : 1 lieu restant à 20 docs.
+        self.assertIn("0/20 docs", content)
+
+    def test_detail_docs_bar_uses_integer_width(self):
+        # Non-régression : un pourcentage fractionnaire (ex. 678/1898)
+        # ne doit pas rendre "width: 35,7%" (virgule locale invalide en
+        # CSS, barre affichée pleine) mais une largeur entière.
+        self.autre_lieu_dist = Distribution.objects.get(
+            campagne=self.campagne, lieu=self.autre_lieu
+        )
+        self.autre_lieu_dist.is_distributed = True
+        self.autre_lieu_dist.distributed_by = self.admin
+        self.autre_lieu_dist.save()
+        lieu_x = Lieu.objects.create(commune=self.commune, name="Lieu X")
+        lieu_y = Lieu.objects.create(commune=self.commune, name="Lieu Y")
+        Distribution.objects.create(
+            campagne=self.campagne, lieu=lieu_x,
+            quantite=608, is_distributed=True,
+        )
+        Distribution.objects.create(
+            campagne=self.campagne, lieu=lieu_y, quantite=1220
+        )
+        # Total : 50+20+608+1220 = 1898, distribués : 50+20+608 = 678.
+        self.client.login(username="admin", password="admin123")
+        content = self.client.get(
+            reverse("distribution:campagne_detail", args=[self.campagne.pk])
+        ).content.decode()
+        self.assertIn("678/1898 documents", html.unescape(content))
+        self.assertIn('id="global-docs-progress-bar"', content)
+        self.assertNotIn("35,7%", content)
+        self.assertIn('style="width: 36%"', content)
