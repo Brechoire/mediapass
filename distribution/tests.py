@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 import html
 import json
+import re
 
 from django.contrib.auth.models import Group, User
 from django.test import TestCase
@@ -1655,3 +1656,111 @@ class DistributionAgentAccessTests(TestCase):
             {"username": "admin", "password": "admin123"},
         )
         self.assertRedirects(response, "/")
+
+
+class CommuneCompleteCollapseTests(TestCase):
+    """Communes à 100 % : repliées + badge vert, réaffichables."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username="admin", password="admin123"
+        )
+        self.agent = User.objects.create_user(
+            username="agent", password="testpass123"
+        )
+        self.agent.groups.add(
+            Group.objects.get_or_create(name="distribution")[0]
+        )
+        # « Alpha » (counter 1) sera complète, « Beta » (counter 2) partielle.
+        self.alpha = Commune.objects.create(name="Alpha")
+        self.beta = Commune.objects.create(name="Beta")
+        self.lieu_a1 = Lieu.objects.create(
+            commune=self.alpha, name="Lieu A1"
+        )
+        self.lieu_a2 = Lieu.objects.create(
+            commune=self.alpha, name="Lieu A2"
+        )
+        self.lieu_b1 = Lieu.objects.create(
+            commune=self.beta, name="Lieu B1"
+        )
+        self.lieu_b2 = Lieu.objects.create(
+            commune=self.beta, name="Lieu B2"
+        )
+        today = timezone.localdate()
+        self.campagne = CampagneDistribution.objects.create(
+            name="Campagne", created_by=self.admin,
+            start_date=today - timedelta(days=10),
+            end_date=today + timedelta(days=10),
+        )
+        Distribution.objects.create(
+            campagne=self.campagne, lieu=self.lieu_a1, is_distributed=True
+        )
+        Distribution.objects.create(
+            campagne=self.campagne, lieu=self.lieu_a2, is_distributed=True
+        )
+        Distribution.objects.create(
+            campagne=self.campagne, lieu=self.lieu_b1, is_distributed=True
+        )
+        self.dist_b2 = Distribution.objects.create(
+            campagne=self.campagne, lieu=self.lieu_b2, is_distributed=False
+        )
+        self.url = reverse(
+            "distribution:campagne_detail", args=[self.campagne.pk]
+        )
+
+    def _content(self, username, password):
+        self.client.login(username=username, password=password)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        return response.content.decode()
+
+    def test_complete_commune_folded_with_badge(self):
+        content = self._content("admin", "admin123")
+        # Alpha (1) complète : grille repliée, badge visible, bouton replié.
+        self.assertIn('id="commune-lieux-1" hidden', content)
+        self.assertIn('id="commune-complete-1">', content)
+        self.assertIn("Afficher les lieux (2)", content)
+        self.assertIn('aria-controls="commune-lieux-1"', content)
+        # Beta (2) partielle : grille visible, badge masqué, bouton déplié.
+        self.assertIn('id="commune-lieux-2">', content)
+        self.assertIn('id="commune-complete-2" hidden', content)
+        self.assertIn("Masquer les lieux", content)
+
+    def test_fold_applies_to_agents(self):
+        content = self._content("agent", "testpass123")
+        self.assertIn('id="commune-lieux-1" hidden', content)
+        self.assertIn('id="commune-complete-1">', content)
+        self.assertIn('id="commune-lieux-2">', content)
+
+    def test_lieu_cards_click_to_validate(self):
+        # Les cartes sont cliquables (validation directe) : curseur,
+        # infobulle et délégation vers la case du lieu.
+        content = self._content("admin", "admin123")
+        self.assertIn("distribution-card relative cursor-pointer", content)
+        self.assertIn("Cliquer pour valider / dévalider ce lieu", content)
+        self.assertIn("card.querySelector('.distribution-checkbox')", content)
+
+    def test_last_validation_folds_on_reload(self):
+        self.client.login(username="admin", password="admin123")
+        toggle_url = reverse(
+            "distribution:toggle_distribution", args=[self.dist_b2.pk]
+        )
+        self.assertEqual(self.client.post(toggle_url).status_code, 200)
+        content = self.client.get(self.url).content.decode()
+        self.assertIn('id="commune-lieux-2" hidden', content)
+        self.assertIn('id="commune-complete-2">', content)
+
+    def test_commune_index_only_on_checkboxes(self):
+        # Non-régression : le calcul JS de la barre compte les
+        # [data-commune-index] ; aucun autre élément (ex. bouton
+        # accordéon) ne doit porter cet attribut, sinon le total est
+        # faussé (7/8 affiché 88 % au lieu de 100 %).
+        content = self._content("admin", "admin123")
+        total_distributions = Distribution.objects.filter(
+            campagne=self.campagne
+        ).count()
+        tags = re.findall(
+            r'<[^>]*data-commune-index="[^"]*"[^>]*>', content
+        )
+        self.assertEqual(len(tags), total_distributions)
+        self.assertTrue(all(t.startswith("<input") for t in tags))

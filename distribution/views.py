@@ -315,6 +315,12 @@ def campagne_detail(request, pk):
         if dist.is_distributed:
             entry['quantite_distribuee'] += dist.quantite or 0
 
+    for entry in communes_data.values():
+        lieux = entry['lieux']
+        entry['is_complete'] = bool(lieux) and all(
+            dist.is_distributed for dist in lieux
+        )
+
     # Lieux retirés de cette campagne (1 requête, pour réintégration).
     lieux_exclus = campagne.lieux_exclus.select_related(
         'lieu__commune'

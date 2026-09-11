@@ -178,7 +178,7 @@
         <div class="p-5">
             {% if communes_data %}
                 {% for commune_name, data in communes_data.items %}
-                <div class="mb-8">
+                <div class="mb-8 {% if data.is_complete %}rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4{% endif %}" id="commune-section-{{ forloop.counter }}" data-commune-total="{{ data.lieux|length }}">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-3">
                             <h3 class="text-lg font-semibold text-[#1e293b]">
@@ -188,6 +188,15 @@
                             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]" id="commune-progress-{{ forloop.counter }}">
                                 {{ data.lieux|length }} lieu{{ data.lieux|length|pluralize:"x" }}
                             </span>
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200" id="commune-complete-{{ forloop.counter }}"{% if not data.is_complete %} hidden{% endif %}>
+                                <i class="bx bx-check"></i> Complète
+                            </span>
+                            <button type="button" id="commune-toggle-{{ forloop.counter }}" data-commune-toggle="{{ forloop.counter }}"
+                                    aria-expanded="{% if data.is_complete %}false{% else %}true{% endif %}" aria-controls="commune-lieux-{{ forloop.counter }}"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#dce3ef] text-[#1e293b] text-xs font-semibold hover:bg-[#f8f9fc] transition-colors">
+                                <i class="bx bx-chevron-down"></i>
+                                <span id="commune-toggle-label-{{ forloop.counter }}">{% if data.is_complete %}Afficher les lieux ({{ data.lieux|length }}){% else %}Masquer les lieux{% endif %}</span>
+                            </button>
                         </div>
                         <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
                             <span class="text-sm text-[#7a8fa0]">
@@ -203,9 +212,9 @@
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="commune-lieux-{{ forloop.counter }}"{% if data.is_complete %} hidden{% endif %}>
                         {% for distribution in data.lieux %}
-                        <div class="bg-white border {% if distribution.is_distributed %}border-emerald-200{% else %}border-[#dce3ef]{% endif %} rounded-2xl shadow-sm hover:shadow-md transition-shadow distribution-card relative" data-distribution-id="{{ distribution.pk }}">
+                        <div class="bg-white border {% if distribution.is_distributed %}border-emerald-200{% else %}border-[#dce3ef]{% endif %} rounded-2xl shadow-sm hover:shadow-md transition-shadow distribution-card relative cursor-pointer" data-distribution-id="{{ distribution.pk }}" title="Cliquer pour valider / dévalider ce lieu">
                             <div class="p-4">
                                 <div class="flex items-start justify-between mb-3">
                                     <h4 class="text-sm font-semibold text-[#1e293b]">{{ distribution.lieu.name }}</h4>
@@ -317,24 +326,15 @@
 
 {% block javascripts %}
 <script>
-console.log('=== SCRIPT CHARGÉ ===');
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('=== DOM CONTENT LOADED ===');
-    console.log('Page chargée, initialisation des switches...');
-    
     // Fonction pour initialiser les switches
     function initSwitches() {
-        console.log('Recherche des switches...');
-        
         // Gestion des cases à cocher
         const checkboxes = document.querySelectorAll('.distribution-checkbox');
-        console.log('Switches trouvés:', checkboxes.length);
-        
+
         if (checkboxes.length === 0) {
             console.error('Aucun switch trouvé ! Vérifiez la classe .distribution-checkbox');
-            console.log('Éléments avec classe form-check-input:', document.querySelectorAll('.form-check-input').length);
-            console.log('Tous les inputs:', document.querySelectorAll('input[type="checkbox"]').length);
             return false;
         }
         
@@ -357,15 +357,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function tryInit() {
         attempts++;
-        console.log(`Tentative ${attempts}/${maxAttempts}`);
-        
-        if (initSwitches()) {
-            console.log('Switches initialisés avec succès !');
-        } else if (attempts < maxAttempts) {
-            console.log('Réessai dans 200ms...');
-            setTimeout(tryInit, 200);
-        } else {
-            console.error('Impossible d\'initialiser les switches après', maxAttempts, 'tentatives');
+
+        if (!initSwitches()) {
+            if (attempts < maxAttempts) {
+                setTimeout(tryInit, 200);
+            } else {
+                console.error('Impossible d\'initialiser les switches après', maxAttempts, 'tentatives');
+            }
         }
     }
     
@@ -476,16 +474,33 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Accordéons par commune (repli des communes à 100 %)
+    document.querySelectorAll('[id^="commune-toggle-"]').forEach(function(button) {
+        button.addEventListener('click', function() {
+            toggleCommune(button.dataset.communeToggle);
+        });
+    });
+
+    // Clic sur une carte lieu = validation / dévalidation directe.
+    // Les éléments interactifs (case, quantité, boutons, liens) gardent
+    // leur comportement natif ; le bouton « Valider les sélectionnés »
+    // reste disponible pour le traitement en lot.
+    document.querySelectorAll('.distribution-card').forEach(function(card) {
+        card.addEventListener('click', function(event) {
+            if (event.target.closest('button, a, input, select, textarea')) {
+                return;
+            }
+            const checkbox = card.querySelector('.distribution-checkbox');
+            if (checkbox && !checkbox.disabled) {
+                checkbox.click();
+            }
+        });
+    });
     
     function attachSwitchEvents(checkboxes) {
-        console.log('Attachement des événements aux switches...');
-        
         checkboxes.forEach((checkbox, index) => {
-            console.log(`Switch ${index + 1}:`, checkbox.dataset.distributionId, 'checked:', checkbox.checked);
-            
             checkbox.addEventListener('change', function() {
-                console.log('Switch changé:', this.dataset.distributionId, 'checked:', this.checked);
-                
                 const distributionId = this.dataset.distributionId;
                 const communeIndex = this.dataset.communeIndex;
                 const isChecked = this.checked;
@@ -501,8 +516,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     card.style.opacity = '0.6';
                 }
                 
-                console.log('Envoi requête AJAX pour distribution:', distributionId);
-                
                 // Envoyer la requête AJAX
                 fetch(`{% url 'distribution:toggle_distribution' 0 %}`.replace('0', distributionId), {
                     method: 'POST',
@@ -512,11 +525,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                 })
                 .then(response => {
-                    console.log('Réponse reçue:', response.status);
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Données reçues:', data);
                     if (data.success) {
                         // Mettre à jour l'interface
                         updateDistributionInfo(distributionId, data);
@@ -559,8 +570,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function updateDistributionInfo(distributionId, data) {
-        // Messages supprimés - fonction simplifiée
-        console.log('Distribution mise à jour:', distributionId, data.is_distributed ? 'validée' : 'désactivée');
+        // Messages supprimés - fonction simplifiée (conservée pour compatibilité)
     }
     
     function updateCardAppearance(distributionId, isDistributed) {
@@ -576,13 +586,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function updateCommuneProgress(communeIndex) {
-        const communeCheckboxes = document.querySelectorAll(`[data-commune-index="${communeIndex}"]`);
+        const communeCheckboxes = document.querySelectorAll(
+            `.distribution-checkbox[data-commune-index="${communeIndex}"]`
+        );
         const total = communeCheckboxes.length;
         const distributed = Array.from(communeCheckboxes).filter(cb => cb.checked).length;
         const percentage = total > 0 ? Math.round((distributed / total) * 100) : 0;
-        
-        console.log(`Commune ${communeIndex}: ${distributed}/${total} (${percentage}%)`);
-        
+
         // Mettre à jour le compteur
         const counter = document.getElementById(`commune-distributed-${communeIndex}`);
         if (counter) {
@@ -595,6 +605,36 @@ document.addEventListener('DOMContentLoaded', function() {
             progressBar.style.width = `${percentage}%`;
             progressBar.setAttribute('aria-valuenow', percentage);
         }
+
+        // Signaler une commune passée à 100 % (sans la replier brutalement)
+        updateCommuneCompleteState(communeIndex, distributed, total);
+    }
+
+    function updateCommuneCompleteState(communeIndex, distributed, total) {
+        const isComplete = total > 0 && distributed === total;
+        const badge = document.getElementById(`commune-complete-${communeIndex}`);
+        if (badge) {
+            badge.hidden = !isComplete;
+        }
+        const section = document.getElementById(`commune-section-${communeIndex}`);
+        if (section) {
+            ['rounded-2xl', 'border', 'border-emerald-200', 'bg-emerald-50/50', 'p-4'].forEach(cls => {
+                section.classList.toggle(cls, isComplete);
+            });
+        }
+    }
+
+    function toggleCommune(communeIndex) {
+        const region = document.getElementById(`commune-lieux-${communeIndex}`);
+        const button = document.getElementById(`commune-toggle-${communeIndex}`);
+        const label = document.getElementById(`commune-toggle-label-${communeIndex}`);
+        if (!region || !button || !label) return;
+        const section = document.getElementById(`commune-section-${communeIndex}`);
+        const total = section && section.dataset.communeTotal ? section.dataset.communeTotal : '';
+        const willShow = region.hidden;
+        region.hidden = !willShow;
+        button.setAttribute('aria-expanded', willShow ? 'true' : 'false');
+        label.textContent = willShow ? 'Masquer les lieux' : `Afficher les lieux (${total})`;
     }
     
     function updateGlobalProgress() {
@@ -714,7 +754,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const boxes = Array.from(checkedBoxes);
         const ids = boxes.map(cb => parseInt(cb.dataset.distributionId, 10)).filter(Number.isInteger);
-        console.log(`Désélection bulk de ${ids.length} lieux`);
 
         if (ids.length === 0) {
             if (deselectBtn) {
@@ -762,7 +801,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const boxes = Array.from(selectedCheckboxes);
         const ids = boxes.map(cb => parseInt(cb.dataset.distributionId, 10)).filter(Number.isInteger);
-        console.log(`Validation bulk de ${ids.length} lieux sélectionnés`);
 
         if (ids.length === 0) {
             if (validateBtn) {
