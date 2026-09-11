@@ -301,6 +301,36 @@ class LieuViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Ancien lieu", response.content.decode())
 
+    def test_base_includes_htmx_csrf_wiring(self):
+        # Non-régression : sans X-CSRFToken sur les hx-post, Django
+        # répond 403 (échec CSRF) au navigateur. Le base template doit
+        # injecter le token via htmx:configRequest.
+        self.client.login(username="admin", password="admin123")
+        content = self.client.get(
+            reverse("distribution:commune_detail", args=[self.commune.pk])
+        ).content.decode()
+        self.assertIn("htmx:configRequest", content)
+        self.assertIn("X-CSRFToken", content)
+
+    def test_toggle_with_csrf_enforcement(self):
+        # Preuve que le 403 navigateur venait du CSRF : avec le token
+        # (ce que le JS injecte désormais), le toggle passe à 200.
+        from django.test import Client
+        client = Client(enforce_csrf_checks=True)
+        client.login(username="admin", password="admin123")
+        client.get(
+            reverse("distribution:commune_detail", args=[self.commune.pk])
+        )
+        csrf_token = client.cookies["csrftoken"].value
+        url = reverse(
+            "distribution:lieu_toggle",
+            args=[self.commune.pk, self.lieu.pk],
+        )
+        response = client.post(url, HTTP_X_CSRFTOKEN=csrf_token)
+        self.assertEqual(response.status_code, 200)
+        self.lieu.refresh_from_db()
+        self.assertFalse(self.lieu.is_active)
+
 
 class CampagneExpirationTests(TestCase):
     def setUp(self):
@@ -1193,3 +1223,113 @@ class RetirerLieuCampagneTests(TestCase):
         self.assertIn('id="global-docs-progress-bar"', content)
         self.assertNotIn("35,7%", content)
         self.assertIn('style="width: 36%"', content)
+
+
+class LieuDeleteTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username="admin", password="admin123"
+        )
+        self.normal = User.objects.create_user(
+            username="normal", password="testpass123"
+        )
+        self.commune = Commune.objects.create(name="Anor")
+        self.lieu = Lieu.objects.create(commune=self.commune, name="Le36")
+        self.autre_lieu = Lieu.objects.create(
+            commune=self.commune, name="Mairie"
+        )
+        today = timezone.localdate()
+        self.campagne = CampagneDistribution.objects.create(
+            name="Campagne 01",
+            created_by=self.admin,
+            start_date=today,
+            end_date=today + timedelta(days=10),
+            status="active",
+        )
+        self.autre_campagne = CampagneDistribution.objects.create(
+            name="Campagne 02",
+            created_by=self.admin,
+            start_date=today,
+            end_date=today + timedelta(days=10),
+            status="active",
+        )
+        Distribution.objects.create(
+            campagne=self.campagne, lieu=self.lieu,
+            quantite=50, is_distributed=True,
+        )
+        Distribution.objects.create(
+            campagne=self.autre_campagne, lieu=self.lieu, quantite=70
+        )
+        Distribution.objects.create(
+            campagne=self.campagne, lieu=self.autre_lieu, quantite=20
+        )
+        self.url = reverse(
+            "distribution:lieu_delete", args=[self.commune.pk, self.lieu.pk]
+        )
+
+    def test_get_shows_confirmation_without_deleting(self):
+        self.client.login(username="admin", password="admin123")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        content = html.unescape(response.content.decode())
+        self.assertIn("Supprimer le lieu", content)
+        self.assertIn("2 distribution(s)", content)
+        self.assertIn("Campagne 01", content)
+        self.assertIn("Campagne 02", content)
+        self.assertTrue(Lieu.objects.filter(pk=self.lieu.pk).exists())
+
+    def test_post_deletes_lieu_everywhere(self):
+        self.client.login(username="admin", password="admin123")
+        response = self.client.post(self.url, follow=True)
+        self.assertRedirects(
+            response,
+            reverse("distribution:commune_detail", args=[self.commune.pk]),
+        )
+        # Lieu et toutes ses distributions : partis.
+        self.assertFalse(Lieu.objects.filter(pk=self.lieu.pk).exists())
+        self.assertFalse(
+            Distribution.objects.filter(lieu_id=self.lieu.pk).exists()
+        )
+        # Commune, autre lieu et campagnes : intacts.
+        self.assertTrue(Commune.objects.filter(pk=self.commune.pk).exists())
+        self.assertTrue(Lieu.objects.filter(pk=self.autre_lieu.pk).exists())
+        self.assertTrue(
+            CampagneDistribution.objects.filter(
+                pk=self.campagne.pk
+            ).exists()
+        )
+        restante = Distribution.objects.get(
+            campagne=self.campagne, lieu=self.autre_lieu
+        )
+        self.assertEqual(restante.quantite, 20)
+        # La campagne ne contient plus que l'autre lieu.
+        self.assertEqual(self.campagne.distributions.count(), 1)
+
+    def test_delete_denied_for_normal_user(self):
+        self.client.login(username="normal", password="testpass123")
+        self.assertEqual(self.client.get(self.url).status_code, 302)
+        self.assertEqual(self.client.post(self.url).status_code, 302)
+        self.assertTrue(Lieu.objects.filter(pk=self.lieu.pk).exists())
+
+    def test_delete_requires_login(self):
+        self.assertNotEqual(self.client.get(self.url).status_code, 200)
+        self.assertTrue(Lieu.objects.filter(pk=self.lieu.pk).exists())
+
+    def test_delete_wrong_commune_404(self):
+        autre_commune = Commune.objects.create(name="Ailleurs")
+        bad_url = reverse(
+            "distribution:lieu_delete",
+            args=[autre_commune.pk, self.lieu.pk],
+        )
+        self.client.login(username="admin", password="admin123")
+        self.assertEqual(self.client.get(bad_url).status_code, 404)
+        self.assertEqual(self.client.post(bad_url).status_code, 404)
+        self.assertTrue(Lieu.objects.filter(pk=self.lieu.pk).exists())
+
+    def test_commune_detail_shows_delete_link(self):
+        self.client.login(username="admin", password="admin123")
+        content = self.client.get(
+            reverse("distribution:commune_detail", args=[self.commune.pk])
+        ).content.decode()
+        self.assertIn("Supprimer", content)
+        self.assertIn(self.url, content)

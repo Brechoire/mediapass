@@ -1048,6 +1048,55 @@ def lieu_toggle(request, commune_pk, pk):
 
 
 @login_required
+def lieu_delete(request, commune_pk, pk):
+    """Supprimer définitivement un lieu (confirmation en GET, suppression en POST).
+
+    La suppression efface le lieu et ses lignes Distribution / exclusions
+    (CASCADE) : il disparaît des lieux globaux et de toutes les campagnes.
+    La commune et les autres lieux sont conservés.
+    """
+    if not is_admin_excluding_mediatheque(request.user):
+        return redirect('distribution:access_denied')
+
+    commune = get_object_or_404(Commune, pk=commune_pk)
+    lieu = get_object_or_404(Lieu, pk=pk, commune=commune)
+
+    stats = Distribution.objects.filter(lieu=lieu).aggregate(
+        total=Count('id'),
+        distribuees=Count('id', filter=Q(is_distributed=True)),
+        quantite=Coalesce(Sum('quantite'), 0),
+    )
+    campagnes = list(
+        CampagneDistribution.objects.filter(
+            distributions__lieu=lieu
+        ).distinct().values_list('name', flat=True)
+    )
+
+    if request.method == 'POST':
+        name = lieu.name
+        campagnes_count = len(campagnes)
+        lieu.delete()
+        logger.info(
+            "Lieu deleted: %s in %s by %s", name, commune.name, request.user
+        )
+        messages.success(
+            request,
+            f'Lieu "{name}" supprimé définitivement '
+            f'({campagnes_count} campagne(s) concernée(s)). '
+            'La commune et les autres lieux sont conservés.'
+        )
+        return redirect('distribution:commune_detail', pk=commune.pk)
+
+    context = {
+        'commune': commune,
+        'lieu': lieu,
+        'stats': stats,
+        'campagnes': campagnes,
+    }
+    return render(request, 'distribution/lieu_confirm_delete.html', context)
+
+
+@login_required
 def statistics(request):
     """Page des statistiques"""
     if not is_admin_excluding_mediatheque(request.user):

@@ -50,4 +50,6 @@ urlpatterns = [
          name='lieu_update'),
     path('communes/<int:commune_pk>/lieux/<int:pk>/toggle/', views.lieu_toggle,
          name='lieu_toggle'),
+    path('communes/<int:commune_pk>/lieux/<int:pk>/delete/', views.lieu_delete,
+         name='lieu_delete'),
 ]
