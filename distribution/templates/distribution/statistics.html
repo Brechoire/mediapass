@@ -194,16 +194,24 @@
                     <div class="flex flex-col gap-1">
                         <span class="text-[10px] leading-4 h-4 text-[#b0bedb] whitespace-nowrap" aria-hidden="true">{{ semaine.mois }}</span>
                         {% if heatmap_hebdo %}
+                        {% if semaine.futur %}
+                        <span class="block p-[3px]" title="Semaine du {{ semaine.lundi|date:'d/m/Y' }} — à venir" aria-label="Semaine du {{ semaine.lundi|date:'d/m/Y' }} : à venir"><span class="block w-3.5 h-3.5 rounded border border-dashed border-[#b0bedb]"></span></span>
+                        {% else %}
                         <a href="{% url 'distribution:campagne_detail' focus.pk %}" class="group relative block p-[3px] rounded heatmap-cell" aria-label="Semaine du {{ semaine.lundi|date:'d/m/Y' }} : {{ semaine.n }} validation{{ semaine.n|pluralize }}"{% if semaine.n %} data-tip-date="Sem. du {{ semaine.lundi|date:'d/m/Y' }}" data-tip-n="{{ semaine.n }}" data-tip-unit="validation" data-tip-lieux="" data-tip-suite=""{% endif %}>
                             <span class="block w-3.5 h-3.5 rounded group-hover:ring-2 group-hover:ring-offset-1 group-hover:ring-[#4a6fa5] {% if semaine.n >= 10 %}bg-emerald-700{% elif semaine.n >= 6 %}bg-emerald-500{% elif semaine.n >= 3 %}bg-emerald-300{% elif semaine.n >= 1 %}bg-emerald-100{% else %}bg-[#e8eef7]{% endif %}"></span>
                         </a>
+                        {% endif %}
                         {% else %}
                         {% for jour in semaine.jours %}
                         {% if jour %}
                         {% with n=jour.noms|length %}
+                        {% if jour.futur %}
+                        <span class="block p-[3px]" title="{{ jour.date|date:'d/m/Y' }} — à venir" aria-label="{{ jour.date|date:'d/m/Y' }} : à venir"><span class="block w-3.5 h-3.5 rounded border border-dashed border-[#b0bedb]"></span></span>
+                        {% else %}
                         <a href="#jour-{{ jour.date|date:'Y-m-d' }}" class="group relative block p-[3px] rounded heatmap-cell" aria-label="{{ jour.date|date:'d/m/Y' }} : {{ n }} validation{{ n|pluralize }}"{% if n %} data-tip-date="{{ jour.date|date:'l d/m/Y' }}" data-tip-n="{{ n }}" data-tip-unit="lieu" data-tip-lieux="{% for nom in jour.noms|slice:':5' %}{{ nom|escape }}{% if not forloop.last %}|{% endif %}{% endfor %}" data-tip-suite="{% if n > 5 %}+{{ n|add:'-5' }} autre{{ n|add:'-5'|pluralize }}{% endif %}"{% endif %}>
                             <span class="block w-3.5 h-3.5 rounded group-hover:ring-2 group-hover:ring-offset-1 group-hover:ring-[#4a6fa5] {% if n >= 10 %}bg-emerald-700{% elif n >= 6 %}bg-emerald-500{% elif n >= 3 %}bg-emerald-300{% elif n >= 1 %}bg-emerald-100{% else %}bg-[#e8eef7]{% endif %}"></span>
                         </a>
+                        {% endif %}
                         {% endwith %}
                         {% else %}
                         <span class="block p-[3px]" aria-hidden="true"><span class="block w-3.5 h-3.5"></span></span>
@@ -222,6 +230,8 @@
                 <span class="w-3.5 h-3.5 rounded bg-emerald-500"></span>
                 <span class="w-3.5 h-3.5 rounded bg-emerald-700"></span>
                 <span class="text-xs text-[#b0bedb]">Plus</span>
+                <span class="w-3.5 h-3.5 rounded border border-dashed border-[#b0bedb]"></span>
+                <span class="text-xs text-[#b0bedb]">À venir</span>
                 <span class="sr-only">Échelle : 0, 1-2, 3-5, 6-9, 10 et plus.</span>
             </div>
             <p class="sr-only">{{ focus_heatmap_resume }}</p>

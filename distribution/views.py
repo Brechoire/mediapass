@@ -1391,7 +1391,9 @@ def statistics(request):
         ).values('distributed_by').distinct().count()
 
         debut_heat = focus.start_date or (today - timedelta(days=89))
-        fin_heat = min(focus.end_date or today, today)
+        # Calendrier complet de la campagne, jours futurs inclus
+        # (affichés grisés, non cliquables).
+        fin_heat = focus.end_date or today
         if debut_heat > fin_heat:
             debut_heat = today - timedelta(days=89)
             fin_heat = today
@@ -1435,11 +1437,14 @@ def statistics(request):
                     )
                 noms = par_jour_focus.get(jour, [])
                 heatmap_semaines[-1]['jours'].append(
-                    {'date': jour, 'noms': noms}
+                    {'date': jour, 'noms': noms, 'futur': jour > today}
                 )
             for semaine in heatmap_semaines:
                 semaine['n'] = sum(
                     len(j['noms']) for j in semaine['jours']
+                )
+                semaine['futur'] = all(
+                    j['date'] > today for j in semaine['jours']
                 )
         else:
             premier_lundi = (
@@ -1456,7 +1461,10 @@ def statistics(request):
                         jours.append(None)
                     else:
                         noms = par_jour_focus.get(jour, [])
-                        jours.append({'date': jour, 'noms': noms})
+                        jours.append({
+                            'date': jour, 'noms': noms,
+                            'futur': jour > today,
+                        })
                 heatmap_semaines.append({'jours': jours})
 
         mois_fr = [

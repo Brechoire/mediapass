@@ -575,6 +575,16 @@ class StatisticsJournalTests(TestCase):
             c.name: c for c in response.context["focus_communes"]
         }
         self.assertEqual(communes["Testville"].pct_lieux, 100.0)
+        # La heatmap couvre toute la campagne, jours futurs inclus
+        # (campagne se terminant dans 5 jours).
+        futurs = [
+            jour for semaine in response.context["heatmap_semaines"]
+            for jour in semaine["jours"]
+            if jour and jour.get("futur")
+        ]
+        self.assertEqual(len(futurs), 5)
+        content = response.content.decode()
+        self.assertIn("À venir", content)
 
     def test_focus_campagne_sans_validation(self):
         vide = CampagneDistribution.objects.create(
