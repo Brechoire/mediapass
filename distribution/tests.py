@@ -451,13 +451,157 @@ class CampagneExpirationTests(TestCase):
     def test_statistics_recent_ordered_by_end_date(self):
         response = self.client.get(reverse("distribution:statistics"))
         self.assertEqual(response.status_code, 200)
-        names = [
-            c.name for c in response.context["campagnes_recentes"]
+        names = [c.name for c in response.context["campagnes_table"]]
+        self.assertEqual(names, ["Campagne imminente", "Campagne future"])
+        terminees = [
+            c.name for c in response.context["dernieres_terminees"]
         ]
-        self.assertEqual(
-            names,
-            ["Campagne imminente", "Campagne future", "Campagne expir\u00e9e"],
+        self.assertEqual(terminees, ["Campagne expir\u00e9e"])
+
+    def test_statistics_pilotage_context(self):
+        response = self.client.get(reverse("distribution:statistics"))
+        self.assertEqual(response.status_code, 200)
+        # L'imminente (J-2) doit remonter dans les alertes d'échéance.
+        expiring = [c.name for c in response.context["expiring_soon"]]
+        self.assertIn("Campagne imminente", expiring)
+        # Les campagnes actives non expirées sans distribution sont
+        # « jamais démarrées » (l'expirée n'est plus dans les actives).
+        never = [c.name for c in response.context["never_started"]]
+        self.assertCountEqual(
+            never, ["Campagne imminente", "Campagne future"]
         )
+        # Rythme : toujours 30 points, taux calculés sans crash.
+        self.assertEqual(len(response.context["rythme_30j"]), 30)
+        self.assertIn("taux_lieux_pct", response.context)
+        self.assertIn("taux_docs_pct", response.context)
+        self.assertTrue(response.context["has_alertes"])
+        # La commune du lieu est présente dans le comparatif.
+        communes = [c.name for c in response.context["communes_stats"]]
+        self.assertIn("Testville", communes)
+
+
+class StatisticsJournalTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username="admin", password="admin123"
+        )
+        self.commune = Commune.objects.create(name="Testville")
+        self.campagne = CampagneDistribution.objects.create(
+            name="Campagne journal",
+            created_by=self.admin,
+            start_date=timezone.localdate() - timedelta(days=5),
+            end_date=timezone.localdate() + timedelta(days=5),
+            status="active",
+        )
+        self.jour = timezone.now() - timedelta(days=2)
+        for i in range(4):
+            lieu = Lieu.objects.create(
+                commune=self.commune, name=f"Lieu {i}"
+            )
+            Distribution.objects.create(
+                campagne=self.campagne,
+                lieu=lieu,
+                is_distributed=True,
+                distributed_by=self.admin,
+                distributed_at=self.jour,
+            )
+        self.client.login(username="admin", password="admin123")
+
+    def test_journal_regroupe_par_jour(self):
+        response = self.client.get(reverse("distribution:statistics"))
+        self.assertEqual(response.status_code, 200)
+        journal = response.context["journal"]
+        jour = next(
+            j for j in journal if j["day"] == self.jour.date()
+        )
+        self.assertEqual(jour["n"], 4)
+        self.assertEqual(len(jour["items"]), 4)
+        jour_max = response.context["jour_max"]
+        self.assertEqual(jour_max["day"], self.jour.date())
+        self.assertEqual(jour_max["n"], 4)
+        content = response.content.decode()
+        self.assertIn("Journal des validations", content)
+        self.assertIn(
+            f"jour-{self.jour.date().isoformat()}", content
+        )
+
+    def test_periode_parametrique(self):
+        response = self.client.get(
+            reverse("distribution:statistics"), {"periode": 7}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["rythme_30j"]), 7)
+        self.assertEqual(response.context["periode"], 7)
+        response = self.client.get(
+            reverse("distribution:statistics"), {"periode": 45}
+        )
+        self.assertEqual(response.context["periode"], 30)
+
+    def test_filtre_campagne(self):
+        autre = CampagneDistribution.objects.create(
+            name="Autre campagne",
+            created_by=self.admin,
+            start_date=timezone.localdate() - timedelta(days=5),
+            end_date=timezone.localdate() + timedelta(days=5),
+            status="active",
+        )
+        response = self.client.get(
+            reverse("distribution:statistics"), {"campagne": autre.pk}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["journal"], [])
+        self.assertIsNone(response.context["jour_max"])
+
+    def test_focus_campagne_heatmap(self):
+        response = self.client.get(
+            reverse("distribution:statistics"),
+            {"campagne": self.campagne.pk},
+        )
+        self.assertEqual(response.status_code, 200)
+        focus = response.context["focus"]
+        self.assertEqual(focus.pk, self.campagne.pk)
+        self.assertEqual(response.context["focus_jours_actifs"], 1)
+        pic = response.context["focus_pic"]
+        self.assertEqual(pic["day"], self.jour.date())
+        self.assertEqual(pic["n"], 4)
+        noms = []
+        for semaine in response.context["heatmap_semaines"]:
+            for jour in semaine["jours"]:
+                if jour and jour["date"] == self.jour.date():
+                    noms = jour["noms"]
+        self.assertEqual(len(noms), 4)
+        self.assertEqual(response.context["focus_restants_count"], 0)
+        communes = {
+            c.name: c for c in response.context["focus_communes"]
+        }
+        self.assertEqual(communes["Testville"].pct_lieux, 100.0)
+        # La heatmap couvre toute la campagne, jours futurs inclus
+        # (campagne se terminant dans 5 jours).
+        futurs = [
+            jour for semaine in response.context["heatmap_semaines"]
+            for jour in semaine["jours"]
+            if jour and jour.get("futur")
+        ]
+        self.assertEqual(len(futurs), 5)
+        content = response.content.decode()
+        self.assertIn("À venir", content)
+
+    def test_focus_campagne_sans_validation(self):
+        vide = CampagneDistribution.objects.create(
+            name="Campagne vide",
+            created_by=self.admin,
+            start_date=timezone.localdate() - timedelta(days=5),
+            end_date=timezone.localdate() + timedelta(days=5),
+            status="active",
+        )
+        response = self.client.get(
+            reverse("distribution:statistics"),
+            {"campagne": vide.pk},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["focus_jours_actifs"], 0)
+        self.assertIsNone(response.context["focus_pic"])
+        self.assertTrue(response.context["heatmap_semaines"])
 
 
 class CampagneProgressionBarTests(TestCase):
