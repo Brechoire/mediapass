@@ -1348,8 +1348,13 @@ def statistics(request):
         journal_lignes, key=lambda d: d.distributed_at.date()
     ):
         lignes = list(lignes)
-        journal.append({'day': day, 'items': lignes, 'n': len(lignes)})
-        if len(journal) >= 14:
+        journal.append({
+            'day': day,
+            'items': lignes[:6],
+            'n': len(lignes),
+            'items_sup': max(0, len(lignes) - 6),
+        })
+        if len(journal) >= 7:
             break
     journal_jours_sup = len({
         d.distributed_at.date() for d in journal_lignes

@@ -514,12 +514,15 @@
                             </a>
                         </li>
                         {% endfor %}
+                        {% if jour.items_sup %}
+                        <li class="py-2 text-xs text-[#b0bedb]">+ {{ jour.items_sup }} autre{{ jour.items_sup|pluralize }} lieu{{ jour.items_sup|pluralize:"x" }} ce jour-là.</li>
+                        {% endif %}
                     </ul>
                 </details>
                 {% endfor %}
             </div>
             {% if journal_jours_sup %}
-            <p class="text-xs text-[#b0bedb] mt-3">+ {{ journal_jours_sup }} jour{{ journal_jours_sup|pluralize }} avec validations dans la période (14 derniers affichés).</p>
+            <p class="text-xs text-[#b0bedb] mt-3">+ {{ journal_jours_sup }} jour{{ journal_jours_sup|pluralize }} avec validations dans la période (7 derniers affichés).</p>
             {% endif %}
             {% else %}
             <p class="text-sm text-[#b0bedb] text-center py-6">Aucune validation datée sur {{ periode }} jours{% if campagne_filtre %} pour {{ campagne_filtre.name }}{% endif %}.</p>
