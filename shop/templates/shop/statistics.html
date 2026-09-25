@@ -5,20 +5,20 @@
 
 {% block content %}
 <section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
-    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="absolute inset-0 opacity-[0.08]" aria-hidden="true" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
     <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div class="flex items-start justify-between gap-4">
-            <div>
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="min-w-0">
                 <div class="flex items-center gap-3 mb-3">
-                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0"><i class="bx bx-bar-chart-alt-2 text-2xl text-white"></i></div>
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0" aria-hidden="true"><i class="bx bx-bar-chart-alt-2 text-2xl text-white"></i></div>
                     <h1 class="text-3xl sm:text-4xl font-bold text-white">Statistiques {{ selected_year }}</h1>
                 </div>
-                <p class="text-white/70 text-sm">Vue d'ensemble des réservations</p>
+                <p class="text-white/80 text-sm">Vue d'ensemble des réservations &middot; N&nbsp;=&nbsp;{{ total_reservations }} r&eacute;servation{{ total_reservations|pluralize }} &middot; ann&eacute;e {{ selected_year }}</p>
             </div>
-            <div class="flex items-center gap-2">
-                <label class="text-sm text-white/60">Année :</label>
-                <select onchange="window.location.href='?year='+this.value"
-                    class="px-4 py-2 border border-white/20 rounded-xl bg-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/30">
+            <div class="flex items-center gap-2 print:hidden">
+                <label for="yearSelect" class="text-sm text-white/80">Ann&eacute;e&nbsp;:</label>
+                <select id="yearSelect" onchange="window.location.href='?year='+this.value"
+                    class="px-4 py-2 border border-white/20 rounded-xl bg-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/60 min-h-[40px]">
                     {% for year in available_years %}
                     <option value="{{ year }}" {% if year == selected_year %}selected{% endif %} class="text-[#1e293b]">{{ year }}</option>
                     {% endfor %}
@@ -29,59 +29,116 @@
 </section>
 
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6">
-            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Réservations totales</p>
-            <p class="text-4xl font-bold text-[#4a6fa5] mt-2">{{ total_reservations }}</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" role="list" aria-label="Indicateurs clés">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6" role="listitem">
+            <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider flex items-center gap-1.5"><i class="bx bx-calendar-check text-[#4a6fa5]" aria-hidden="true"></i> R&eacute;servations totales</p>
+            <p class="text-4xl font-bold text-[#2f4d75] mt-2">{{ total_reservations }}</p>
+            <p class="text-xs text-[#5a6f80] mt-1">D&eacute;but de r&eacute;servation en {{ selected_year }}</p>
         </div>
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6">
-            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Moyenne mensuelle</p>
-            <p class="text-4xl font-bold text-[#4a6fa5] mt-2" id="monthlyAverage" data-total="{{ total_reservations }}">
-                {% widthratio total_reservations 12 1 %}
-            </p>
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6" role="listitem">
+            <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider flex items-center gap-1.5"><i class="bx bx-trending-up text-[#4a6fa5]" aria-hidden="true"></i> Moyenne mensuelle</p>
+            <p class="text-4xl font-bold text-[#2f4d75] mt-2">{{ monthly_average|floatformat:1 }}</p>
+            <p class="text-xs text-[#5a6f80] mt-1">Total / 12 mois (m&ecirc;me sans donn&eacute;es)</p>
+        </div>
+        <a href="#bloc-structures" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6 block hover:border-[#4a6fa5] hover:shadow transition focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]" role="listitem" title="Aller au graphique par structure">
+            <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider flex items-center gap-1.5"><i class="bx bx-buildings text-[#4a6fa5]" aria-hidden="true"></i> Top structure</p>
+            <p class="text-xl font-bold text-[#2f4d75] mt-2 truncate" {% if top_structure %}title="{{ top_structure.name }}"{% endif %}>{% if top_structure %}{{ top_structure.name }}{% else %}&mdash;{% endif %}</p>
+            <p class="text-xs text-[#5a6f80] mt-1">{% if top_structure %}{{ top_structure.total_reservations }} r&eacute;servation{{ top_structure.total_reservations|pluralize }} &middot; cliquer pour d&eacute;tailler{% else %}Aucune r&eacute;servation cette ann&eacute;e{% endif %}</p>
+        </a>
+        <a href="#bloc-produits" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6 block hover:border-[#4a6fa5] hover:shadow transition focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]" role="listitem" title="Aller aux ressources les plus réservées">
+            <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider flex items-center gap-1.5"><i class="bx bx-package text-[#4a6fa5]" aria-hidden="true"></i> Top ressource</p>
+            <p class="text-xl font-bold text-[#2f4d75] mt-2 truncate" {% if top_product %}title="{{ top_product.name }}"{% endif %}>{% if top_product %}{{ top_product.name }}{% else %}&mdash;{% endif %}</p>
+            <p class="text-xs text-[#5a6f80] mt-1">{% if top_product %}{{ top_product.reservation_count }} r&eacute;servation{{ top_product.reservation_count|pluralize }} &middot; cliquer pour d&eacute;tailler{% else %}Aucune r&eacute;servation cette ann&eacute;e{% endif %}</p>
+        </a>
+    </div>
+
+    <div id="bloc-pilotage" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6 mb-8">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-1">
+            <h2 class="font-semibold text-[#1e293b] text-base"><i class="bx bx-timer mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i> &Agrave; traiter &mdash; validation des demandes {{ selected_year }}</h2>
+            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium {% if funnel.approval_rate >= 80 %}bg-emerald-100 text-emerald-800{% elif funnel.approval_rate >= 50 %}bg-amber-100 text-amber-800{% else %}bg-gray-100 text-gray-700{% endif %}">
+                Taux d'approbation&nbsp;: {{ funnel.approval_rate|floatformat:1 }}&nbsp;%
+            </span>
+        </div>
+        <p class="text-xs text-[#5a6f80] mb-4">En attente = demande ni approuv&eacute;e ni refus&eacute;e (m&ecirc;mes d&eacute;finitions que la <a href="{% url 'reservation_list' %}?year={{ selected_year }}" class="underline">liste des r&eacute;servations</a>).</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <a href="{% url 'reservation_list' %}?year={{ selected_year }}&status=pending" class="rounded-2xl border p-5 block transition focus:outline-none focus:ring-2 focus:ring-[#4a6fa5] {% if funnel.pending %}border-amber-300 bg-amber-50 hover:border-amber-400{% else %}border-[#dce3ef] hover:border-[#4a6fa5]{% endif %}">
+                <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider flex items-center gap-1.5"><i class="bx bx-hourglass text-amber-600" aria-hidden="true"></i> En attente</p>
+                <p class="text-4xl font-bold {% if funnel.pending %}text-amber-700{% else %}text-[#2f4d75]{% endif %} mt-2">{{ funnel.pending }}</p>
+                <p class="text-xs text-[#5a6f80] mt-1">{% if funnel.pending %}Cliquer pour traiter{% else %}File vide, rien &agrave; traiter{% endif %}</p>
+            </a>
+            <a href="{% url 'reservation_list' %}?year={{ selected_year }}&status=approved" class="rounded-2xl border border-[#dce3ef] p-5 block hover:border-[#4a6fa5] transition focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]">
+                <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider flex items-center gap-1.5"><i class="bx bx-check-circle text-emerald-600" aria-hidden="true"></i> Approuv&eacute;es</p>
+                <p class="text-4xl font-bold text-[#2f4d75] mt-2">{{ funnel.approved }}</p>
+                <p class="text-xs text-[#5a6f80] mt-1">Cliquer pour voir la liste</p>
+            </a>
+            <a href="{% url 'reservation_list' %}?year={{ selected_year }}&status=rejected" class="rounded-2xl border border-[#dce3ef] p-5 block hover:border-[#4a6fa5] transition focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]">
+                <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider flex items-center gap-1.5"><i class="bx bx-x-circle text-red-600" aria-hidden="true"></i> Refus&eacute;es</p>
+                <p class="text-4xl font-bold text-[#2f4d75] mt-2">{{ funnel.rejected }}</p>
+                <p class="text-xs text-[#5a6f80] mt-1">Cliquer pour voir la liste</p>
+            </a>
+        </div>
+        <div class="flex flex-wrap gap-x-6 gap-y-1 mt-4 text-sm text-[#1e293b]">
+            <p><i class="bx bx-cube mr-1 text-[#4a6fa5]" aria-hidden="true"></i><strong>{{ total_quantity }}</strong> unit&eacute;{{ total_quantity|pluralize }} emprunt&eacute;e{{ total_quantity|pluralize }}</p>
+            <p><i class="bx bx-basket mr-1 text-[#4a6fa5]" aria-hidden="true"></i>Panier moyen&nbsp;: <strong>{{ avg_basket|floatformat:1 }}</strong> unit&eacute; par r&eacute;servation</p>
         </div>
     </div>
 
+    <div class="flex flex-wrap items-center gap-3 mb-4 print:hidden">
+        <label class="inline-flex items-center gap-2 text-sm text-[#1e293b] cursor-pointer min-h-[40px]">
+            <input type="checkbox" id="toggleN1" checked class="w-4 h-4 accent-[#4a6fa5]" />
+            Afficher la comparaison N-1
+        </label>
+        <button type="button" id="btnExportCsv" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#dce3ef] bg-white text-sm font-medium text-[#2f4d75] hover:border-[#4a6fa5] min-h-[40px]">
+            <i class="bx bx-download" aria-hidden="true"></i> Exporter CSV
+        </button>
+        <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#dce3ef] bg-white text-sm font-medium text-[#2f4d75] hover:border-[#4a6fa5] min-h-[40px]">
+            <i class="bx bx-printer" aria-hidden="true"></i> Imprimer
+        </button>
+    </div>
+
     {% if previous_year_data %}
-    <div class="bg-[#e8eef7] rounded-2xl border border-[#dce3ef] p-6 mb-8">
-        <h3 class="text-sm font-semibold text-[#4a6fa5] mb-4">
-            <i class="bx bx-line-chart mr-1.5"></i> Comparaison {{ previous_year_data.period }}
-        </h3>
-        <div class="flex items-center gap-4 mb-4">
+    <div id="bloc-n1" class="bg-[#e8eef7] rounded-2xl border border-[#dce3ef] p-6 mb-8">
+        <h2 class="text-sm font-semibold text-[#2f4d75] mb-4">
+            <i class="bx bx-line-chart mr-1.5" aria-hidden="true"></i> Comparaison {{ previous_year_data.period }} &mdash; &agrave; date &eacute;gale vs {{ previous_year_data.year }}
+        </h2>
+        <div class="flex flex-wrap items-center gap-4 mb-4">
             <div class="text-center">
-                <p class="text-xs text-[#b0bedb]">{{ selected_year }}</p>
-                <p class="text-2xl font-bold text-[#4a6fa5]">{{ previous_year_data.total_reservations_to_date }}</p>
+                <p class="text-xs text-[#5a6f80]">{{ selected_year }}</p>
+                <p class="text-2xl font-bold text-[#2f4d75]">{{ previous_year_data.total_reservations_to_date }}</p>
             </div>
-            <div class="text-[#b0bedb] text-xl">vs</div>
+            <div class="text-[#5a6f80] text-xl" aria-hidden="true">vs</div>
             <div class="text-center">
-                <p class="text-xs text-[#b0bedb]">{{ previous_year_data.year }}</p>
+                <p class="text-xs text-[#5a6f80]">{{ previous_year_data.year }}</p>
                 <p class="text-2xl font-bold text-[#5a6f80]">{{ previous_year_data.total_reservations }}</p>
             </div>
             <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium
-                {% if previous_year_data.reservations_variation > 0 %}bg-emerald-100 text-emerald-700
-                {% elif previous_year_data.reservations_variation < 0 %}bg-red-100 text-red-700
+                {% if previous_year_data.reservations_variation > 0 %}bg-emerald-100 text-emerald-800
+                {% elif previous_year_data.reservations_variation < 0 %}bg-red-100 text-red-800
                 {% else %}bg-gray-100 text-gray-700{% endif %}">
-                {% if previous_year_data.reservations_variation > 0 %}+{% endif %}{{ previous_year_data.reservations_variation|floatformat:1 }}%
+                {% if previous_year_data.reservations_variation > 0 %}<i class="bx bx-up-arrow-alt" aria-hidden="true"></i> en hausse de {{ previous_year_data.reservations_variation|floatformat:1 }}&nbsp;%
+                {% elif previous_year_data.reservations_variation < 0 %}<i class="bx bx-down-arrow-alt" aria-hidden="true"></i> en baisse de {{ previous_year_data.reservations_variation|floatformat:1 }}&nbsp;%
+                {% else %}<i class="bx bx-minus" aria-hidden="true"></i> stable (0&nbsp;%){% endif %}
             </span>
         </div>
         {% if previous_year_data.structures_comparison %}
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-[#dce3ef] text-sm">
-                <thead class="bg-white/50"><tr>
-                    <th class="px-4 py-2 text-left text-xs font-semibold text-[#b0bedb]">Structure</th>
-                    <th class="px-4 py-2 text-center text-xs font-semibold text-[#b0bedb]">{{ selected_year }}</th>
-                    <th class="px-4 py-2 text-center text-xs font-semibold text-[#b0bedb]">{{ previous_year_data.year }}</th>
-                    <th class="px-4 py-2 text-center text-xs font-semibold text-[#b0bedb]">Var.</th>
+        <div class="overflow-x-auto rounded-xl border border-[#dce3ef] bg-white">
+            <table id="comparisonTable" class="min-w-full divide-y divide-[#dce3ef] text-sm">
+                <caption class="sr-only">Comparaison des r&eacute;servations par structure, ann&eacute;e {{ selected_year }} vs {{ previous_year_data.year }}</caption>
+                <thead class="bg-white sticky top-0"><tr>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-semibold text-[#5a6f80]"><button type="button" data-sort="0" class="inline-flex items-center gap-1 hover:text-[#2f4d75] min-h-[32px]">Structure <span aria-hidden="true">↕</span></button></th>
+                    <th scope="col" class="px-4 py-2 text-center text-xs font-semibold text-[#5a6f80]" aria-sort="none"><button type="button" data-sort="1" class="inline-flex items-center gap-1 hover:text-[#2f4d75] min-h-[32px]">{{ selected_year }} <span aria-hidden="true">↕</span></button></th>
+                    <th scope="col" class="px-4 py-2 text-center text-xs font-semibold text-[#5a6f80]"><button type="button" data-sort="2" class="inline-flex items-center gap-1 hover:text-[#2f4d75] min-h-[32px]">{{ previous_year_data.year }} <span aria-hidden="true">↕</span></button></th>
+                    <th scope="col" class="px-4 py-2 text-center text-xs font-semibold text-[#5a6f80]"><button type="button" data-sort="3" class="inline-flex items-center gap-1 hover:text-[#2f4d75] min-h-[32px]">Var. <span aria-hidden="true">↕</span></button></th>
                 </tr></thead>
                 <tbody class="divide-y divide-[#dce3ef]/50">
                     {% for item in previous_year_data.structures_comparison %}
-                    <tr class="hover:bg-white/50">
-                        <td class="px-4 py-2 text-[#1e293b]">{{ item.structure.name }}</td>
-                        <td class="px-4 py-2 text-center">{{ item.current_year_reservations }}</td>
-                        <td class="px-4 py-2 text-center">{{ item.previous_year_reservations }}</td>
-                        <td class="px-4 py-2 text-center">
-                            <span class="text-xs font-medium {% if item.variation > 0 %}text-emerald-600{% elif item.variation < 0 %}text-red-600{% endif %}">
-                                {% if item.variation > 0 %}+{% endif %}{{ item.variation|floatformat:1 }}%
+                    <tr class="hover:bg-[#f8f9fc]" data-structure="{{ item.structure.name|lower }}">
+                        <th scope="row" class="px-4 py-2 text-left font-normal text-[#1e293b]">{{ item.structure.name }}</th>
+                        <td class="px-4 py-2 text-center" data-v="0">{{ item.current_year_reservations }}</td>
+                        <td class="px-4 py-2 text-center" data-v="0">{{ item.previous_year_reservations }}</td>
+                        <td class="px-4 py-2 text-center" data-v="{{ item.variation }}">
+                            <span class="text-xs font-medium {% if item.variation > 0 %}text-emerald-700{% elif item.variation < 0 %}text-red-700{% else %}text-gray-600{% endif %}">
+                                {% if item.variation > 0 %}+{% endif %}{{ item.variation|floatformat:1 }}&nbsp;%{% if item.variation > 0 %} ▲{% elif item.variation < 0 %} ▼{% else %} ●{% endif %}
                             </span>
                         </td>
                     </tr>
@@ -89,44 +146,159 @@
                 </tbody>
             </table>
         </div>
+        <p class="text-xs text-[#5a6f80] mt-2">Astuce&nbsp;: cliquez un en-t&ecirc;te pour trier. Cliquez une barre du graphique structures pour surligner la ligne.</p>
         {% endif %}
     </div>
     {% endif %}
 
+    {% if total_reservations == 0 %}
+    <div class="bg-white rounded-2xl border border-dashed border-[#b0bedb] p-10 mb-8 text-center" role="status">
+        <i class="bx bx-inbox text-4xl text-[#b0bedb]" aria-hidden="true"></i>
+        <h2 class="text-lg font-semibold text-[#1e293b] mt-2">Aucune r&eacute;servation en {{ selected_year }}</h2>
+        <p class="text-sm text-[#5a6f80] mt-1">Choisissez une autre ann&eacute;e ci-dessus ou cr&eacute;ez une r&eacute;servation depuis le catalogue.</p>
+        <a href="{% url 'product_list_user' %}" class="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] min-h-[40px]">Voir le catalogue</a>
+    </div>
+    {% endif %}
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+        <div id="bloc-mensuel" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-[#dce3ef]">
-                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-bar-chart mr-1.5 text-[#4a6fa5]"></i> Réservations mensuelles</h5>
+                <h2 class="font-semibold text-[#1e293b] text-base"><i class="bx bx-bar-chart mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i> R&eacute;servations mensuelles</h2>
+                <p class="text-xs text-[#5a6f80] mt-0.5">Total {{ total_reservations }} &middot; moyenne {{ monthly_average|floatformat:1 }}/mois{% if monthly_max_index >= 0 %} &middot; pic&nbsp;: <span id="peakMonthLabel">&mdash;</span>{% endif %}</p>
             </div>
             <div class="p-6">
-                <div class="h-72"><canvas id="myChart"></canvas></div>
+                <div class="h-64 sm:h-72"><canvas id="myChart" role="img" aria-label="Graphique en barres des réservations par mois pour l'année {{ selected_year }}"></canvas></div>
+                <div id="chartMonthlyFallback" class="hidden text-sm text-[#5a6f80] border border-dashed border-[#b0bedb] rounded-xl p-4" role="status">Graphique indisponible (librairie non charg&eacute;e). Le d&eacute;tail chiffr&eacute; est ci-dessous.</div>
+                <details class="mt-4 text-sm">
+                    <summary class="cursor-pointer font-medium text-[#2f4d75] min-h-[32px]">Voir les donn&eacute;es en tableau</summary>
+                    <div class="overflow-x-auto mt-2">
+                        <table class="min-w-full text-sm border border-[#dce3ef] rounded-xl overflow-hidden">
+                            <caption class="sr-only">R&eacute;servations par mois, {{ selected_year }}</caption>
+                            <thead class="bg-[#f8f9fc]"><tr><th scope="col" class="px-3 py-2 text-left text-xs font-semibold text-[#5a6f80]">Mois</th><th scope="col" class="px-3 py-2 text-right text-xs font-semibold text-[#5a6f80]">R&eacute;servations</th></tr></thead>
+                            <tbody id="monthlyDataBody" class="divide-y divide-[#dce3ef]/60"></tbody>
+                        </table>
+                    </div>
+                </details>
             </div>
         </div>
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+        <div id="bloc-structures" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-[#dce3ef]">
-                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-buildings mr-1.5 text-[#4a6fa5]"></i> Réservations par structure</h5>
+                <h2 class="font-semibold text-[#1e293b] text-base"><i class="bx bx-buildings mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i> R&eacute;servations par structure</h2>
+                <p class="text-xs text-[#5a6f80] mt-0.5">Top 8 + regroupement &laquo;&nbsp;Autres&nbsp;&raquo; &middot; cliquez une barre pour retrouver la ligne N-1</p>
             </div>
             <div class="p-6">
-                <div class="h-72"><canvas id="myChartStructure"></canvas></div>
+                <div class="h-64 sm:h-72"><canvas id="myChartStructure" role="img" aria-label="Graphique des réservations par structure pour l'année {{ selected_year }}"></canvas></div>
+                <div id="chartStructureFallback" class="hidden text-sm text-[#5a6f80] border border-dashed border-[#b0bedb] rounded-xl p-4" role="status">Graphique indisponible (librairie non charg&eacute;e). Le d&eacute;tail chiffr&eacute; est ci-dessous.</div>
+                <details class="mt-4 text-sm">
+                    <summary class="cursor-pointer font-medium text-[#2f4d75] min-h-[32px]">Voir les donn&eacute;es en tableau</summary>
+                    <div class="overflow-x-auto mt-2">
+                        <table class="min-w-full text-sm border border-[#dce3ef] rounded-xl overflow-hidden">
+                            <caption class="sr-only">R&eacute;servations par structure, {{ selected_year }}</caption>
+                            <thead class="bg-[#f8f9fc]"><tr><th scope="col" class="px-3 py-2 text-left text-xs font-semibold text-[#5a6f80]">Structure</th><th scope="col" class="px-3 py-2 text-right text-xs font-semibold text-[#5a6f80]">R&eacute;servations</th></tr></thead>
+                            <tbody>
+                                {% for s in chart_structures %}
+                                <tr class="border-t border-[#dce3ef]/60"><th scope="row" class="px-3 py-2 text-left font-normal">{{ s.name }}</th><td class="px-3 py-2 text-right">{{ s.total }}</td></tr>
+                                {% empty %}
+                                <tr><td colspan="2" class="px-3 py-4 text-center text-[#5a6f80]">Aucune donn&eacute;e pour cette ann&eacute;e.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
             </div>
         </div>
     </div>
 
-    {% if products_stats %}
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-[#dce3ef]">
-            <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-package mr-1.5 text-[#4a6fa5]"></i> Ressources les plus réservées</h5>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div id="bloc-categories" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h2 class="font-semibold text-[#1e293b] text-base"><i class="bx bx-tag mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i> Mix par cat&eacute;gorie</h2>
+                <p class="text-xs text-[#5a6f80] mt-0.5">R&eacute;servations par cat&eacute;gorie &middot; unit&eacute;s dans l'infobulle</p>
+            </div>
+            <div class="p-6">
+                <div class="h-64 sm:h-72"><canvas id="chartCategories" role="img" aria-label="Graphique des réservations par catégorie pour l'année {{ selected_year }}"></canvas></div>
+                <div id="chartCategoryFallback" class="hidden text-sm text-[#5a6f80] border border-dashed border-[#b0bedb] rounded-xl p-4" role="status">Graphique indisponible (librairie non charg&eacute;e). Le d&eacute;tail chiffr&eacute; est ci-dessous.</div>
+                <details class="mt-4 text-sm">
+                    <summary class="cursor-pointer font-medium text-[#2f4d75] min-h-[32px]">Voir les donn&eacute;es en tableau</summary>
+                    <div class="overflow-x-auto mt-2">
+                        <table id="categoryTable" class="min-w-full text-sm border border-[#dce3ef] rounded-xl overflow-hidden">
+                            <caption class="sr-only">R&eacute;servations et unit&eacute;s par cat&eacute;gorie, {{ selected_year }}</caption>
+                            <thead class="bg-[#f8f9fc]"><tr><th scope="col" class="px-3 py-2 text-left text-xs font-semibold text-[#5a6f80]">Cat&eacute;gorie</th><th scope="col" class="px-3 py-2 text-right text-xs font-semibold text-[#5a6f80]">R&eacute;servations</th><th scope="col" class="px-3 py-2 text-right text-xs font-semibold text-[#5a6f80]">Unit&eacute;s</th></tr></thead>
+                            <tbody>
+                                {% for c in chart_categories %}
+                                <tr class="border-t border-[#dce3ef]/60"><th scope="row" class="px-3 py-2 text-left font-normal">{{ c.name }}</th><td class="px-3 py-2 text-right">{{ c.total }}</td><td class="px-3 py-2 text-right">{{ c.quantity }}</td></tr>
+                                {% empty %}
+                                <tr><td colspan="3" class="px-3 py-4 text-center text-[#5a6f80]">Aucune donn&eacute;e pour cette ann&eacute;e.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+                <div class="mt-4 rounded-xl border border-dashed border-[#b0bedb] p-4 text-sm">
+                    <p class="text-[#1e293b]"><i class="bx bx-archive mr-1 text-[#4a6fa5]" aria-hidden="true"></i><strong>{{ dormant_count }}</strong> produit{{ dormant_count|pluralize }} jamais r&eacute;serv&eacute;{{ dormant_count|pluralize }} en {{ selected_year }}</p>
+                    {% if dormant_sample %}
+                    <p class="text-xs text-[#5a6f80] mt-1">Ex.&nbsp;: {% for p in dormant_sample %}{{ p.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if dormant_count > 10 %} et {{ dormant_count|add:"-10" }} autre{{ dormant_count|add:"-10"|pluralize }}{% endif %}</p>
+                    {% endif %}
+                </div>
+            </div>
         </div>
-        <div class="divide-y divide-[#dce3ef]">
+        <div id="bloc-durees" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-[#dce3ef]">
+                <h2 class="font-semibold text-[#1e293b] text-base"><i class="bx bx-time mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i> Dur&eacute;es de pr&ecirc;t</h2>
+                <p class="text-xs text-[#5a6f80] mt-0.5">&Eacute;cart entre d&eacute;but et fin de r&eacute;servation, en jours</p>
+            </div>
+            <div class="p-6">
+                {% if duration_stats %}
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="rounded-2xl border border-[#dce3ef] p-5">
+                        <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">M&eacute;diane</p>
+                        <p class="text-4xl font-bold text-[#2f4d75] mt-2">{{ duration_stats.median|floatformat:1 }}&nbsp;j</p>
+                        <p class="text-xs text-[#5a6f80] mt-1">La moiti&eacute; des pr&ecirc;ts dure moins longtemps</p>
+                    </div>
+                    <div class="rounded-2xl border border-[#dce3ef] p-5">
+                        <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Moyenne</p>
+                        <p class="text-4xl font-bold text-[#2f4d75] mt-2">{{ duration_stats.mean|floatformat:1 }}&nbsp;j</p>
+                        <p class="text-xs text-[#5a6f80] mt-1">Sensible aux pr&ecirc;ts tr&egrave;s longs</p>
+                    </div>
+                </div>
+                <div class="mt-4 text-sm text-[#1e293b] space-y-1">
+                    <p><i class="bx bx-zap mr-1 text-[#4a6fa5]" aria-hidden="true"></i>Pr&ecirc;ts courts (&le;&nbsp;3&nbsp;j)&nbsp;: <strong>{{ duration_stats.short_share|floatformat:1 }}&nbsp;%</strong></p>
+                    <p><i class="bx bx-hourglass mr-1 text-[#4a6fa5]" aria-hidden="true"></i>Pr&ecirc;ts longs (&gt;&nbsp;7&nbsp;j)&nbsp;: <strong>{{ duration_stats.long_share|floatformat:1 }}&nbsp;%</strong></p>
+                </div>
+                <p class="text-xs text-[#5a6f80] mt-3">Calcul&eacute; sur {{ duration_stats.count }} r&eacute;servation{{ duration_stats.count|pluralize }} avec dates valides.</p>
+                {% else %}
+                <p class="text-sm text-[#5a6f80] border border-dashed border-[#b0bedb] rounded-xl p-4" role="status">Aucune dur&eacute;e calculable pour cette ann&eacute;e.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div id="bloc-produits" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-[#dce3ef] flex flex-wrap items-center gap-3 justify-between">
+            <h2 class="font-semibold text-[#1e293b] text-base"><i class="bx bx-package mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i> Ressources les plus r&eacute;serv&eacute;es <span id="productCount" class="ml-1 text-xs font-medium text-[#5a6f80]"></span></h2>
+            <div class="print:hidden">
+                <label for="productSearch" class="sr-only">Rechercher une ressource</label>
+                <div class="relative">
+                    <i class="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-[#5a6f80]" aria-hidden="true"></i>
+                    <input id="productSearch" type="search" placeholder="Rechercher une ressource…" autocomplete="off"
+                        class="pl-10 pr-3 py-2 border border-[#dce3ef] rounded-xl text-sm w-64 max-w-full focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5] min-h-[40px]" />
+                </div>
+            </div>
+        </div>
+        {% if products_stats %}
+        <div id="productList" class="divide-y divide-[#dce3ef]">
             {% for product in products_stats %}
-            <div class="px-6 py-4 flex items-center justify-between hover:bg-[#f8f9fc] transition-colors">
-                <a href="{% url 'product_detail' product.pk %}" class="text-sm font-medium text-[#4a6fa5] hover:text-[#3d5f8f]">{{ product.name }}</a>
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">{{ product.reservation_count }} réservation{{ product.reservation_count|pluralize }}</span>
+            <div class="product-row px-6 py-4 flex items-center justify-between gap-3 hover:bg-[#f8f9fc] transition-colors" data-name="{{ product.name|lower }}">
+                <a href="{% url 'product_detail' product.pk %}" class="product-link text-sm font-medium text-[#2f4d75] hover:text-[#4a6fa5] hover:underline focus:outline-none focus:ring-2 focus:ring-[#4a6fa5] rounded">{{ product.name }}</a>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8eef7] text-[#2f4d75] shrink-0">{{ product.reservation_count }} r&eacute;servation{{ product.reservation_count|pluralize }}</span>
             </div>
             {% endfor %}
         </div>
+        <p id="productEmpty" class="hidden px-6 py-8 text-center text-sm text-[#5a6f80]" role="status">Aucune ressource ne correspond &agrave; cette recherche. <button type="button" id="productReset" class="underline text-[#2f4d75]">R&eacute;initialiser</button></p>
+        {% else %}
+        <p class="px-6 py-8 text-center text-sm text-[#5a6f80]" role="status">Aucune ressource r&eacute;serv&eacute;e en {{ selected_year }}.</p>
+        {% endif %}
     </div>
-    {% endif %}
 </section>
 {% endblock %}
 
@@ -134,17 +306,245 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const avgEl = document.getElementById('monthlyAverage');
-    if (avgEl) { const t = parseFloat(avgEl.dataset.total); if (t > 0) avgEl.textContent = (t / 12).toFixed(1); }
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var monthLabels = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
+    var monthFull = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    var monthly = [{% for r in reservations_by_month %}{{ r }},{% endfor %}];
+    var maxIdx = {{ monthly_max_index }};
+    if (maxIdx >= 0) {
+        var peak = document.getElementById('peakMonthLabel');
+        if (peak) peak.textContent = monthFull[maxIdx] + ' (' + monthly[maxIdx] + ')';
+    }
 
-    const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } };
-    const mn = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
+    // Table alternative mensuelle (remplie en JS pour rester synchro du graphique)
+    var mBody = document.getElementById('monthlyDataBody');
+    if (mBody) {
+        var html = '';
+        for (var i = 0; i < 12; i++) {
+            html += '<tr class="border-t border-[#dce3ef]/60"><th scope="row" class="px-3 py-2 text-left font-normal">' + monthFull[i] + '</th><td class="px-3 py-2 text-right">' + monthly[i] + '</td></tr>';
+        }
+        mBody.innerHTML = html;
+    }
 
-    const c1 = document.getElementById('myChart');
-    if (c1) new Chart(c1, { type: 'bar', data: { labels: mn, datasets: [{ data: [{% for r in reservations_by_month %}{{ r }},{% endfor %}], backgroundColor: '#e8eef7', borderColor: '#4a6fa5', borderWidth: 1, borderRadius: 5 }] }, options: opts });
+    function drawValues(chart) {
+        var ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '11px Inter, sans-serif';
+        ctx.fillStyle = '#2f4d75';
+        ctx.textAlign = 'center';
+        chart.data.datasets.forEach(function(ds, di) {
+            var meta = chart.getDatasetMeta(di);
+            meta.data.forEach(function(bar, i) {
+                var v = ds.data[i];
+                if (v > 0) ctx.fillText(String(v), bar.x, bar.y - 4);
+            });
+        });
+        ctx.restore();
+    }
 
-    const c2 = document.getElementById('myChartStructure');
-    if (c2) new Chart(c2, { type: 'bar', data: { labels: [{% for s in reservations_by_structure %}'{{ s.name }}',{% endfor %}], datasets: [{ data: [{% for s in reservations_by_structure %}{{ s.total_reservations }},{% endfor %}], backgroundColor: '#e8eef7', borderColor: '#4a6fa5', borderWidth: 1, borderRadius: 5 }] }, options: opts });
+    function drawValuesH(chart) {
+        var ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '11px Inter, sans-serif';
+        ctx.fillStyle = '#2f4d75';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        chart.data.datasets.forEach(function(ds, di) {
+            var meta = chart.getDatasetMeta(di);
+            meta.data.forEach(function(bar, i) {
+                var v = ds.data[i];
+                if (v > 0) ctx.fillText(String(v), bar.x + 6, bar.y);
+            });
+        });
+        ctx.restore();
+    }
+
+    if (window.Chart) {
+        var c1 = document.getElementById('myChart');
+        if (c1) {
+            var bg = monthly.map(function(v, i) { return i === maxIdx && v > 0 ? '#4a6fa5' : '#e8eef7'; });
+            new Chart(c1, {
+                type: 'bar',
+                data: { labels: monthLabels, datasets: [{ data: monthly, backgroundColor: bg, borderColor: '#4a6fa5', borderWidth: 1, borderRadius: 5 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    animation: reduceMotion ? false : undefined,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { title: function(items) { return monthFull[items[0].dataIndex] + ' {{ selected_year }}'; }, label: function(item) { var v = item.parsed.y; return ' ' + v + ' réservation' + (v > 1 ? 's' : ''); } } }
+                    },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+                    onClick: function(evt, els) {
+                        if (els.length && maxIdx >= 0) { c1.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' }); }
+                    }
+                },
+                plugins: [{ id: 'values', afterDatasetsDraw: drawValues }]
+            });
+        }
+        var c2 = document.getElementById('myChartStructure');
+        if (c2) {
+            var sLabels = [{% for s in chart_structures %}'{{ s.name|escapejs }}',{% endfor %}];
+            var sData = [{% for s in chart_structures %}{{ s.total }},{% endfor %}];
+            var sFull = sLabels.slice();
+            var sShort = sLabels.map(function(l) { return l.length > 18 ? l.slice(0, 17) + '…' : l; });
+            var structChart = new Chart(c2, {
+                type: 'bar',
+                data: { labels: sShort, datasets: [{ data: sData, backgroundColor: '#e8eef7', hoverBackgroundColor: '#4a6fa5', borderColor: '#4a6fa5', borderWidth: 1, borderRadius: 5 }] },
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    animation: reduceMotion ? false : undefined,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { title: function(items) { return sFull[items[0].dataIndex]; }, label: function(item) { var v = item.parsed.x; return ' ' + v + ' réservation' + (v > 1 ? 's' : ''); } } }
+                    },
+                    scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+                    onClick: function(evt, els) {
+                        if (!els.length) return;
+                        var name = sFull[els[0].index].toLowerCase();
+                        var rows = document.querySelectorAll('#comparisonTable tbody tr');
+                        var found = null;
+                        rows.forEach(function(r) {
+                            var match = (r.getAttribute('data-structure') || '') === name;
+                            r.classList.toggle('bg-yellow-100', match);
+                            if (match && !found) found = r;
+                        });
+                        if (found) found.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+                    }
+                }
+            });
+        }
+        var cc = document.getElementById('chartCategories');
+        if (cc) {
+            var catLabels = [{% for c in chart_categories %}'{{ c.name|escapejs }}',{% endfor %}];
+            var catData = [{% for c in chart_categories %}{{ c.total }},{% endfor %}];
+            var catQty = [{% for c in chart_categories %}{{ c.quantity }},{% endfor %}];
+            var catFull = catLabels.slice();
+            var catShort = catLabels.map(function(l) { return l.length > 18 ? l.slice(0, 17) + '…' : l; });
+            new Chart(cc, {
+                type: 'bar',
+                data: { labels: catShort, datasets: [{ data: catData, backgroundColor: '#e8eef7', hoverBackgroundColor: '#4a6fa5', borderColor: '#4a6fa5', borderWidth: 1, borderRadius: 5 }] },
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    animation: reduceMotion ? false : undefined,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { title: function(items) { return catFull[items[0].dataIndex]; }, label: function(item) { var v = item.parsed.x; var q = catQty[item.dataIndex]; return ' ' + v + ' réservation' + (v > 1 ? 's' : '') + ' · ' + q + ' unité' + (q > 1 ? 's' : ''); } } }
+                    },
+                    scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+                },
+                plugins: [{ id: 'valuesH', afterDatasetsDraw: drawValuesH }]
+            });
+        }
+    } else {
+        ['chartMonthlyFallback', 'chartStructureFallback', 'chartCategoryFallback'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.classList.remove('hidden');
+        });
+    }
+
+    // Tri tableau comparaison
+    var comp = document.getElementById('comparisonTable');
+    if (comp) {
+        var dir = {};
+        comp.querySelectorAll('button[data-sort]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var col = parseInt(btn.getAttribute('data-sort'), 10);
+                dir[col] = dir[col] === 1 ? -1 : 1;
+                var tbody = comp.querySelector('tbody');
+                var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+                rows.sort(function(a, b) {
+                    var ca = a.children[col], cb = b.children[col];
+                    var va, vb;
+                    if (col === 0) { va = ca.textContent.trim().toLowerCase(); vb = cb.textContent.trim().toLowerCase(); return va.localeCompare(vb) * dir[col]; }
+                    va = parseFloat((ca.getAttribute('data-v') || ca.textContent).toString().replace(',', '.')) || 0;
+                    vb = parseFloat((cb.getAttribute('data-v') || cb.textContent).toString().replace(',', '.')) || 0;
+                    return (va - vb) * dir[col];
+                });
+                rows.forEach(function(r) { tbody.appendChild(r); });
+            });
+        });
+    }
+
+    // Toggle N-1
+    var toggle = document.getElementById('toggleN1');
+    var blocN1 = document.getElementById('bloc-n1');
+    if (toggle && blocN1) toggle.addEventListener('change', function() { blocN1.classList.toggle('hidden', !toggle.checked); });
+
+    // Recherche produits
+    var search = document.getElementById('productSearch');
+    var list = document.getElementById('productList');
+    var emptyMsg = document.getElementById('productEmpty');
+    var count = document.getElementById('productCount');
+    function refreshProducts() {
+        if (!list) return;
+        var q = search ? search.value.trim().toLowerCase() : '';
+        var visible = 0, total = 0;
+        list.querySelectorAll('.product-row').forEach(function(row) {
+            total++;
+            var show = !q || (row.getAttribute('data-name') || '').indexOf(q) !== -1;
+            row.classList.toggle('hidden', !show);
+            if (show) visible++;
+        });
+        if (emptyMsg) emptyMsg.classList.toggle('hidden', visible !== 0);
+        if (count) count.textContent = total ? '(' + visible + '/' + total + ')' : '';
+    }
+    if (search) search.addEventListener('input', refreshProducts);
+    var resetBtn = document.getElementById('productReset');
+    if (resetBtn) resetBtn.addEventListener('click', function() { if (search) { search.value = ''; refreshProducts(); search.focus(); } });
+    refreshProducts();
+
+    // Export CSV du visible (comparaison + produits + mensuel)
+    var btnCsv = document.getElementById('btnExportCsv');
+    if (btnCsv) btnCsv.addEventListener('click', function() {
+        var lines = ['sep=;', 'Statistiques {{ selected_year }};export du ' + new Date().toLocaleDateString('fr-FR')];
+        lines.push('');
+        lines.push('Pilotage;En attente;Approuvées;Refusées;Taux approbation %');
+        lines.push('{{ selected_year }};{{ funnel.pending }};{{ funnel.approved }};{{ funnel.rejected }};{{ funnel.approval_rate|floatformat:1 }}');
+        lines.push('');
+        lines.push('Volumes;Unités empruntées;Panier moyen');
+        lines.push('{{ selected_year }};{{ total_quantity }};{{ avg_basket|floatformat:1 }}');
+        var catRows = document.querySelectorAll('#categoryTable tbody tr');
+        if (catRows.length) {
+            lines.push('');
+            lines.push('Catégorie;Réservations;Unités');
+            catRows.forEach(function(r) {
+                var cells = r.querySelectorAll('th, td');
+                var vals = Array.prototype.map.call(cells, function(c) { return '"' + c.textContent.trim().replace(/"/g, '""') + '"'; });
+                lines.push(vals.join(';'));
+            });
+        }
+        lines.push('');
+        lines.push('');
+        lines.push('Mensuel;Jan;Fév;Mar;Avr;Mai;Juin;Juil;Aoû;Sep;Oct;Nov;Déc');
+        lines.push('Réservations;' + monthly.join(';'));
+        var compRows = document.querySelectorAll('#comparisonTable tbody tr:not(.hidden)');
+        if (compRows.length) {
+            lines.push('');
+            lines.push('Comparaison N-1 ({{ selected_year }} vs {% if previous_year_data %}{{ previous_year_data.year }}{% endif %});{{ selected_year }};{% if previous_year_data %}{{ previous_year_data.year }}{% endif %};Var.%');
+            compRows.forEach(function(r) {
+                var cells = r.querySelectorAll('th, td');
+                var vals = Array.prototype.map.call(cells, function(c) { return '"' + c.textContent.trim().replace(/"/g, '""') + '"'; });
+                lines.push(vals.join(';'));
+            });
+        }
+        var prodRows = document.querySelectorAll('#productList .product-row:not(.hidden)');
+        if (prodRows.length) {
+            lines.push('');
+            lines.push('Ressource;Réservations');
+            prodRows.forEach(function(r) {
+                var name = r.querySelector('.product-link').textContent.trim().replace(/"/g, '""');
+                var nb = r.querySelector('span').textContent.trim().replace(/"/g, '""');
+                lines.push('"' + name + '";"' + nb + '"');
+            });
+        }
+        var blob = new Blob(["\uFEFF" + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'statistiques-{{ selected_year }}.csv';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    });
 });
 </script>
 {% endblock %}

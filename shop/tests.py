@@ -1083,6 +1083,200 @@ class StatisticsViewTests(TestCase):
         response = self.client.get("/Statistiques/?year=2025")
         self.assertEqual(response.status_code, 200)
 
+    def test_invalid_year_falls_back_to_current_year(self):
+        from datetime import datetime
+
+        self.login()
+        response = self.client.get("/Statistiques/?year=abc")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_year"], datetime.now().year)
+
+    def test_empty_year_still_renders(self):
+        self.login()
+        response = self.client.get(reverse("statistics") + "?year=1990")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Aucune r")
+        self.assertEqual(response.context["total_reservations"], 0)
+        self.assertEqual(response.context["monthly_average"], 0.0)
+
+    def test_counts_and_top_context(self):
+        from django.utils import timezone
+
+        category = Category.objects.create(name="Cat Stats")
+        product = Product.objects.create(
+            name="Produit L'Apostrophe",
+            quantity=10,
+            description="x",
+            category=category,
+            price=10,
+            status=True,
+        )
+        structure = Structure.objects.create(
+            name="Structure Top",
+            address="1 rue",
+            city="Ville",
+            email="s@t.fr",
+            zip_code="59",
+            country="FR",
+        )
+        year = timezone.now().year
+        Reservation.objects.create(
+            product=product,
+            start_date=timezone.make_aware(timezone.datetime(year, 3, 5)),
+            end_date=timezone.make_aware(timezone.datetime(year, 3, 6)),
+            structure=structure,
+            quantity=1,
+        )
+        Reservation.objects.create(
+            product=product,
+            start_date=timezone.make_aware(timezone.datetime(year, 3, 12)),
+            end_date=timezone.make_aware(timezone.datetime(year, 3, 13)),
+            structure=structure,
+            quantity=1,
+        )
+        self.login()
+        response = self.client.get(reverse("statistics") + f"?year={year}")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_reservations"], 2)
+        self.assertEqual(response.context["monthly_average"], round(2 / 12, 1))
+        self.assertEqual(response.context["reservations_by_month"][2], 2)
+        self.assertEqual(response.context["monthly_max_index"], 2)
+        self.assertEqual(response.context["top_structure"].name, "Structure Top")
+        self.assertEqual(response.context["top_product"].name, "Produit L'Apostrophe")
+        # escapejs : le template ne doit pas casser sur l'apostrophe
+        self.assertContains(response, "Produit L")
+
+    def _make_stats_setup(self, year):
+        from django.utils import timezone
+
+        category = Category.objects.create(name="Cat Phase A")
+        product = Product.objects.create(
+            name="Produit Phase A",
+            quantity=50,
+            description="x",
+            category=category,
+            price=10,
+            status=True,
+        )
+        dormant = Product.objects.create(
+            name="Produit Dormant",
+            quantity=5,
+            description="x",
+            category=category,
+            price=5,
+            status=True,
+        )
+        structure = Structure.objects.create(
+            name="Structure Phase A",
+            address="1 rue",
+            city="Ville",
+            email="p@t.fr",
+            zip_code="59",
+            country="FR",
+        )
+
+        def make_resa(day, qty, **kwargs):
+            return Reservation.objects.create(
+                product=product,
+                start_date=timezone.make_aware(timezone.datetime(year, 3, day)),
+                end_date=timezone.make_aware(timezone.datetime(year, 3, day + 1)),
+                structure=structure,
+                quantity=qty,
+                **kwargs,
+            )
+
+        make_resa(5, 2, is_approved=True)
+        make_resa(6, 4)  # en attente
+        make_resa(7, 1, is_rejected=True, disapproval_reason="unavailable")
+        return year, dormant
+
+    def test_funnel_counts_and_links(self):
+        from django.utils import timezone
+
+        year = timezone.now().year
+        self._make_stats_setup(year)
+        self.login()
+        response = self.client.get(reverse("statistics") + f"?year={year}")
+        funnel = response.context["funnel"]
+        self.assertEqual(funnel["approved"], 1)
+        self.assertEqual(funnel["pending"], 1)
+        self.assertEqual(funnel["rejected"], 1)
+        self.assertEqual(funnel["approval_rate"], round(1 / 3 * 100, 1))
+        content = response.content.decode()
+        self.assertIn("status=pending", content)
+        self.assertIn("status=approved", content)
+        self.assertIn("status=rejected", content)
+        self.assertContains(response, "validation des demandes")
+
+    def test_volumes_and_basket(self):
+        from django.utils import timezone
+
+        year = timezone.now().year
+        self._make_stats_setup(year)
+        self.login()
+        response = self.client.get(reverse("statistics") + f"?year={year}")
+        self.assertEqual(response.context["total_quantity"], 7)
+        self.assertEqual(response.context["avg_basket"], round(7 / 3, 1))
+
+    def test_categories_and_dormant(self):
+        from django.utils import timezone
+
+        year = timezone.now().year
+        self._make_stats_setup(year)
+        self.login()
+        response = self.client.get(reverse("statistics") + f"?year={year}")
+        chart_categories = response.context["chart_categories"]
+        self.assertEqual(len(chart_categories), 1)
+        self.assertEqual(chart_categories[0]["name"], "Cat Phase A")
+        self.assertEqual(chart_categories[0]["total"], 3)
+        self.assertEqual(chart_categories[0]["quantity"], 7)
+        self.assertEqual(response.context["dormant_count"], 1)
+        self.assertEqual(response.context["dormant_sample"][0].name, "Produit Dormant")
+        self.assertContains(response, "jamais r")
+
+    def test_duration_stats(self):
+        from django.utils import timezone
+
+        category = Category.objects.create(name="Cat Durées")
+        product = Product.objects.create(
+            name="Produit Durées",
+            quantity=50,
+            description="x",
+            category=category,
+            price=10,
+            status=True,
+        )
+        structure = Structure.objects.create(
+            name="Structure Durées",
+            address="1 rue",
+            city="Ville",
+            email="d@t.fr",
+            zip_code="59",
+            country="FR",
+        )
+        year = timezone.now().year
+
+        def make_resa(start_day, end_day):
+            return Reservation.objects.create(
+                product=product,
+                start_date=timezone.make_aware(timezone.datetime(year, 4, start_day)),
+                end_date=timezone.make_aware(timezone.datetime(year, 4, end_day)),
+                structure=structure,
+                quantity=1,
+            )
+
+        make_resa(1, 2)  # 1 jour
+        make_resa(3, 6)  # 3 jours
+        make_resa(10, 20)  # 10 jours
+        self.login()
+        response = self.client.get(reverse("statistics") + f"?year={year}")
+        durations = response.context["duration_stats"]
+        self.assertEqual(durations["median"], 3.0)
+        self.assertEqual(durations["mean"], round(14 / 3, 1))
+        self.assertEqual(durations["short_share"], round(2 / 3 * 100, 1))
+        self.assertEqual(durations["long_share"], round(1 / 3 * 100, 1))
+        self.assertContains(response, "diane")
+
 
 class ReservationCalendarViewTests(TestCase):
     """Tests pour la vue reservation_calendar."""
