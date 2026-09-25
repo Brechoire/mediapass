@@ -27,6 +27,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.html import strip_tags
 
+from django.core.cache import cache
 from accounts.utils import is_staff_or_superuser, group_required, is_staff_or_superuser_or_in_comm_group
 from .forms import (
     LocationForm,
@@ -34,9 +35,20 @@ from .forms import (
     WorkshopFilterForm,
     WorkshopPosterForm,
     WorkshopPosterValidationForm,
+    WorkshopStatsFilterForm,
 )
 from .models import Location, Workshop
-from .services import generate_random_filename
+from .services import (
+    generate_random_filename,
+    CACHE_TIMEOUT,
+    apply_stats_filters,
+    attendance_rate_value,
+    get_presence_by_group,
+    get_distribution_stats,
+    get_poster_and_channel_stats,
+    get_top_flop_communes,
+    get_stats_cache_key,
+)
 from .utils.html_to_word import save_stats_to_word
 
 """
@@ -127,16 +139,44 @@ def workshop_stats(request):
         HttpResponse: La page des statistiques rendue ou le fichier Word.
     """
     current_year = timezone.now().year
-    selected_year = int(request.GET.get("year", current_year))
-    debug = request.GET.get("debug", "0") == "1"
-    export_word = request.GET.get("export", "0") == "1"
+    raw_year = request.GET.get("year", current_year)
+    try:
+        selected_year = int(raw_year)
+    except (ValueError, TypeError):
+        selected_year = current_year
+        messages.warning(request, "Année invalide, affichage de l'année en cours.")
 
     # Récupérer les années disponibles pour le filtre
     available_years = Workshop.objects.dates('date', 'year').values_list('date__year', flat=True).distinct()
     available_years = sorted(list(available_years), reverse=True)
-    
-    # Requête de base pour les ateliers de l'année sélectionnée
-    workshops = Workshop.objects.filter(date__year=selected_year)
+    if available_years and selected_year not in available_years:
+        # Reste sur l'année demandée même sans données ; les années
+        # valides restent proposées dans le filtre.
+        pass
+    export_word = request.GET.get("export", "0") == "1"
+    is_htmx_partial = request.GET.get("partial") == "1"
+
+    stats_filter_form = WorkshopStatsFilterForm(
+        request.GET, available_years=available_years
+    )
+    stats_filter_form.is_valid()
+    filter_data = stats_filter_form.cleaned_data if stats_filter_form.is_valid() else {}
+    location_filter = filter_data.get("location")
+    location_id = location_filter.pk if location_filter else None
+    city_filter = filter_data.get("city") or ""
+    class_welcome_filter = filter_data.get("class_welcome") or ""
+    # La sélection d'année du formulaire ne remplace pas le parsing durci ci-dessus
+    # pour garder la compatibilité ?year= et le message d'avertissement.
+
+    # Requête de base pour les ateliers de l'année sélectionnée + filtres
+    base_workshops = Workshop.objects.filter(date__year=selected_year)
+    workshops = apply_stats_filters(
+        base_workshops,
+        location_id=location_id,
+        city=city_filter,
+        class_welcome=class_welcome_filter,
+    )
+    has_active_filters = bool(location_id or city_filter or class_welcome_filter)
 
     # Toutes les stats en 1 seule requête (au lieu de 14)
     stats = workshops.aggregate(
@@ -208,6 +248,7 @@ def workshop_stats(request):
             standard_registered=Coalesce(
                 Sum("number_registered", filter=Q(class_welcome=False)), 0
             ),
+            total_attendees=Coalesce(Sum("number_attendees"), 0),
         )
         .order_by("-total_count")
     )
@@ -233,19 +274,26 @@ def workshop_stats(request):
             'total_participants': commune['total_registered'],
             'participants_classiques': commune['standard_registered'],
             'participants_accueils': commune['class_welcome_registered'],
+            'total_presents': commune.get('total_attendees', 0),
+            'attendance_rate': attendance_rate_value(
+                commune.get('total_attendees', 0), commune['total_registered']
+            ),
             'workshops': commune_workshops.get(city, []),
         })
 
     # Top 5 des ateliers les plus fréquentés
-    most_registered = workshops.exclude(class_welcome=True).order_by(
-        "-number_registered"
-    )[:5]
-    
+    most_registered = (
+        workshops.select_related("location")
+        .exclude(class_welcome=True)
+        .order_by("-number_registered")[:5]
+    )
+
     # Top 5 des ateliers avec le meilleur taux de présence
-    best_attendance = workshops.exclude(class_welcome=True)\
+    best_attendance = workshops.select_related("location").exclude(class_welcome=True)\
         .exclude(number_registered=0)\
+        .exclude(number_registered__isnull=True)\
         .annotate(attendance_rate=ExpressionWrapper(
-            100 * F('number_attendees') / F('number_registered'),
+            100.0 * F('number_attendees') / F('number_registered'),
             output_field=models.FloatField()
         ))\
         .order_by('-attendance_rate')[:5]
@@ -263,6 +311,10 @@ def workshop_stats(request):
     )
 
     # Créer un dictionnaire avec tous les mois
+    month_labels = [
+        "Jan", "Fév", "Mar", "Avr", "Mai", "Juin",
+        "Juil", "Août", "Sep", "Oct", "Nov", "Déc",
+    ]
     workshops_by_month = []
     for month in range(1, 13):
         month_data = next(
@@ -271,13 +323,24 @@ def workshop_stats(request):
         if month_data:
             workshops_by_month.append({
                 "month": month,
+                "label": month_labels[month - 1],
                 "count": month_data["count"],
                 "total_registered": month_data["total_registered"],
                 "total_attendees": month_data["total_attendees"],
+                "attendance_rate": attendance_rate_value(
+                    month_data["total_attendees"], month_data["total_registered"]
+                ),
             })
         else:
             workshops_by_month.append(
-                {"month": month, "count": 0, "total_registered": 0, "total_attendees": 0}
+                {
+                    "month": month,
+                    "label": month_labels[month - 1],
+                    "count": 0,
+                    "total_registered": 0,
+                    "total_attendees": 0,
+                    "attendance_rate": 0.0,
+                }
             )
 
     # Comparaison avec l'année précédente si ce n'est pas l'export Word et si l'année précédente existe
@@ -309,10 +372,16 @@ def workshop_stats(request):
         )
         
         # Filtrer les ateliers de l'année précédente sur la même période
-        previous_workshops = Workshop.objects.filter(
-            date__year=previous_year,
-            date__gte=start_date_previous_year,
-            date__lte=end_date_previous_year
+        # (avec les mêmes filtres lieu/ville/type pour une comparaison cohérente)
+        previous_workshops = apply_stats_filters(
+            Workshop.objects.filter(
+                date__year=previous_year,
+                date__gte=start_date_previous_year,
+                date__lte=end_date_previous_year
+            ),
+            location_id=location_id,
+            city=city_filter,
+            class_welcome=class_welcome_filter,
         )
         
         if previous_workshops.exists():
@@ -338,6 +407,12 @@ def workshop_stats(request):
                 "total_workshops": py_stats["total"],
                 "total_registered": py_stats["registered"],
                 "total_attendees": py_stats["attendees"],
+                "attendance_rate": attendance_rate_value(
+                    py_stats["attendees"], py_stats["registered"]
+                ),
+                "attendance_rate_to_date": attendance_rate_value(
+                    total_attendees_to_date, total_registered_to_date
+                ),
                 "period": period_str,
                 "type": "all"
             }
@@ -448,11 +523,55 @@ def workshop_stats(request):
             previous_year_data_class["total_registered_to_date"] = total_registered_class_to_date
     
     # Préparation des données de contexte
+    cache_key = get_stats_cache_key(
+        selected_year, location_id, city_filter, class_welcome_filter
+    )
+    cached_extra = cache.get(cache_key) if not export_word else None
+    if cached_extra is None:
+        presence = get_presence_by_group(workshops)
+        distribution = get_distribution_stats(workshops)
+        poster_channels = get_poster_and_channel_stats(workshops, total_workshops)
+        top_flop = get_top_flop_communes(commune_table_data)
+        cached_extra = {
+            "presence_by_location": presence["by_location"],
+            "presence_by_commune": presence["by_commune"],
+            "distribution_stats": distribution,
+            "poster_stats": poster_channels["poster"],
+            "channel_coverage": poster_channels["channels"],
+            "top_flop_communes": top_flop,
+        }
+        if not export_word:
+            cache.set(cache_key, cached_extra, CACHE_TIMEOUT)
+
     context = {
         "current_year": current_year,
         "selected_year": selected_year,
         "available_years": available_years,
-        "debug": debug,
+        "stats_filter_form": stats_filter_form,
+        "has_active_filters": has_active_filters,
+        "active_location_id": location_id,
+        "active_location_name": location_filter.name if location_filter else "",
+        "active_city": city_filter,
+        "active_class_welcome": class_welcome_filter,
+        "is_htmx_partial": is_htmx_partial,
+        "chart_type": {
+            "labels": ["Classiques", "Accueils de classe"],
+            "data": [total_workshops_except_class, total_accueil_classe],
+        },
+        "chart_locations": {
+            "labels": [
+                r["location__name"] or "Inconnu" for r in workshops_by_location
+            ],
+            "ateliers": [r["count"] for r in workshops_by_location],
+            "inscrits": [r["total_registered"] for r in workshops_by_location],
+        },
+        "chart_communes": {
+            "labels": [
+                r["location__city"] or "Inconnu" for r in workshops_by_commune
+            ],
+            "accueils": [r["class_welcome_count"] for r in workshops_by_commune],
+            "classiques": [r["standard_count"] for r in workshops_by_commune],
+        },
         "total_workshops": total_workshops,
         "total_accueil_classe": total_accueil_classe,
         "total_workshops_except_class": total_workshops_except_class,
@@ -469,6 +588,12 @@ def workshop_stats(request):
         "workshops_by_commune": workshops_by_commune,
         "commune_table_data": commune_table_data,
         "workshops_by_month": list(workshops_by_month),
+        "presence_by_location": cached_extra["presence_by_location"],
+        "presence_by_commune": cached_extra["presence_by_commune"],
+        "distribution_stats": cached_extra["distribution_stats"],
+        "poster_stats": cached_extra["poster_stats"],
+        "channel_coverage": cached_extra["channel_coverage"],
+        "top_flop_communes": cached_extra["top_flop_communes"],
         "communication_stats": {
             "instagram": stats["instagram"],
             "facebook": stats["facebook"],
@@ -522,9 +647,14 @@ def workshop_stats(request):
         # Récupérer les données de l'année précédente par commune
         previous_commune_data = {}
         if selected_year > 0:
-            previous_workshops = Workshop.objects.filter(date__year=selected_year-1)
+            previous_workshops_full_year = apply_stats_filters(
+                Workshop.objects.filter(date__year=selected_year - 1),
+                location_id=location_id,
+                city=city_filter,
+                class_welcome=class_welcome_filter,
+            )
             previous_commune_stats = (
-                previous_workshops.values("location__city")
+                previous_workshops_full_year.values("location__city")
                 .annotate(
                     total_count=Count("id"),
                     class_welcome_count=Count("id", filter=Q(class_welcome=True)),
@@ -556,9 +686,9 @@ def workshop_stats(request):
     context["bilan_data"] = bilan_data
 
     if export_word:
-        # Générer le fichier Word
+        # Générer le fichier Word (nom basé sur l'année sélectionnée)
         doc = save_stats_to_word(
-            context, f"statistiques_ateliers_{current_year}.docx"
+            context, f"statistiques_ateliers_{selected_year}.docx"
         )
 
         # Préparer la réponse HTTP
@@ -569,12 +699,25 @@ def workshop_stats(request):
             )
         )
         response["Content-Disposition"] = (
-            f'attachment; filename="statistiques_ateliers_{current_year}.docx"'
+            f'attachment; filename="statistiques_ateliers_{selected_year}.docx"'
         )
         doc.save(response)
         return response
 
+    if is_htmx_partial:
+        return render(request, "workshop/partials/stats_content.html", context)
+
     return render(request, "workshop/workshop_stats.html", context)
+
+
+@login_required(login_url="login")
+@user_passes_test(is_staff_or_superuser_or_in_comm_group)
+def workshop_stats_partial(request):
+    """Endpoint HTMX : ne rend que le contenu des stats (sans layout)."""
+    get_data = request.GET.copy()
+    get_data["partial"] = "1"
+    request.GET = get_data
+    return workshop_stats(request)
 
 
 # Liste des ateliers

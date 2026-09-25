@@ -47,6 +47,11 @@ urlpatterns = [
         name="workshops_with_poster",
     ),
     path("atelier-stats", views.workshop_stats, name="workshop_stats"),
+    path(
+        "atelier-stats/partial/",
+        views.workshop_stats_partial,
+        name="workshop_stats_partial",
+    ),
     # Gestion des lieux
     path("lieu/list/", views.location_list, name="location_list"),
     path("lieu/create/", views.location_create, name="location_create"),

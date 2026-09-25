@@ -1,0 +1,687 @@
+{{ workshops_by_month|json_script:"workshops-by-month" }}
+{{ chart_type|json_script:"stats-type" }}
+{{ chart_locations|json_script:"stats-locations" }}
+{{ chart_communes|json_script:"stats-communes" }}
+
+{% if has_active_filters %}
+<div class="flex flex-wrap items-center gap-2 mb-4" role="status" aria-live="polite">
+    <span class="text-xs font-semibold text-[#7a8fa0] uppercase tracking-wider">Filtres actifs :</span>
+    {% if active_location_name %}
+    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Lieu : {{ active_location_name }}</span>
+    {% endif %}
+    {% if active_city %}
+    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Ville : {{ active_city }}</span>
+    {% endif %}
+    {% if active_class_welcome == "yes" %}
+    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Type : Accueils</span>
+    {% elif active_class_welcome == "no" %}
+    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Type : Classiques</span>
+    {% endif %}
+    <a href="?year={{ selected_year }}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white border border-[#dce3ef] text-[#7a8fa0] hover:bg-[#f8f9fc]">Réinitialiser</a>
+</div>
+{% endif %}
+
+{% if total_workshops == 0 %}
+<div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6" role="status">
+    <p class="text-sm text-amber-800"><i class="bx bx-info-circle"></i> Aucun atelier{% if has_active_filters %} ne correspond à ces filtres{% else %} pour l'année {{ selected_year }}{% endif %}. Modifiez les filtres ou choisissez une autre année.</p>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 hover:shadow-md transition-shadow">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center shrink-0">
+                <i class="bx bx-calendar-event text-xl text-[#4a6fa5]"></i>
+            </div>
+            <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Ateliers</span>
+        </div>
+        <div class="text-3xl font-bold text-[#1e293b]">{{ total_workshops }}</div>
+        <div class="flex items-center gap-3 mt-2 text-xs text-[#7a8fa0]">
+            <span>{{ total_workshops_except_class }} classiques</span>
+            <span class="w-1 h-1 rounded-full bg-[#b0bedb]"></span>
+            <span>{{ total_accueil_classe }} accueils</span>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 hover:shadow-md transition-shadow">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                <i class="bx bx-user-plus text-xl text-emerald-600"></i>
+            </div>
+            <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Inscrits</span>
+        </div>
+        <div class="text-3xl font-bold text-[#1e293b]">{{ total_registered }}</div>
+        <div class="text-xs text-[#7a8fa0] mt-2">Participants inscrits</div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 hover:shadow-md transition-shadow">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                <i class="bx bx-user-check text-xl text-amber-600"></i>
+            </div>
+            <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Présents</span>
+        </div>
+        <div class="text-3xl font-bold text-[#1e293b]">{{ total_attendees }}</div>
+        <div class="flex items-center gap-2 mt-2">
+            <div class="flex-1 bg-[#e8eef7] rounded-full h-1.5">
+                <div class="bg-[#4a6fa5] h-1.5 rounded-full" style="width: {{ attendance_rate|floatformat:0 }}%"></div>
+            </div>
+            <span class="text-xs font-medium text-[#4a6fa5]">{{ attendance_rate|floatformat:1 }}%</span>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 hover:shadow-md transition-shadow">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
+                <i class="bx bx-group text-xl text-sky-600"></i>
+            </div>
+            <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Moyenne</span>
+        </div>
+        <div class="text-3xl font-bold text-[#1e293b]">{{ avg_registered|floatformat:1 }}</div>
+        <div class="text-xs text-[#7a8fa0] mt-2">Inscrits / atelier classique</div>
+    </div>
+</div>
+
+{% if previous_year_data or previous_year_data_no_class or previous_year_data_class %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    {% if previous_year_data %}
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-3 flex items-center gap-2">
+            <i class="bx bx-line-chart text-[#4a6fa5]"></i> Tous ateliers {{ previous_year_data.period }}
+        </h3>
+        <p class="text-xs text-[#7a8fa0] mb-3">vs {{ previous_year_data.year }}</p>
+        <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+                <span class="text-[#7a8fa0]">Ateliers</span>
+                <span class="font-semibold {% if previous_year_data.workshops_variation > 0 %}text-emerald-600{% elif previous_year_data.workshops_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
+                    {% if previous_year_data.workshops_variation > 0 %}+{% endif %}{{ previous_year_data.workshops_variation|floatformat:1 }}%
+                </span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-[#7a8fa0]">Inscrits</span>
+                <span class="font-semibold {% if previous_year_data.registered_variation > 0 %}text-emerald-600{% elif previous_year_data.registered_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
+                    {% if previous_year_data.registered_variation > 0 %}+{% endif %}{{ previous_year_data.registered_variation|floatformat:1 }}%
+                </span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-[#7a8fa0]">Présence</span>
+                <span class="font-semibold text-[#4a6fa5]">{{ previous_year_data.attendance_rate_to_date|floatformat:1 }}% <span class="font-normal text-[#b0bedb]">(N-1 : {{ previous_year_data.attendance_rate|floatformat:1 }}%)</span></span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% if previous_year_data_no_class %}
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-3 flex items-center gap-2">
+            <i class="bx bx-line-chart text-emerald-600"></i> Classiques {{ previous_year_data_no_class.period }}
+        </h3>
+        <p class="text-xs text-[#7a8fa0] mb-3">vs {{ previous_year_data_no_class.year }}</p>
+        <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+                <span class="text-[#7a8fa0]">Ateliers</span>
+                <span class="font-semibold {% if previous_year_data_no_class.workshops_variation > 0 %}text-emerald-600{% elif previous_year_data_no_class.workshops_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
+                    {% if previous_year_data_no_class.workshops_variation > 0 %}+{% endif %}{{ previous_year_data_no_class.workshops_variation|floatformat:1 }}%
+                </span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-[#7a8fa0]">Inscrits</span>
+                <span class="font-semibold {% if previous_year_data_no_class.registered_variation > 0 %}text-emerald-600{% elif previous_year_data_no_class.registered_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
+                    {% if previous_year_data_no_class.registered_variation > 0 %}+{% endif %}{{ previous_year_data_no_class.registered_variation|floatformat:1 }}%
+                </span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% if previous_year_data_class %}
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-3 flex items-center gap-2">
+            <i class="bx bx-line-chart text-amber-600"></i> Accueils {{ previous_year_data_class.period }}
+        </h3>
+        <p class="text-xs text-[#7a8fa0] mb-3">vs {{ previous_year_data_class.year }}</p>
+        <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+                <span class="text-[#7a8fa0]">Ateliers</span>
+                <span class="font-semibold {% if previous_year_data_class.workshops_variation > 0 %}text-emerald-600{% elif previous_year_data_class.workshops_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
+                    {% if previous_year_data_class.workshops_variation > 0 %}+{% endif %}{{ previous_year_data_class.workshops_variation|floatformat:1 }}%
+                </span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-[#7a8fa0]">Inscrits</span>
+                <span class="font-semibold {% if previous_year_data_class.registered_variation > 0 %}text-emerald-600{% elif previous_year_data_class.registered_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
+                    {% if previous_year_data_class.registered_variation > 0 %}+{% endif %}{{ previous_year_data_class.registered_variation|floatformat:1 }}%
+                </span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="lg:col-span-1 bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Répartition par type</h3>
+        <div class="h-56">
+            <canvas id="typeDistribution" role="img" aria-label="Répartition classiques et accueils de classe"></canvas>
+        </div>
+        <div class="flex justify-center gap-6 mt-4 text-sm">
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded bg-[#4a6fa5]"></span>
+                <span class="text-[#7a8fa0]">Classiques</span>
+                <span class="font-semibold text-[#1e293b]">{{ total_workshops_except_class }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded bg-emerald-500"></span>
+                <span class="text-[#7a8fa0]">Accueils</span>
+                <span class="font-semibold text-[#1e293b]">{{ total_accueil_classe }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lg:col-span-2 bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Par lieu</h3>
+        <div class="h-56">
+            <canvas id="locationStats" role="img" aria-label="Ateliers et inscrits par lieu"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Par commune</h3>
+        <div class="h-64">
+            <canvas id="communeStats" role="img" aria-label="Accueils et classiques par commune"></canvas>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Évolution mensuelle</h3>
+        <div class="h-64">
+            <canvas id="monthlyStats" role="img" aria-label="Évolution mensuelle des ateliers, inscrits et présents"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Taux de remplissage (hors accueils)</h3>
+        <div class="space-y-3">
+            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
+                <span class="text-sm text-[#7a8fa0]">Moyenne d'inscrits</span>
+                <span class="font-semibold text-[#1e293b]">{{ avg_registered|floatformat:1 }}</span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
+                <span class="text-sm text-[#7a8fa0]">Moyenne de présents</span>
+                <span class="font-semibold text-[#1e293b]">{{ avg_attendees|floatformat:1 }}</span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
+                <span class="text-sm text-[#7a8fa0]">Maximum</span>
+                <span class="font-semibold text-[#1e293b]">{{ participation_stats.maximum|default:0 }}</span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
+                <span class="text-sm text-[#7a8fa0]">Minimum</span>
+                <span class="font-semibold text-[#1e293b]">{{ participation_stats.minimum|default:0 }}</span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
+                <span class="text-sm text-[#7a8fa0]">Médiane d'inscrits</span>
+                <span class="font-semibold text-[#1e293b]">{{ distribution_stats.median|floatformat:0 }}</span>
+            </div>
+            <div class="p-3 bg-[#e8eef7] rounded-xl">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium text-[#4a6fa5]">Taux de présence global</span>
+                    <span class="text-sm font-bold text-[#4a6fa5]">{{ attendance_rate|floatformat:1 }}%</span>
+                </div>
+                <div class="bg-white rounded-full h-2.5 overflow-hidden">
+                    <div class="bg-[#4a6fa5] h-2.5 rounded-full" style="width: {{ attendance_rate|floatformat:0 }}%"></div>
+                </div>
+                <div class="text-xs text-[#7a8fa0] mt-1">{{ total_attendees }} présents / {{ total_registered }} inscrits</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Moyens de communication</h3>
+        <div class="space-y-3">
+            {% with total_com=communication_stats.instagram|add:communication_stats.facebook|add:communication_stats.mail|add:communication_stats.portail|add:communication_stats.vdn %}
+            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
+                <div class="flex items-center gap-2">
+                    <i class="bx bxl-instagram text-xl text-pink-500"></i>
+                    <span class="text-sm text-[#7a8fa0]">Instagram</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-20 bg-[#e8eef7] rounded-full h-1.5">
+                        <div class="bg-pink-400 h-1.5 rounded-full" style="width: {% widthratio communication_stats.instagram total_com 100 %}%"></div>
+                    </div>
+                    <span class="text-sm font-semibold text-[#1e293b]">{{ communication_stats.instagram }}</span>
+                </div>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
+                <div class="flex items-center gap-2">
+                    <i class="bx bxl-facebook text-xl text-blue-600"></i>
+                    <span class="text-sm text-[#7a8fa0]">Facebook</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-20 bg-[#e8eef7] rounded-full h-1.5">
+                        <div class="bg-blue-500 h-1.5 rounded-full" style="width: {% widthratio communication_stats.facebook total_com 100 %}%"></div>
+                    </div>
+                    <span class="text-sm font-semibold text-[#1e293b]">{{ communication_stats.facebook }}</span>
+                </div>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
+                <div class="flex items-center gap-2">
+                    <i class="bx bx-envelope text-xl text-[#4a6fa5]"></i>
+                    <span class="text-sm text-[#7a8fa0]">Mail</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-20 bg-[#e8eef7] rounded-full h-1.5">
+                        <div class="bg-[#4a6fa5] h-1.5 rounded-full" style="width: {% widthratio communication_stats.mail total_com 100 %}%"></div>
+                    </div>
+                    <span class="text-sm font-semibold text-[#1e293b]">{{ communication_stats.mail }}</span>
+                </div>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
+                <div class="flex items-center gap-2">
+                    <i class="bx bx-globe text-xl text-emerald-600"></i>
+                    <span class="text-sm text-[#7a8fa0]">Portail</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-20 bg-[#e8eef7] rounded-full h-1.5">
+                        <div class="bg-emerald-500 h-1.5 rounded-full" style="width: {% widthratio communication_stats.portail total_com 100 %}%"></div>
+                    </div>
+                    <span class="text-sm font-semibold text-[#1e293b]">{{ communication_stats.portail }}</span>
+                </div>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
+                <div class="flex items-center gap-2">
+                    <i class="bx bx-news text-xl text-amber-600"></i>
+                    <span class="text-sm text-[#7a8fa0]">VDN</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-20 bg-[#e8eef7] rounded-full h-1.5">
+                        <div class="bg-amber-500 h-1.5 rounded-full" style="width: {% widthratio communication_stats.vdn total_com 100 %}%"></div>
+                    </div>
+                    <span class="text-sm font-semibold text-[#1e293b]">{{ communication_stats.vdn }}</span>
+                </div>
+            </div>
+            {% endwith %}
+            <p class="text-xs text-[#b0bedb]">Couverture : part des {{ total_workshops }} ateliers relayés par canal —
+                {% for key, ch in channel_coverage.items %}{% if key == "vdn" %}VDN{% else %}{{ key|capfirst }}{% endif %} {{ ch.rate|floatformat:0 }}%{% if not forloop.last %} · {% endif %}{% endfor %}.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-1">Présence par lieu</h3>
+        <p class="text-xs text-[#b0bedb] mb-4">Présents / inscrits et taux de présence</p>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider border-b border-[#dce3ef]">
+                        <th class="pb-3" scope="col">Lieu</th>
+                        <th class="pb-3 text-center" scope="col">Ateliers</th>
+                        <th class="pb-3 text-center" scope="col">Inscrits</th>
+                        <th class="pb-3 text-center" scope="col">Présents</th>
+                        <th class="pb-3 text-right" scope="col">Taux</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#dce3ef]">
+                    {% for row in presence_by_location %}
+                    <tr class="hover:bg-[#f8f9fc]">
+                        <td class="py-2.5 font-medium text-[#1e293b] truncate max-w-[180px]">{{ row.location__name|default:"Inconnu" }}</td>
+                        <td class="py-2.5 text-center text-[#7a8fa0]">{{ row.count }}</td>
+                        <td class="py-2.5 text-center text-[#7a8fa0]">{{ row.registered }}</td>
+                        <td class="py-2.5 text-center text-[#7a8fa0]">{{ row.attendees }}</td>
+                        <td class="py-2.5 text-right">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ row.attendance_rate|floatformat:1 }}%</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="py-4 text-center text-sm text-[#b0bedb]">Aucune donnée</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-1">Distribution des inscrits (hors accueils)</h3>
+        <p class="text-xs text-[#b0bedb] mb-4">{{ distribution_stats.count }} ateliers classiques — médiane {{ distribution_stats.median|floatformat:0 }}, p25 {{ distribution_stats.p25|floatformat:0 }}, p75 {{ distribution_stats.p75|floatformat:0 }}</p>
+        {% if distribution_stats.count %}
+        <div class="space-y-3">
+            {% for tranche in distribution_stats.histogram %}
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-medium text-[#7a8fa0] w-12 shrink-0">{{ tranche.tranche }}</span>
+                <div class="flex-1 bg-[#e8eef7] rounded-full h-2.5 overflow-hidden">
+                    <div class="bg-[#06b6d4] h-2.5 rounded-full" style="width: {% widthratio tranche.count distribution_stats.count 100 %}%"></div>
+                </div>
+                <span class="text-xs font-semibold text-[#1e293b] w-8 text-right">{{ tranche.count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-[#b0bedb]">Aucun atelier classique sur la période.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-1">Affiches</h3>
+        <p class="text-xs text-[#b0bedb] mb-4">Suivi des affiches requises et validées</p>
+        <div class="space-y-3">
+            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
+                <span class="text-sm text-[#7a8fa0]">Affiches requises</span>
+                <span class="font-semibold text-[#1e293b]">{{ poster_stats.required }} <span class="text-xs font-normal text-[#b0bedb]">({{ poster_stats.required_rate|floatformat:0 }}%)</span></span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
+                <span class="text-sm text-[#7a8fa0]">Affiches validées</span>
+                <span class="font-semibold text-[#1e293b]">{{ poster_stats.valide }} <span class="text-xs font-normal text-[#b0bedb]">({{ poster_stats.valide_rate|floatformat:0 }}% des requises)</span></span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
+                <span class="text-sm text-[#7a8fa0]">Ateliers avec visuel</span>
+                <span class="font-semibold text-[#1e293b]">{{ poster_stats.with_image }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-1">Top / Flop communes</h3>
+        <p class="text-xs text-[#b0bedb] mb-4">Communes avec au moins {{ top_flop_communes.min_ateliers }} ateliers</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+            <div>
+                <p class="text-xs font-medium text-emerald-700 mb-2">Top présence</p>
+                {% for c in top_flop_communes.top_presence %}
+                <div class="flex items-center justify-between py-1 border-b border-[#dce3ef] last:border-0">
+                    <span class="text-[#1e293b] truncate">{{ c.commune }}</span>
+                    <span class="font-semibold text-emerald-700 ml-2">{{ c.attendance_rate|floatformat:0 }}%</span>
+                </div>
+                {% empty %}
+                <p class="text-xs text-[#b0bedb]">Données insuffisantes</p>
+                {% endfor %}
+            </div>
+            <div>
+                <p class="text-xs font-medium text-[#d46a78] mb-2">À renforcer</p>
+                {% for c in top_flop_communes.flop_presence %}
+                <div class="flex items-center justify-between py-1 border-b border-[#dce3ef] last:border-0">
+                    <span class="text-[#1e293b] truncate">{{ c.commune }}</span>
+                    <span class="font-semibold text-[#d46a78] ml-2">{{ c.attendance_rate|floatformat:0 }}%</span>
+                </div>
+                {% empty %}
+                <p class="text-xs text-[#b0bedb]">Données insuffisantes</p>
+                {% endfor %}
+            </div>
+            <div>
+                <p class="text-xs font-medium text-[#4a6fa5] mb-2">Top volume</p>
+                {% for c in top_flop_communes.top_volume %}
+                <div class="flex items-center justify-between py-1 border-b border-[#dce3ef] last:border-0">
+                    <span class="text-[#1e293b] truncate">{{ c.commune }}</span>
+                    <span class="font-semibold text-[#4a6fa5] ml-2">{{ c.total_participants }}</span>
+                </div>
+                {% empty %}
+                <p class="text-xs text-[#b0bedb]">Données insuffisantes</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 mb-6">
+    <h3 class="text-sm font-semibold text-[#1e293b] mb-1">Détail mensuel de la présence</h3>
+    <p class="text-xs text-[#b0bedb] mb-4">Ateliers, inscrits, présents et taux par mois</p>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider border-b border-[#dce3ef]">
+                    <th class="pb-3" scope="col">Mois</th>
+                    <th class="pb-3 text-center" scope="col">Ateliers</th>
+                    <th class="pb-3 text-center" scope="col">Inscrits</th>
+                    <th class="pb-3 text-center" scope="col">Présents</th>
+                    <th class="pb-3 text-right" scope="col">Taux</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#dce3ef]">
+                {% for m in workshops_by_month %}
+                <tr class="hover:bg-[#f8f9fc]">
+                    <td class="py-2.5 font-medium text-[#1e293b]">{{ m.label }}</td>
+                    <td class="py-2.5 text-center text-[#7a8fa0]">{{ m.count }}</td>
+                    <td class="py-2.5 text-center text-[#7a8fa0]">{{ m.total_registered }}</td>
+                    <td class="py-2.5 text-center text-[#7a8fa0]">{{ m.total_attendees }}</td>
+                    <td class="py-2.5 text-right font-semibold text-[#4a6fa5]">{{ m.attendance_rate|floatformat:1 }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Top 5 par inscrits</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider border-b border-[#dce3ef]">
+                        <th class="pb-3" scope="col">Atelier</th>
+                        <th class="pb-3" scope="col">Date</th>
+                        <th class="pb-3 text-right" scope="col">Inscrits</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#dce3ef]">
+                    {% for w in most_registered %}
+                    <tr class="hover:bg-[#f8f9fc]">
+                        <td class="py-3 font-medium text-[#1e293b] truncate max-w-[180px]">{{ w.name }}</td>
+                        <td class="py-3 text-[#7a8fa0]">{{ w.date|date:"d/m/Y" }}</td>
+                        <td class="py-3 text-right">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ w.number_registered }}</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="py-4 text-center text-sm text-[#b0bedb]">Aucun atelier</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Top 5 par taux de présence</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider border-b border-[#dce3ef]">
+                        <th class="pb-3" scope="col">Atelier</th>
+                        <th class="pb-3" scope="col">Date</th>
+                        <th class="pb-3 text-right" scope="col">Taux</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#dce3ef]">
+                    {% for w in best_attendance %}
+                    <tr class="hover:bg-[#f8f9fc]">
+                        <td class="py-3 font-medium text-[#1e293b] truncate max-w-[180px]">{{ w.name }}</td>
+                        <td class="py-3 text-[#7a8fa0]">{{ w.date|date:"d/m/Y" }}</td>
+                        <td class="py-3 text-right">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">{{ w.attendance_rate|floatformat:1 }}%</span>
+                            <span class="text-xs text-[#b0bedb] ml-1">{{ w.number_attendees }}/{{ w.number_registered }}</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="py-4 text-center text-sm text-[#b0bedb]">Aucun atelier</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+        <h3 class="text-sm font-semibold text-[#1e293b]">Détail par commune</h3>
+        <div class="flex flex-wrap items-center gap-2">
+            <label class="sr-only" for="filterCommune">Filtrer par commune</label>
+            <input type="text" id="filterCommune" placeholder="Commune..."
+                class="border border-[#dce3ef] rounded-lg px-3 py-1.5 text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] w-36" />
+            <label class="sr-only" for="filterMinAteliers">Minimum d'ateliers</label>
+            <input type="number" id="filterMinAteliers" placeholder="Min ateliers" min="0"
+                class="border border-[#dce3ef] rounded-lg px-3 py-1.5 text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] w-28" />
+            <button type="button" id="resetFilters"
+                class="px-3 py-1.5 text-sm text-[#7a8fa0] border border-[#dce3ef] rounded-lg hover:bg-[#f8f9fc] transition-colors">
+                <i class="bx bx-refresh"></i> Reset
+            </button>
+            <span id="visibleRows" class="text-xs text-[#b0bedb]">{{ commune_table_data|length }}/{{ commune_table_data|length }}</span>
+        </div>
+    </div>
+    <div class="overflow-x-auto max-h-80">
+        <table class="w-full text-sm" id="communeTable">
+            <thead class="sticky top-0 bg-[#f8f9fc]">
+                <tr class="text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">
+                    <th class="px-2 py-3 w-8"><span class="sr-only">Détails</span></th>
+                    <th class="px-3 py-3 rounded-l-lg cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0]" onclick="sortTable(0)" scope="col">
+                        Commune <i class="bx bx-sort ml-1"></i>
+                    </th>
+                    <th class="px-3 py-3 text-center cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0]" onclick="sortTable(1)" scope="col">
+                        Total
+                    </th>
+                    <th class="px-3 py-3 text-center cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0]" onclick="sortTable(2)" scope="col">
+                        Classiques
+                    </th>
+                    <th class="px-3 py-3 text-center cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0]" onclick="sortTable(3)" scope="col">
+                        Accueils
+                    </th>
+                    <th class="px-3 py-3 text-center cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0] rounded-r-lg" onclick="sortTable(4)" scope="col">
+                        Participants
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#dce3ef]">
+                {% for commune in commune_table_data %}
+                <tr class="hover:bg-[#f8f9fc] transition-colors commune-row" data-city="{{ commune.commune }}">
+                    <td class="px-2 py-2.5 text-center">
+                        {% if commune.workshops %}
+                        <button type="button"
+                            class="inline-flex items-center justify-center w-6 h-6 rounded-md text-[#b0bedb] hover:text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors toggle-btn"
+                            data-city="{{ commune.commune|escapejs }}"
+                            title="Voir les ateliers"
+                            aria-label="Voir les ateliers de {{ commune.commune }}">
+                            <i class="bx bx-chevron-right text-sm"></i>
+                        </button>
+                        {% endif %}
+                    </td>
+                    <td class="px-3 py-2.5 font-medium text-[#1e293b]">
+                        <a href="{% url 'workshop_list' %}?year={{ selected_year }}&city={{ commune.commune|urlencode }}"
+                           target="_blank"
+                           class="hover:text-[#4a6fa5] transition-colors">
+                            {{ commune.commune }}
+                            <i class="bx bx-external-link text-[#b0bedb] text-xs align-middle ml-0.5"></i>
+                        </a>
+                    </td>
+                    <td class="px-3 py-2.5 text-center">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ commune.total_ateliers }}</span>
+                    </td>
+                    <td class="px-3 py-2.5 text-center">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-sky-50 text-sky-700">{{ commune.ateliers_classiques }}</span>
+                    </td>
+                    <td class="px-3 py-2.5 text-center">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">{{ commune.accueils_classe }}</span>
+                    </td>
+                    <td class="px-3 py-2.5 text-center">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">{{ commune.total_participants }}</span>
+                    </td>
+                </tr>
+                <tr class="hidden commune-detail" data-city="{{ commune.commune }}">
+                    <td colspan="6" class="px-3 py-0">
+                        <div class="bg-[#f8f9fc] border border-[#dce3ef] rounded-lg my-2 py-2 px-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Ateliers {{ commune.commune }}</span>
+                                <span class="text-xs text-[#b0bedb]">{{ commune.workshops|length }} atelier{{ commune.workshops|length|pluralize }}</span>
+                            </div>
+                            <div class="divide-y divide-[#dce3ef]">
+                                {% for w in commune.workshops %}
+                                <div class="flex items-center justify-between py-1.5 first:pt-0 last:pb-0">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        {% if w.class_welcome %}
+                                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 shrink-0">
+                                            <i class="bx bx-chalkboard text-[10px]"></i> Classe
+                                        </span>
+                                        {% else %}
+                                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#e8eef7] text-[#4a6fa5] shrink-0">
+                                            <i class="bx bx-calendar text-[10px]"></i> Atelier
+                                        </span>
+                                        {% endif %}
+                                        <a href="{% url 'workshop_detail' w.id %}" class="text-sm text-[#4a6fa5] hover:text-[#3d5f8f] truncate">{{ w.name }}</a>
+                                    </div>
+                                    <span class="text-xs text-[#b0bedb] shrink-0 ml-2">{{ w.date|date:"d/m/Y" }}</span>
+                                </div>
+                                {% empty %}
+                                <div class="text-sm text-[#b0bedb] py-2 text-center">Aucun atelier</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+    <h3 class="text-sm font-semibold text-[#1e293b] mb-4 flex items-center gap-2">
+        <i class="bx bx-analyse text-[#4a6fa5]"></i>
+        Bilan détaillé des animations {{ bilan_data.current_year }}
+    </h3>
+    <div class="bg-[#e8eef7] border border-[#dce3ef] rounded-xl p-5">
+        <div class="prose prose-sm max-w-none text-[#1e293b]">
+            <p class="text-sm leading-relaxed mb-3">
+                L'année <strong>{{ bilan_data.current_year }}</strong> a été marquée par une activité soutenue avec
+                <strong>{{ total_workshops }}</strong> ateliers organisés dans <strong>{{ bilan_data.total_communes }}</strong> communes,
+                mobilisant <strong>{{ total_registered }}</strong> participants inscrits.
+            </p>
+
+            <h4 class="text-sm font-semibold text-[#4a6fa5] mb-2">Communes les plus actives</h4>
+            <ul class="list-none space-y-1 mb-3">
+                {% for commune in bilan_data.top_communes %}
+                <li class="text-sm flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#4a6fa5] shrink-0"></span>
+                    <strong>{{ commune.commune }}</strong> : {{ commune.total_ateliers }} ateliers, {{ commune.total_participants }} participants
+                </li>
+                {% endfor %}
+            </ul>
+
+            {% if previous_year_data %}
+            <h4 class="text-sm font-semibold text-[#4a6fa5] mb-2">Évolution vs {{ bilan_data.previous_year }}</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                <div>
+                    <p class="text-xs font-medium text-emerald-700 mb-1">En progression</p>
+                    {% for commune in commune_table_data %}
+                    {% if commune.variation_ateliers > 0 %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 mr-1 mb-1">
+                        {{ commune.commune }} +{{ commune.variation_ateliers }}
+                    </span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-[#d46a78] mb-1">En baisse</p>
+                    {% for commune in commune_table_data %}
+                    {% if commune.variation_ateliers < 0 %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-red-50 text-red-700 mr-1 mb-1">
+                        {{ commune.commune }} {{ commune.variation_ateliers }}
+                    </span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if bilan_data.communes_without_activities %}
+            <h4 class="text-sm font-semibold text-[#4a6fa5] mb-2">Communes sans activité</h4>
+            <p class="text-sm text-[#7a8fa0]">
+                {% for commune in bilan_data.communes_without_activities %}
+                {{ commune.commune }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+</div>

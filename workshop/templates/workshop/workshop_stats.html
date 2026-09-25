@@ -4,530 +4,79 @@
 {% block title %}Stats ateliers {{ selected_year }} | {{ block.super }}{% endblock %}
 
 {% block content %}
+<style>
+.htmx-indicator { display: none; }
+.htmx-request .htmx-indicator { display: flex; }
+.htmx-request.htmx-indicator { display: flex; }
+</style>
 <section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
     <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
     <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-                <div class="flex items-center gap-3 mb-2">
-                    <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
-                        <i class="bx bx-bar-chart-alt-2 text-2xl text-white"></i>
+        <div class="flex flex-col gap-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+                            <i class="bx bx-bar-chart-alt-2 text-2xl text-white"></i>
+                        </div>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-white">Stats ateliers</h1>
                     </div>
-                    <h1 class="text-2xl sm:text-3xl font-bold text-white">Stats ateliers</h1>
+                    <p class="text-white/70 text-sm">Analyse détaillée des ateliers de l'année {{ selected_year }}</p>
                 </div>
-                <p class="text-white/70 text-sm">Analyse détaillée des ateliers de l'année {{ selected_year }}</p>
-            </div>
-            <div class="flex flex-wrap items-center gap-3">
-                <form method="get" class="flex items-center gap-2">
-                    <select name="year" onchange="this.form.submit()" class="bg-white/10 border border-white/20 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 [&>option]:text-gray-800">
-                        {% for year in available_years %}
-                        <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
-                        {% endfor %}
-                    </select>
-                </form>
-                <a href="?export=1&year={{ selected_year }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                <a href="?export=1&year={{ selected_year }}{% if active_location_id %}&location={{ active_location_id }}{% endif %}{% if active_city %}&city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&class_welcome={{ active_class_welcome }}{% endif %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors self-start sm:self-auto">
                     <i class="bx bx-export"></i> Exporter Word
                 </a>
             </div>
+            {% if messages %}
+            <div class="space-y-2" role="alert">
+                {% for message in messages %}
+                <p class="text-sm text-white/90 bg-white/10 border border-white/20 rounded-lg px-3 py-2">{{ message }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <form id="stats-filters" method="get" action="{% url 'workshop_stats' %}"
+                  hx-get="{% url 'workshop_stats' %}" hx-select="#stats-content" hx-target="#stats-content"
+                  hx-swap="innerHTML" hx-push-url="true" hx-indicator="#stats-loading"
+                  class="flex flex-wrap items-center gap-2">
+                <label class="sr-only" for="filter-year">Année</label>
+                <select name="year" id="filter-year" onchange="this.form.requestSubmit()" class="bg-white/10 border border-white/20 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 [&>option]:text-gray-800">
+                    {% for year in available_years %}
+                    <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+                <label class="sr-only" for="filter-location">Lieu</label>
+                <select name="location" id="filter-location" onchange="this.form.requestSubmit()" class="bg-white/10 border border-white/20 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 [&>option]:text-gray-800">
+                    <option value="">Tous lieux</option>
+                    {% for loc in stats_filter_form.fields.location.queryset %}
+                    <option value="{{ loc.pk }}" {% if active_location_id == loc.pk %}selected{% endif %}>{{ loc.name }}</option>
+                    {% endfor %}
+                </select>
+                <label class="sr-only" for="filter-city">Ville</label>
+                <select name="city" id="filter-city" onchange="this.form.requestSubmit()" class="bg-white/10 border border-white/20 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 [&>option]:text-gray-800">
+                    {% for val, label in stats_filter_form.fields.city.choices %}
+                    <option value="{{ val }}" {% if active_city == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <label class="sr-only" for="filter-type">Type d'atelier</label>
+                <select name="class_welcome" id="filter-type" onchange="this.form.requestSubmit()" class="bg-white/10 border border-white/20 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 [&>option]:text-gray-800">
+                    <option value="" {% if not active_class_welcome %}selected{% endif %}>Tous types</option>
+                    <option value="no" {% if active_class_welcome == "no" %}selected{% endif %}>Classiques</option>
+                    <option value="yes" {% if active_class_welcome == "yes" %}selected{% endif %}>Accueils</option>
+                </select>
+                <a href="?year={{ selected_year }}" class="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    <i class="bx bx-refresh"></i> Reset
+                </a>
+            </form>
         </div>
     </div>
 </section>
 
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10 pb-12">
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 hover:shadow-md transition-shadow">
-            <div class="flex items-center gap-3 mb-3">
-                <div class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center shrink-0">
-                    <i class="bx bx-calendar-event text-xl text-[#4a6fa5]"></i>
-                </div>
-                <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Ateliers</span>
-            </div>
-            <div class="text-3xl font-bold text-[#1e293b]">{{ total_workshops }}</div>
-            <div class="flex items-center gap-3 mt-2 text-xs text-[#7a8fa0]">
-                <span>{{ total_workshops_except_class }} classiques</span>
-                <span class="w-1 h-1 rounded-full bg-[#b0bedb]"></span>
-                <span>{{ total_accueil_classe }} accueils</span>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 hover:shadow-md transition-shadow">
-            <div class="flex items-center gap-3 mb-3">
-                <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
-                    <i class="bx bx-user-plus text-xl text-emerald-600"></i>
-                </div>
-                <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Inscrits</span>
-            </div>
-            <div class="text-3xl font-bold text-[#1e293b]">{{ total_registered }}</div>
-            <div class="text-xs text-[#7a8fa0] mt-2">Participants inscrits</div>
-        </div>
-
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 hover:shadow-md transition-shadow">
-            <div class="flex items-center gap-3 mb-3">
-                <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-                    <i class="bx bx-user-check text-xl text-amber-600"></i>
-                </div>
-                <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Présents</span>
-            </div>
-            <div class="text-3xl font-bold text-[#1e293b]">{{ total_attendees }}</div>
-            <div class="flex items-center gap-2 mt-2">
-                <div class="flex-1 bg-[#e8eef7] rounded-full h-1.5">
-                    <div class="bg-[#4a6fa5] h-1.5 rounded-full" style="width: {{ attendance_rate|floatformat:0 }}%"></div>
-                </div>
-                <span class="text-xs font-medium text-[#4a6fa5]">{{ attendance_rate|floatformat:1 }}%</span>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 hover:shadow-md transition-shadow">
-            <div class="flex items-center gap-3 mb-3">
-                <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
-                    <i class="bx bx-group text-xl text-sky-600"></i>
-                </div>
-                <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Moyenne</span>
-            </div>
-            <div class="text-3xl font-bold text-[#1e293b]">{{ avg_registered|floatformat:1 }}</div>
-            <div class="text-xs text-[#7a8fa0] mt-2">Inscrits / atelier classique</div>
-        </div>
+    <div id="stats-loading" class="htmx-indicator items-center justify-center gap-2 py-6 text-sm text-[#4a6fa5]" role="status" aria-live="polite">
+        <i class="bx bx-loader-alt bx-spin text-xl"></i> Chargement des statistiques…
     </div>
-
-    {% if previous_year_data or previous_year_data_no_class or previous_year_data_class %}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {% if previous_year_data %}
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-            <h3 class="text-sm font-semibold text-[#1e293b] mb-3 flex items-center gap-2">
-                <i class="bx bx-line-chart text-[#4a6fa5]"></i> Tous ateliers {{ previous_year_data.period }}
-            </h3>
-            <p class="text-xs text-[#7a8fa0] mb-3">vs {{ previous_year_data.year }}</p>
-            <div class="space-y-2 text-sm">
-                <div class="flex justify-between">
-                    <span class="text-[#7a8fa0]">Ateliers</span>
-                    <span class="font-semibold {% if previous_year_data.workshops_variation > 0 %}text-emerald-600{% elif previous_year_data.workshops_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
-                        {% if previous_year_data.workshops_variation > 0 %}+{% endif %}{{ previous_year_data.workshops_variation|floatformat:1 }}%
-                    </span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-[#7a8fa0]">Inscrits</span>
-                    <span class="font-semibold {% if previous_year_data.registered_variation > 0 %}text-emerald-600{% elif previous_year_data.registered_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
-                        {% if previous_year_data.registered_variation > 0 %}+{% endif %}{{ previous_year_data.registered_variation|floatformat:1 }}%
-                    </span>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-        {% if previous_year_data_no_class %}
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-            <h3 class="text-sm font-semibold text-[#1e293b] mb-3 flex items-center gap-2">
-                <i class="bx bx-line-chart text-emerald-600"></i> Classiques {{ previous_year_data_no_class.period }}
-            </h3>
-            <p class="text-xs text-[#7a8fa0] mb-3">vs {{ previous_year_data_no_class.year }}</p>
-            <div class="space-y-2 text-sm">
-                <div class="flex justify-between">
-                    <span class="text-[#7a8fa0]">Ateliers</span>
-                    <span class="font-semibold {% if previous_year_data_no_class.workshops_variation > 0 %}text-emerald-600{% elif previous_year_data_no_class.workshops_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
-                        {% if previous_year_data_no_class.workshops_variation > 0 %}+{% endif %}{{ previous_year_data_no_class.workshops_variation|floatformat:1 }}%
-                    </span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-[#7a8fa0]">Inscrits</span>
-                    <span class="font-semibold {% if previous_year_data_no_class.registered_variation > 0 %}text-emerald-600{% elif previous_year_data_no_class.registered_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
-                        {% if previous_year_data_no_class.registered_variation > 0 %}+{% endif %}{{ previous_year_data_no_class.registered_variation|floatformat:1 }}%
-                    </span>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-        {% if previous_year_data_class %}
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-            <h3 class="text-sm font-semibold text-[#1e293b] mb-3 flex items-center gap-2">
-                <i class="bx bx-line-chart text-amber-600"></i> Accueils {{ previous_year_data_class.period }}
-            </h3>
-            <p class="text-xs text-[#7a8fa0] mb-3">vs {{ previous_year_data_class.year }}</p>
-            <div class="space-y-2 text-sm">
-                <div class="flex justify-between">
-                    <span class="text-[#7a8fa0]">Ateliers</span>
-                    <span class="font-semibold {% if previous_year_data_class.workshops_variation > 0 %}text-emerald-600{% elif previous_year_data_class.workshops_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
-                        {% if previous_year_data_class.workshops_variation > 0 %}+{% endif %}{{ previous_year_data_class.workshops_variation|floatformat:1 }}%
-                    </span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-[#7a8fa0]">Inscrits</span>
-                    <span class="font-semibold {% if previous_year_data_class.registered_variation > 0 %}text-emerald-600{% elif previous_year_data_class.registered_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
-                        {% if previous_year_data_class.registered_variation > 0 %}+{% endif %}{{ previous_year_data_class.registered_variation|floatformat:1 }}%
-                    </span>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-    </div>
-    {% endif %}
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div class="lg:col-span-1 bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-            <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Répartition par type</h3>
-            <div class="h-56">
-                <canvas id="typeDistribution"></canvas>
-            </div>
-            <div class="flex justify-center gap-6 mt-4 text-sm">
-                <div class="flex items-center gap-2">
-                    <span class="w-3 h-3 rounded bg-[#4a6fa5]"></span>
-                    <span class="text-[#7a8fa0]">Classiques</span>
-                    <span class="font-semibold text-[#1e293b]">{{ total_workshops_except_class }}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="w-3 h-3 rounded bg-emerald-500"></span>
-                    <span class="text-[#7a8fa0]">Accueils</span>
-                    <span class="font-semibold text-[#1e293b]">{{ total_accueil_classe }}</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="lg:col-span-2 bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-            <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Par lieu</h3>
-            <div class="h-56">
-                <canvas id="locationStats"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-            <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Par commune</h3>
-            <div class="h-64">
-                <canvas id="communeStats"></canvas>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-            <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Évolution mensuelle</h3>
-            <div class="h-64">
-                <canvas id="monthlyStats"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-            <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Taux de remplissage (hors accueils)</h3>
-            <div class="space-y-3">
-                <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                    <span class="text-sm text-[#7a8fa0]">Moyenne d'inscrits</span>
-                    <span class="font-semibold text-[#1e293b]">{{ avg_registered|floatformat:1 }}</span>
-                </div>
-                <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                    <span class="text-sm text-[#7a8fa0]">Moyenne de présents</span>
-                    <span class="font-semibold text-[#1e293b]">{{ avg_attendees|floatformat:1 }}</span>
-                </div>
-                <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                    <span class="text-sm text-[#7a8fa0]">Maximum</span>
-                    <span class="font-semibold text-[#1e293b]">{{ participation_stats.maximum|default:0 }}</span>
-                </div>
-                <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                    <span class="text-sm text-[#7a8fa0]">Minimum</span>
-                    <span class="font-semibold text-[#1e293b]">{{ participation_stats.minimum|default:0 }}</span>
-                </div>
-                <div class="p-3 bg-[#e8eef7] rounded-xl">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm font-medium text-[#4a6fa5]">Taux de présence global</span>
-                        <span class="text-sm font-bold text-[#4a6fa5]">{{ attendance_rate|floatformat:1 }}%</span>
-                    </div>
-                    <div class="bg-white rounded-full h-2.5 overflow-hidden">
-                        <div class="bg-[#4a6fa5] h-2.5 rounded-full" style="width: {{ attendance_rate|floatformat:0 }}%"></div>
-                    </div>
-                    <div class="text-xs text-[#7a8fa0] mt-1">{{ total_attendees }} présents / {{ total_registered }} inscrits</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-            <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Moyens de communication</h3>
-            <div class="space-y-3">
-                {% with total_com=communication_stats.instagram|add:communication_stats.facebook|add:communication_stats.mail|add:communication_stats.portail|add:communication_stats.vdn %}
-                <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                    <div class="flex items-center gap-2">
-                        <i class="bx bxl-instagram text-xl text-pink-500"></i>
-                        <span class="text-sm text-[#7a8fa0]">Instagram</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div class="w-20 bg-[#e8eef7] rounded-full h-1.5">
-                            <div class="bg-pink-400 h-1.5 rounded-full" style="width: {% widthratio communication_stats.instagram total_com 100 %}%"></div>
-                        </div>
-                        <span class="text-sm font-semibold text-[#1e293b]">{{ communication_stats.instagram }}</span>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                    <div class="flex items-center gap-2">
-                        <i class="bx bxl-facebook text-xl text-blue-600"></i>
-                        <span class="text-sm text-[#7a8fa0]">Facebook</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div class="w-20 bg-[#e8eef7] rounded-full h-1.5">
-                            <div class="bg-blue-500 h-1.5 rounded-full" style="width: {% widthratio communication_stats.facebook total_com 100 %}%"></div>
-                        </div>
-                        <span class="text-sm font-semibold text-[#1e293b]">{{ communication_stats.facebook }}</span>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                    <div class="flex items-center gap-2">
-                        <i class="bx bx-envelope text-xl text-[#4a6fa5]"></i>
-                        <span class="text-sm text-[#7a8fa0]">Mail</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div class="w-20 bg-[#e8eef7] rounded-full h-1.5">
-                            <div class="bg-[#4a6fa5] h-1.5 rounded-full" style="width: {% widthratio communication_stats.mail total_com 100 %}%"></div>
-                        </div>
-                        <span class="text-sm font-semibold text-[#1e293b]">{{ communication_stats.mail }}</span>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                    <div class="flex items-center gap-2">
-                        <i class="bx bx-globe text-xl text-emerald-600"></i>
-                        <span class="text-sm text-[#7a8fa0]">Portail</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div class="w-20 bg-[#e8eef7] rounded-full h-1.5">
-                            <div class="bg-emerald-500 h-1.5 rounded-full" style="width: {% widthratio communication_stats.portail total_com 100 %}%"></div>
-                        </div>
-                        <span class="text-sm font-semibold text-[#1e293b]">{{ communication_stats.portail }}</span>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                    <div class="flex items-center gap-2">
-                        <i class="bx bx-news text-xl text-amber-600"></i>
-                        <span class="text-sm text-[#7a8fa0]">VDN</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div class="w-20 bg-[#e8eef7] rounded-full h-1.5">
-                            <div class="bg-amber-500 h-1.5 rounded-full" style="width: {% widthratio communication_stats.vdn total_com 100 %}%"></div>
-                        </div>
-                        <span class="text-sm font-semibold text-[#1e293b]">{{ communication_stats.vdn }}</span>
-                    </div>
-                </div>
-                {% endwith %}
-            </div>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-            <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Top 5 par inscrits</h3>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider border-b border-[#dce3ef]">
-                            <th class="pb-3">Atelier</th>
-                            <th class="pb-3">Date</th>
-                            <th class="pb-3 text-right">Inscrits</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-[#dce3ef]">
-                        {% for w in most_registered %}
-                        <tr class="hover:bg-[#f8f9fc]">
-                            <td class="py-3 font-medium text-[#1e293b] truncate max-w-[180px]">{{ w.name }}</td>
-                            <td class="py-3 text-[#7a8fa0]">{{ w.date|date:"d/m/Y" }}</td>
-                            <td class="py-3 text-right">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ w.number_registered }}</span>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-            <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Top 5 par taux de présence</h3>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider border-b border-[#dce3ef]">
-                            <th class="pb-3">Atelier</th>
-                            <th class="pb-3">Date</th>
-                            <th class="pb-3 text-right">Taux</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-[#dce3ef]">
-                        {% for w in best_attendance %}
-                        <tr class="hover:bg-[#f8f9fc]">
-                            <td class="py-3 font-medium text-[#1e293b] truncate max-w-[180px]">{{ w.name }}</td>
-                            <td class="py-3 text-[#7a8fa0]">{{ w.date|date:"d/m/Y" }}</td>
-                            <td class="py-3 text-right">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">{{ w.attendance_rate|floatformat:1 }}%</span>
-                                <span class="text-xs text-[#b0bedb] ml-1">{{ w.number_attendees }}/{{ w.number_registered }}</span>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 mb-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-            <h3 class="text-sm font-semibold text-[#1e293b]">Détail par commune</h3>
-            <div class="flex flex-wrap items-center gap-2">
-                <input type="text" id="filterCommune" placeholder="Commune..."
-                    class="border border-[#dce3ef] rounded-lg px-3 py-1.5 text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] w-36" />
-                <input type="number" id="filterMinAteliers" placeholder="Min ateliers"
-                    class="border border-[#dce3ef] rounded-lg px-3 py-1.5 text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] w-28" />
-                <button type="button" id="resetFilters"
-                    class="px-3 py-1.5 text-sm text-[#7a8fa0] border border-[#dce3ef] rounded-lg hover:bg-[#f8f9fc] transition-colors">
-                    <i class="bx bx-refresh"></i> Reset
-                </button>
-                <span id="visibleRows" class="text-xs text-[#b0bedb]">{{ commune_table_data|length }}/{{ commune_table_data|length }}</span>
-            </div>
-        </div>
-        <div class="overflow-x-auto max-h-80">
-            <table class="w-full text-sm" id="communeTable">
-                <thead class="sticky top-0 bg-[#f8f9fc]">
-                    <tr class="text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">
-                        <th class="px-2 py-3 w-8"></th>
-                        <th class="px-3 py-3 rounded-l-lg cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0]" onclick="sortTable(0)">
-                            Commune <i class="bx bx-sort ml-1"></i>
-                        </th>
-                        <th class="px-3 py-3 text-center cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0]" onclick="sortTable(1)">
-                            Total
-                        </th>
-                        <th class="px-3 py-3 text-center cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0]" onclick="sortTable(2)">
-                            Classiques
-                        </th>
-                        <th class="px-3 py-3 text-center cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0]" onclick="sortTable(3)">
-                            Accueils
-                        </th>
-                        <th class="px-3 py-3 text-center cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0] rounded-r-lg" onclick="sortTable(4)">
-                            Participants
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-[#dce3ef]">
-                    {% for commune in commune_table_data %}
-                    <tr class="hover:bg-[#f8f9fc] transition-colors commune-row" data-city="{{ commune.commune }}">
-                        <td class="px-2 py-2.5 text-center">
-                            {% if commune.workshops %}
-                            <button type="button"
-                                class="inline-flex items-center justify-center w-6 h-6 rounded-md text-[#b0bedb] hover:text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors toggle-btn"
-                                data-city="{{ commune.commune|escapejs }}"
-                                title="Voir les ateliers">
-                                <i class="bx bx-chevron-right text-sm"></i>
-                            </button>
-                            {% endif %}
-                        </td>
-                        <td class="px-3 py-2.5 font-medium text-[#1e293b]">
-                            <a href="{% url 'workshop_list' %}?year={{ selected_year }}&city={{ commune.commune|urlencode }}"
-                               target="_blank"
-                               class="hover:text-[#4a6fa5] transition-colors">
-                                {{ commune.commune }}
-                                <i class="bx bx-external-link text-[#b0bedb] text-xs align-middle ml-0.5"></i>
-                            </a>
-                        </td>
-                        <td class="px-3 py-2.5 text-center">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ commune.total_ateliers }}</span>
-                        </td>
-                        <td class="px-3 py-2.5 text-center">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-sky-50 text-sky-700">{{ commune.ateliers_classiques }}</span>
-                        </td>
-                        <td class="px-3 py-2.5 text-center">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">{{ commune.accueils_classe }}</span>
-                        </td>
-                        <td class="px-3 py-2.5 text-center">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">{{ commune.total_participants }}</span>
-                        </td>
-                    </tr>
-                    <tr class="hidden commune-detail" data-city="{{ commune.commune }}">
-                        <td colspan="6" class="px-3 py-0">
-                            <div class="bg-[#f8f9fc] border border-[#dce3ef] rounded-lg my-2 py-2 px-3">
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Ateliers {{ commune.commune }}</span>
-                                    <span class="text-xs text-[#b0bedb]">{{ commune.workshops|length }} atelier{{ commune.workshops|length|pluralize }}</span>
-                                </div>
-                                <div class="divide-y divide-[#dce3ef]">
-                                    {% for w in commune.workshops %}
-                                    <div class="flex items-center justify-between py-1.5 first:pt-0 last:pb-0">
-                                        <div class="flex items-center gap-2 min-w-0">
-                                            {% if w.class_welcome %}
-                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 shrink-0">
-                                                <i class="bx bx-chalkboard text-[10px]"></i> Classe
-                                            </span>
-                                            {% else %}
-                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#e8eef7] text-[#4a6fa5] shrink-0">
-                                                <i class="bx bx-calendar text-[10px]"></i> Atelier
-                                            </span>
-                                            {% endif %}
-                                            <a href="{% url 'workshop_detail' w.id %}" class="text-sm text-[#4a6fa5] hover:text-[#3d5f8f] truncate">{{ w.name }}</a>
-                                        </div>
-                                        <span class="text-xs text-[#b0bedb] shrink-0 ml-2">{{ w.date|date:"d/m/Y" }}</span>
-                                    </div>
-                                    {% empty %}
-                                    <div class="text-sm text-[#b0bedb] py-2 text-center">Aucun atelier</div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-4 flex items-center gap-2">
-            <i class="bx bx-analyse text-[#4a6fa5]"></i>
-            Bilan détaillé des animations {{ bilan_data.current_year }}
-        </h3>
-        <div class="bg-[#e8eef7] border border-[#dce3ef] rounded-xl p-5">
-            <div class="prose prose-sm max-w-none text-[#1e293b]">
-                <p class="text-sm leading-relaxed mb-3">
-                    L'année <strong>{{ bilan_data.current_year }}</strong> a été marquée par une activité soutenue avec
-                    <strong>{{ total_workshops }}</strong> ateliers organisés dans <strong>{{ bilan_data.total_communes }}</strong> communes,
-                    mobilisant <strong>{{ total_registered }}</strong> participants inscrits.
-                </p>
-
-                <h4 class="text-sm font-semibold text-[#4a6fa5] mb-2">Communes les plus actives</h4>
-                <ul class="list-none space-y-1 mb-3">
-                    {% for commune in bilan_data.top_communes %}
-                    <li class="text-sm flex items-center gap-2">
-                        <span class="w-1.5 h-1.5 rounded-full bg-[#4a6fa5] shrink-0"></span>
-                        <strong>{{ commune.commune }}</strong> : {{ commune.total_ateliers }} ateliers, {{ commune.total_participants }} participants
-                    </li>
-                    {% endfor %}
-                </ul>
-
-                {% if previous_year_data %}
-                <h4 class="text-sm font-semibold text-[#4a6fa5] mb-2">Évolution vs {{ bilan_data.previous_year }}</h4>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-                    <div>
-                        <p class="text-xs font-medium text-emerald-700 mb-1">En progression</p>
-                        {% for commune in commune_table_data %}
-                        {% if commune.variation_ateliers > 0 %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 mr-1 mb-1">
-                            {{ commune.commune }} +{{ commune.variation_ateliers }}
-                        </span>
-                        {% endif %}
-                        {% endfor %}
-                    </div>
-                    <div>
-                        <p class="text-xs font-medium text-[#d46a78] mb-1">En baisse</p>
-                        {% for commune in commune_table_data %}
-                        {% if commune.variation_ateliers < 0 %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-red-50 text-red-700 mr-1 mb-1">
-                            {{ commune.commune }} {{ commune.variation_ateliers }}
-                        </span>
-                        {% endif %}
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if bilan_data.communes_without_activities %}
-                <h4 class="text-sm font-semibold text-[#4a6fa5] mb-2">Communes sans activité</h4>
-                <p class="text-sm text-[#7a8fa0]">
-                    {% for commune in bilan_data.communes_without_activities %}
-                    {{ commune.commune }}{% if not forloop.last %}, {% endif %}
-                    {% endfor %}
-                </p>
-                {% endif %}
-            </div>
-        </div>
+    <div id="stats-content">
+        {% include "workshop/partials/stats_content.html" %}
     </div>
 </section>
 {% endblock %}
@@ -535,14 +84,32 @@
 {% block javascripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
-{{ workshops_by_month|json_script:"workshops-by-month" }}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+window._statsCharts = [];
+window._statsSortCol = -1;
+window._statsSortDir = 'asc';
+
+function destroyStatsCharts() {
+    if (window._statsCharts) {
+        window._statsCharts.forEach(function(c) { try { c.destroy(); } catch (e) {} });
+    }
+    window._statsCharts = [];
+}
+
+function readStatsJson(id) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    try { return JSON.parse(el.textContent); } catch (e) { return null; }
+}
+
+function initStatsCharts() {
+    destroyStatsCharts();
+    if (!window.Chart) return;
     if (window.ChartDataLabels) {
-        Chart.register(ChartDataLabels);
+        try { Chart.register(ChartDataLabels); } catch (e) {}
     }
 
-    const colors = {
+    var colors = {
         primary: '#4a6fa5',
         secondary: '#3d5f8f',
         cyan: '#06b6d4',
@@ -551,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
         red: '#d46a78'
     };
 
-    const datalabelsConfig = {
+    var datalabelsConfig = {
         color: '#fff',
         borderRadius: 3,
         font: { weight: 'bold', size: 10 },
@@ -559,14 +126,17 @@ document.addEventListener('DOMContentLoaded', function() {
         formatter: function(v) { return v > 0 ? Math.round(v) : ''; }
     };
 
+    function track(chart) { window._statsCharts.push(chart); return chart; }
+
+    var typeData = readStatsJson('stats-type');
     var typeCtx = document.getElementById('typeDistribution');
-    if (typeCtx) {
-        new Chart(typeCtx, {
+    if (typeCtx && typeData) {
+        track(new Chart(typeCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Classiques', 'Accueils de classe'],
+                labels: typeData.labels,
                 datasets: [{
-                    data: [{{ total_workshops_except_class|default:0 }}, {{ total_accueil_classe|default:0 }}],
+                    data: typeData.data,
                     backgroundColor: [colors.primary, colors.emerald],
                     borderColor: '#fff',
                     borderWidth: 2
@@ -586,24 +156,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             }
-        });
+        }));
     }
 
+    var locData = readStatsJson('stats-locations');
     var locationCtx = document.getElementById('locationStats');
-    if (locationCtx) {
-        new Chart(locationCtx, {
+    if (locationCtx && locData) {
+        track(new Chart(locationCtx, {
             type: 'bar',
             data: {
-                labels: [{% for loc in workshops_by_location %}'{{ loc.location__name|default:"Inconnu"|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                labels: locData.labels,
                 datasets: [{
                     label: 'Ateliers',
-                    data: [{% for loc in workshops_by_location %}{{ loc.count|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    data: locData.ateliers,
                     backgroundColor: colors.primary,
                     borderRadius: 6,
                     borderSkipped: false
                 }, {
                     label: 'Inscrits',
-                    data: [{% for loc in workshops_by_location %}{{ loc.total_registered|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    data: locData.inscrits,
                     backgroundColor: colors.cyan,
                     borderRadius: 6,
                     borderSkipped: false
@@ -619,24 +190,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     y: { beginAtZero: true, ticks: { precision: 0 } }
                 }
             }
-        });
+        }));
     }
 
+    var comData = readStatsJson('stats-communes');
     var communeCtx = document.getElementById('communeStats');
-    if (communeCtx) {
-        new Chart(communeCtx, {
+    if (communeCtx && comData) {
+        track(new Chart(communeCtx, {
             type: 'bar',
             data: {
-                labels: [{% for comm in workshops_by_commune %}'{{ comm.location__city|default:"Inconnu"|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                labels: comData.labels,
                 datasets: [{
                     label: 'Accueils',
-                    data: [{% for comm in workshops_by_commune %}{{ comm.class_welcome_count|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    data: comData.accueils,
                     backgroundColor: colors.amber,
                     borderRadius: 6,
                     borderSkipped: false
                 }, {
                     label: 'Classiques',
-                    data: [{% for comm in workshops_by_commune %}{{ comm.standard_count|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    data: comData.classiques,
                     backgroundColor: colors.primary,
                     borderRadius: 6,
                     borderSkipped: false
@@ -653,17 +225,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
                 }
             }
-        });
+        }));
     }
 
     var monthlyCtx = document.getElementById('monthlyStats');
-    if (monthlyCtx) {
-        var monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
-        var monthlyData = JSON.parse(document.getElementById('workshops-by-month').textContent);
-        new Chart(monthlyCtx, {
+    var monthlyData = readStatsJson('workshops-by-month');
+    if (monthlyCtx && monthlyData) {
+        track(new Chart(monthlyCtx, {
             type: 'line',
             data: {
-                labels: monthNames,
+                labels: monthlyData.map(function(m) { return m.label; }),
                 datasets: [{
                     label: 'Ateliers',
                     data: monthlyData.map(function(m) { return m.count; }),
@@ -707,97 +278,135 @@ document.addEventListener('DOMContentLoaded', function() {
                     y: { beginAtZero: true, ticks: { precision: 0 } }
                 }
             }
-        });
+        }));
     }
+}
 
-    function toggleCommune(city) {
-        var detail = document.querySelector('#communeTable tbody tr.commune-detail[data-city="' + city.replace(/"/g, '&quot;') + '"]');
-        var btn = document.querySelector('#communeTable tbody .toggle-btn[data-city="' + city.replace(/"/g, '&quot;') + '"]');
-        if (detail) {
-            detail.classList.toggle('hidden');
-            if (btn) {
-                var icon = btn.querySelector('i');
-                if (icon) {
-                    icon.className = detail.classList.contains('hidden') ? 'bx bx-chevron-right text-sm' : 'bx bx-chevron-down text-sm';
-                }
-            }
-        }
-    }
-
-    document.querySelector('#communeTable tbody').addEventListener('click', function(e) {
-        var btn = e.target.closest('.toggle-btn');
+function toggleCommune(city) {
+    var detail = document.querySelector('#communeTable tbody tr.commune-detail[data-city="' + city.replace(/"/g, '&quot;') + '"]');
+    var btn = document.querySelector('#communeTable tbody .toggle-btn[data-city="' + city.replace(/"/g, '&quot;') + '"]');
+    if (detail) {
+        detail.classList.toggle('hidden');
         if (btn) {
-            toggleCommune(btn.getAttribute('data-city'));
+            var icon = btn.querySelector('i');
+            if (icon) {
+                icon.className = detail.classList.contains('hidden') ? 'bx bx-chevron-right text-sm' : 'bx bx-chevron-down text-sm';
+            }
+        }
+    }
+}
+window.toggleCommune = toggleCommune;
+
+function updateSortIcons(col) {
+    var headers = document.querySelectorAll('#communeTable thead th');
+    headers.forEach(function(th, idx) {
+        if (idx === 0) return;
+        var icon = th.querySelector('i');
+        if (!icon) return;
+        var dataCol = idx - 1;
+        if (dataCol === col) {
+            icon.className = 'bx ' + (window._statsSortDir === 'asc' ? 'bx-sort-up' : 'bx-sort-down') + ' ml-1 text-[#4a6fa5]';
+        } else {
+            icon.className = 'bx bx-sort ml-1 text-[#b0bedb]';
         }
     });
+}
 
-    var sortCol = -1;
-    var sortDir = 'asc';
-
-    window.sortTable = function(col) {
-        var tbody = document.querySelector('#communeTable tbody');
-        var rows = Array.from(tbody.querySelectorAll('tr.commune-row'));
-        sortDir = (sortCol === col && sortDir === 'asc') ? 'desc' : 'asc';
-        sortCol = col;
-        var cellIdx = col + 1;
-        rows.sort(function(a, b) {
-            var aVal = a.cells[cellIdx].textContent.trim();
-            var bVal = b.cells[cellIdx].textContent.trim();
-            if (col === 0) return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-            return sortDir === 'asc' ? (parseInt(aVal) || 0) - (parseInt(bVal) || 0) : (parseInt(bVal) || 0) - (parseInt(aVal) || 0);
-        });
-        rows.forEach(function(r) {
-            tbody.appendChild(r);
-            var detail = r.nextElementSibling;
-            if (detail && detail.classList.contains('commune-detail')) {
-                tbody.appendChild(detail);
-            }
-        });
-        updateSortIcons(col);
-    };
-
-    function updateSortIcons(col) {
-        var headers = document.querySelectorAll('#communeTable thead th');
-        headers.forEach(function(th, idx) {
-            if (idx === 0) return;
-            var icon = th.querySelector('i');
-            if (!icon) return;
-            var dataCol = idx - 1;
-            if (dataCol === col) {
-                icon.className = 'bx ' + (sortDir === 'asc' ? 'bx-sort-up' : 'bx-sort-down') + ' ml-1 text-[#4a6fa5]';
-            } else {
-                icon.className = 'bx bx-sort ml-1 text-[#b0bedb]';
-            }
-        });
-    }
-
-    function filterTable() {
-        var filter = (document.getElementById('filterCommune').value || '').toLowerCase();
-        var minAteliers = parseInt(document.getElementById('filterMinAteliers').value) || 0;
-        var rows = document.querySelectorAll('#communeTable tbody tr.commune-row');
-        var count = 0;
-        rows.forEach(function(row) {
-            var commune = row.cells[1].textContent.toLowerCase();
-            var total = parseInt(row.cells[2].textContent) || 0;
-            var visible = commune.includes(filter) && total >= minAteliers;
-            row.style.display = visible ? '' : 'none';
-            var detail = row.nextElementSibling;
-            if (detail && detail.classList.contains('commune-detail')) {
-                detail.style.display = visible ? '' : 'none';
-            }
-            if (visible) count++;
-        });
-        document.getElementById('visibleRows').textContent = count + '/' + rows.length;
-    }
-
-    document.getElementById('filterCommune').addEventListener('input', filterTable);
-    document.getElementById('filterMinAteliers').addEventListener('input', filterTable);
-    document.getElementById('resetFilters').addEventListener('click', function() {
-        document.getElementById('filterCommune').value = '';
-        document.getElementById('filterMinAteliers').value = '';
-        filterTable();
+window.sortTable = function(col) {
+    var tbody = document.querySelector('#communeTable tbody');
+    if (!tbody) return;
+    var rows = Array.from(tbody.querySelectorAll('tr.commune-row'));
+    window._statsSortDir = (window._statsSortCol === col && window._statsSortDir === 'asc') ? 'desc' : 'asc';
+    window._statsSortCol = col;
+    var cellIdx = col + 1;
+    rows.sort(function(a, b) {
+        var aVal = a.cells[cellIdx].textContent.trim();
+        var bVal = b.cells[cellIdx].textContent.trim();
+        if (col === 0) return window._statsSortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+        return window._statsSortDir === 'asc' ? (parseInt(aVal) || 0) - (parseInt(bVal) || 0) : (parseInt(bVal) || 0) - (parseInt(aVal) || 0);
     });
-    filterTable();
+    rows.forEach(function(r) {
+        tbody.appendChild(r);
+        var detail = r.nextElementSibling;
+        if (detail && detail.classList.contains('commune-detail')) {
+            tbody.appendChild(detail);
+        }
+    });
+    updateSortIcons(col);
+};
+
+function filterCommuneTable() {
+    var input = document.getElementById('filterCommune');
+    var minInput = document.getElementById('filterMinAteliers');
+    if (!input || !minInput) return;
+    var filter = (input.value || '').toLowerCase();
+    var minAteliers = parseInt(minInput.value) || 0;
+    var rows = document.querySelectorAll('#communeTable tbody tr.commune-row');
+    var count = 0;
+    rows.forEach(function(row) {
+        var commune = row.cells[1].textContent.toLowerCase();
+        var total = parseInt(row.cells[2].textContent) || 0;
+        var visible = commune.includes(filter) && total >= minAteliers;
+        row.style.display = visible ? '' : 'none';
+        var detail = row.nextElementSibling;
+        if (detail && detail.classList.contains('commune-detail')) {
+            detail.style.display = visible ? '' : 'none';
+        }
+        if (visible) count++;
+    });
+    var counter = document.getElementById('visibleRows');
+    if (counter) counter.textContent = count + '/' + rows.length;
+}
+
+function initCommuneTable() {
+    var tbody = document.querySelector('#communeTable tbody');
+    if (tbody && !tbody.dataset.bound) {
+        tbody.dataset.bound = '1';
+        tbody.addEventListener('click', function(e) {
+            var btn = e.target.closest('.toggle-btn');
+            if (btn) {
+                toggleCommune(btn.getAttribute('data-city'));
+            }
+        });
+    }
+    var filterInput = document.getElementById('filterCommune');
+    if (filterInput && !filterInput.dataset.bound) {
+        filterInput.dataset.bound = '1';
+        filterInput.addEventListener('input', filterCommuneTable);
+    }
+    var minInput = document.getElementById('filterMinAteliers');
+    if (minInput && !minInput.dataset.bound) {
+        minInput.dataset.bound = '1';
+        minInput.addEventListener('input', filterCommuneTable);
+    }
+    var resetBtn = document.getElementById('resetFilters');
+    if (resetBtn && !resetBtn.dataset.bound) {
+        resetBtn.dataset.bound = '1';
+        resetBtn.addEventListener('click', function() {
+            document.getElementById('filterCommune').value = '';
+            document.getElementById('filterMinAteliers').value = '';
+            filterCommuneTable();
+        });
+    }
+    filterCommuneTable();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initStatsCharts();
+    initCommuneTable();
+});
+
+document.body.addEventListener('htmx:beforeSwap', function(e) {
+    if (e.detail && e.detail.target && e.detail.target.id === 'stats-content') {
+        destroyStatsCharts();
+    }
+});
+
+document.body.addEventListener('htmx:afterSwap', function(e) {
+    if (e.detail && e.detail.target && e.detail.target.id === 'stats-content') {
+        initStatsCharts();
+        initCommuneTable();
+    }
 });
 </script>
 {% endblock %}

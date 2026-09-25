@@ -18,15 +18,17 @@ def create_word_from_stats(context_data):
     # Créer un nouveau document Word
     doc = Document()
 
+    year = context_data.get("selected_year", context_data.get("current_year", ""))
+
     # Ajouter le titre principal
     doc.add_heading(
-        f'Statistiques des ateliers {context_data.get("current_year", "")}', 0
+        f'Statistiques des ateliers {year}', 0
     )
 
     # Ajouter un avertissement
     doc.add_paragraph(
         "Ces statistiques incluent tous les ateliers de l'année"
-        f" {context_data.get('current_year', '')}."
+        f" {year}."
     )
 
     # Statistiques de participation

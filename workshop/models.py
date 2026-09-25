@@ -89,6 +89,17 @@ class Workshop(models.Model):
         verbose_name = "Atelier"
         verbose_name_plural = "Ateliers"
         ordering = ["-date"]
+        indexes = [
+            models.Index(
+                fields=["date", "class_welcome"],
+                name="idx_workshop_date_class",
+            ),
+            models.Index(fields=["location", "date"], name="idx_workshop_loc_date"),
+            models.Index(
+                fields=["date", "number_registered"],
+                name="idx_workshop_date_registered",
+            ),
+        ]
 
     def __str__(self):
         """Retourner une représentation textuelle de l'atelier.

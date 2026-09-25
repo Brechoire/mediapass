@@ -6,10 +6,11 @@ Location et les formulaires associés.
 
 from datetime import date, datetime, timedelta
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from .models import Location, Workshop
 
@@ -276,3 +277,156 @@ class WorkshopDetailViewTests(TestCase):
         self.login()
         response = self.client.get(reverse("workshop_detail", args=[9999]))
         self.assertEqual(response.status_code, 404)
+
+
+class WorkshopStatsViewTests(TestCase):
+    """Tests pour la vue workshop_stats enrichie."""
+
+    def setUp(self):
+        self.loc_a = Location.objects.create(
+            name="Lieu A", address="1 Rue", city="Avesnes", zip_code="59440"
+        )
+        self.loc_b = Location.objects.create(
+            name="Lieu B", address="2 Rue", city="Fourmies", zip_code="59610"
+        )
+        self.year = 2024
+        Workshop.objects.create(
+            name="Atelier 1",
+            location=self.loc_a,
+            date=date(self.year, 3, 10),
+            start_time="09:00",
+            end_time="12:00",
+            poster_required=True,
+            number_registered=10,
+            number_attendees=8,
+            class_welcome=False,
+            instagram=True,
+        )
+        Workshop.objects.create(
+            name="Atelier zero",
+            location=self.loc_a,
+            date=date(self.year, 4, 5),
+            start_time="09:00",
+            end_time="12:00",
+            poster_required=False,
+            number_registered=0,
+            number_attendees=0,
+            class_welcome=False,
+        )
+        Workshop.objects.create(
+            name="Accueil classe",
+            location=self.loc_b,
+            date=date(self.year, 5, 20),
+            start_time="09:00",
+            end_time="12:00",
+            poster_required=False,
+            number_registered=25,
+            number_attendees=20,
+            class_welcome=True,
+        )
+        self.staff = User.objects.create_user(
+            username="staff", password="pass", is_staff=True
+        )
+        self.basic = User.objects.create_user(username="basic", password="pass")
+
+    def login_staff(self):
+        self.client.login(username="staff", password="pass")
+
+    def test_returns_200(self):
+        self.login_staff()
+        response = self.client.get(
+            reverse("workshop_stats"), {"year": self.year}
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_invalid_year_does_not_500(self):
+        self.login_staff()
+        response = self.client.get(reverse("workshop_stats"), {"year": "abc"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_year"], timezone.now().year)
+
+    def test_requires_permission(self):
+        response = self.client.get(reverse("workshop_stats"))
+        self.assertEqual(response.status_code, 302)
+        self.client.login(username="basic", password="pass")
+        response = self.client.get(reverse("workshop_stats"))
+        self.assertEqual(response.status_code, 302)
+
+    def test_comm_group_allowed(self):
+        group, _ = Group.objects.get_or_create(name="communication")
+        self.basic.groups.add(group)
+        self.client.login(username="basic", password="pass")
+        response = self.client.get(
+            reverse("workshop_stats"), {"year": self.year}
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_export_filename_uses_selected_year(self):
+        self.login_staff()
+        response = self.client.get(
+            reverse("workshop_stats"),
+            {"year": self.year, "export": "1"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            f"statistiques_ateliers_{self.year}.docx",
+            response["Content-Disposition"],
+        )
+
+    def test_new_context_keys(self):
+        self.login_staff()
+        response = self.client.get(
+            reverse("workshop_stats"), {"year": self.year}
+        )
+        for key in (
+            "presence_by_location",
+            "distribution_stats",
+            "poster_stats",
+            "channel_coverage",
+            "top_flop_communes",
+            "chart_type",
+            "chart_locations",
+            "chart_communes",
+            "stats_filter_form",
+        ):
+            self.assertIn(key, response.context)
+
+    def test_city_filter(self):
+        self.login_staff()
+        response = self.client.get(
+            reverse("workshop_stats"),
+            {"year": self.year, "city": "Avesnes"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_workshops"], 2)
+        self.assertTrue(response.context["has_active_filters"])
+
+    def test_class_welcome_filter(self):
+        self.login_staff()
+        response = self.client.get(
+            reverse("workshop_stats"),
+            {"year": self.year, "class_welcome": "yes"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_workshops"], 1)
+
+    def test_partial_endpoint(self):
+        self.login_staff()
+        response = self.client.get(
+            reverse("workshop_stats_partial"), {"year": self.year}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response, "workshop/partials/stats_content.html"
+        )
+
+    def test_top_flop_threshold(self):
+        self.login_staff()
+        response = self.client.get(
+            reverse("workshop_stats"), {"year": self.year}
+        )
+        top_flop = response.context["top_flop_communes"]
+        self.assertEqual(top_flop["min_ateliers"], 3)
+        # Avesnes n'a que 2 ateliers : exclue du top/flop
+        communes = [c["commune"] for c in top_flop["top_presence"]]
+        self.assertNotIn("Avesnes", communes)

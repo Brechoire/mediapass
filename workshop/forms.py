@@ -371,3 +371,51 @@ class WorkshopFilterForm(forms.Form):
         self.fields["city"].choices = [("", "Toutes")] + [
             (c, c) for c in cities
         ]
+
+
+class WorkshopStatsFilterForm(forms.Form):
+    """Formulaire de filtrage pour la page /atelier-stats.
+
+    Utilisé en GET pour permettre le bookmarking et le partage des URLs
+    filtrées. Les valeurs invalides retombent sur les défauts sans 500.
+    """
+
+    year = forms.IntegerField(
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="Année",
+    )
+    location = forms.ModelChoiceField(
+        required=False,
+        queryset=Location.objects.all(),
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="Lieu",
+        empty_label="Tous",
+    )
+    city = forms.ChoiceField(
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="Ville",
+    )
+    class_welcome = forms.ChoiceField(
+        required=False,
+        choices=[("", "Tous"), ("yes", "Accueils"), ("no", "Classiques")],
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="Type",
+    )
+
+    def __init__(self, *args, **kwargs):
+        """Initialise les choix dynamiques d'années et de villes."""
+        available_years = kwargs.pop("available_years", [])
+        super().__init__(*args, **kwargs)
+        self.fields["year"].widget.choices = [
+            (y, str(y)) for y in available_years
+        ]
+        cities = (
+            Location.objects.values_list("city", flat=True)
+            .distinct()
+            .order_by("city")
+        )
+        self.fields["city"].choices = [("", "Toutes")] + [
+            (c, c) for c in cities
+        ]
