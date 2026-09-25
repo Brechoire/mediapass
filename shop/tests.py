@@ -1303,6 +1303,107 @@ class ReservationCalendarViewTests(TestCase):
         response = self.client.get(reverse("reservation_calendar"))
         self.assertEqual(response.status_code, 302)
 
+    def _noon(self):
+        from django.utils import timezone
+
+        return timezone.now().replace(hour=12, minute=0, second=0, microsecond=0)
+
+    def _make_calendar_setup(self, base):
+        category = Category.objects.create(name="Cat Calendrier")
+        product = Product.objects.create(
+            name="Produit Calendrier",
+            quantity=50,
+            description="x",
+            category=category,
+            price=10,
+            status=True,
+        )
+        structure_a = Structure.objects.create(
+            name="Structure Cal A",
+            address="1 rue",
+            city="Ville",
+            email="a@t.fr",
+            zip_code="59",
+            country="FR",
+        )
+        structure_b = Structure.objects.create(
+            name="Structure Cal B",
+            address="2 rue",
+            city="Ville",
+            email="b@t.fr",
+            zip_code="59",
+            country="FR",
+        )
+        # Départs dans la journée (base = midi figé, +1h reste le même jour)
+        resa_a = Reservation.objects.create(
+            product=product,
+            start_date=base + timedelta(hours=1),
+            end_date=base + timedelta(days=2),
+            structure=structure_a,
+            quantity=2,
+            is_approved=True,
+            deposit_time=time(9, 0),
+        )
+        Reservation.objects.create(
+            product=product,
+            start_date=base + timedelta(hours=1),
+            end_date=base + timedelta(days=2),
+            structure=structure_b,
+            quantity=1,
+            is_approved=True,
+        )
+        # Retour à venir dans 5 jours (structure A, approuvée)
+        Reservation.objects.create(
+            product=product,
+            start_date=base - timedelta(days=2),
+            end_date=base + timedelta(days=5),
+            structure=structure_a,
+            quantity=1,
+            is_approved=True,
+            pickup_time=time(17, 30),
+        )
+        return structure_a, structure_b, resa_a
+
+    def _get_calendar(self, noon, **params):
+        from unittest import mock
+
+        query = "&".join(f"{k}={v}" for k, v in params.items())
+        url = reverse("reservation_calendar") + (f"?{query}" if query else "")
+        with mock.patch("django.utils.timezone.now", return_value=noon):
+            return self.client.get(url)
+
+    def test_horizon_invalid_falls_back_to_15(self):
+        self.login()
+        response = self.client.get(reverse("reservation_calendar") + "?horizon=abc")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["horizon"], 15)
+        response = self.client.get(reverse("reservation_calendar") + "?horizon=7")
+        self.assertEqual(response.context["horizon"], 7)
+
+    def test_kpis_filtered_by_structure(self):
+        noon = self._noon()
+        structure_a, _structure_b, _resa_a = self._make_calendar_setup(noon)
+        self.login()
+        response = self._get_calendar(noon, structure=structure_a.pk)
+        self.assertEqual(response.context["departures_today_count"], 1)
+        self.assertEqual(len(response.context["returns_groups"]), 2)
+        response_all = self._get_calendar(noon)
+        self.assertEqual(response_all.context["departures_today_count"], 2)
+
+    def test_grouped_lists_links_and_slots(self):
+        noon = self._noon()
+        _a, _b, resa_a = self._make_calendar_setup(noon)
+        self.login()
+        response = self._get_calendar(noon)
+        groups = response.context["departures_groups"]
+        self.assertTrue(len(groups) >= 1)
+        self.assertEqual(groups[0]["count"], 2)
+        self.assertEqual(groups[0]["units"], 3)
+        self.assertContains(response, reverse("reservation_details", args=[resa_a.pk]))
+        self.assertContains(response, "09:00")
+        self.assertContains(response, "17:30")
+        self.assertContains(response, "Aujourd'hui")
+
 
 class ReservationListViewTests(TestCase):
     """Tests pour la vue reservation_list."""

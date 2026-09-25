@@ -24,20 +24,27 @@ def create_reservation(request, product_id):
             reservation = form.save(commit=False)
             reservation.product = product
 
-            conflit = Reservation.objects.filter(
-                product=product,
-                start_date__lte=reservation.end_date,
-                end_date__gte=reservation.start_date,
-            ).exclude(pk=reservation.pk).exists()
+            conflit = (
+                Reservation.objects.filter(
+                    product=product,
+                    start_date__lte=reservation.end_date,
+                    end_date__gte=reservation.start_date,
+                )
+                .exclude(pk=reservation.pk)
+                .exists()
+            )
 
             if conflit:
                 messages.error(
-                    request, "Ce produit est d\u00e9j\u00e0 r\u00e9serv\u00e9 pour cette p\u00e9riode."
+                    request,
+                    "Ce produit est d\u00e9j\u00e0 r\u00e9serv\u00e9 pour cette p\u00e9riode.",
                 )
                 return redirect("create_reservation", product_id=product.id)
 
             reservation.save()
-            messages.success(request, "R\u00e9servation cr\u00e9\u00e9e avec succ\u00e8s.")
+            messages.success(
+                request, "R\u00e9servation cr\u00e9\u00e9e avec succ\u00e8s."
+            )
             return redirect("product_detail", product_id=product.id)
     else:
         form = ReservationForm(product=product)
@@ -60,33 +67,27 @@ def reservation_details(request, pk):
 
 @user_passes_test(is_staff_or_superuser)
 def reservation_list(request):
-    selected_year = request.GET.get('year', datetime.now().year)
-    selected_status = request.GET.get('status', '')
-    selected_structure = request.GET.get('structure', '')
+    selected_year = request.GET.get("year", datetime.now().year)
+    selected_status = request.GET.get("status", "")
+    selected_structure = request.GET.get("structure", "")
 
     try:
         selected_year = int(selected_year)
     except (ValueError, TypeError):
         selected_year = datetime.now().year
 
-    reservations = Reservation.objects.select_related(
-        "product", "structure"
-    ).all()
+    reservations = Reservation.objects.select_related("product", "structure").all()
 
     if selected_year:
-        reservations = reservations.filter(
-            start_date__year=selected_year
-        )
+        reservations = reservations.filter(start_date__year=selected_year)
 
-    if selected_status == 'approved':
+    if selected_status == "approved":
         reservations = reservations.filter(is_approved=True)
-    elif selected_status == 'pending':
+    elif selected_status == "pending":
         reservations = reservations.filter(
-            is_approved=False,
-            is_rejected=False,
-            disapproval_reason__isnull=True
+            is_approved=False, is_rejected=False, disapproval_reason__isnull=True
         )
-    elif selected_status == 'rejected':
+    elif selected_status == "rejected":
         reservations = reservations.filter(
             Q(is_rejected=True) | Q(disapproval_reason__isnull=False)
         )
@@ -105,13 +106,18 @@ def reservation_list(request):
     reservations = paginator.get_page(page_number)
 
     current_year = datetime.now().year
-    year_stats = Reservation.objects.filter(
-        start_date__year=current_year
-    ).aggregate(
+    year_stats = Reservation.objects.filter(start_date__year=current_year).aggregate(
         total=Count("id"),
         approved=Count("id", filter=Q(is_approved=True)),
-        pending=Count("id", filter=Q(is_approved=False, is_rejected=False, disapproval_reason__isnull=True)),
-        rejected=Count("id", filter=Q(is_rejected=True) | Q(disapproval_reason__isnull=False)),
+        pending=Count(
+            "id",
+            filter=Q(
+                is_approved=False, is_rejected=False, disapproval_reason__isnull=True
+            ),
+        ),
+        rejected=Count(
+            "id", filter=Q(is_rejected=True) | Q(disapproval_reason__isnull=False)
+        ),
     )
     total_reservations = year_stats["total"]
     current_year_reservations = year_stats["total"]
@@ -119,29 +125,29 @@ def reservation_list(request):
     pending_reservations = year_stats["pending"]
     rejected_reservations = year_stats["rejected"]
 
-    available_years = list(Reservation.objects.values_list(
-        'start_date__year', flat=True
-    ).distinct().order_by('-start_date__year'))
+    available_years = list(
+        Reservation.objects.values_list("start_date__year", flat=True)
+        .distinct()
+        .order_by("-start_date__year")
+    )
 
-    structures = Structure.objects.filter(
-        is_registered=True
-    ).order_by('name')
+    structures = Structure.objects.filter(is_registered=True).order_by("name")
 
     context = {
-        'reservations': reservations,
-        'page_obj': reservations,
-        'paginator': paginator,
-        'total_reservations': total_reservations,
-        'approved_reservations': approved_reservations,
-        'pending_reservations': pending_reservations,
-        'rejected_reservations': rejected_reservations,
-        'current_year_reservations': current_year_reservations,
-        'available_years': available_years,
-        'structures': structures,
-        'selected_year': selected_year,
-        'selected_status': selected_status,
-        'selected_structure': selected_structure,
-        'current_year': current_year,
+        "reservations": reservations,
+        "page_obj": reservations,
+        "paginator": paginator,
+        "total_reservations": total_reservations,
+        "approved_reservations": approved_reservations,
+        "pending_reservations": pending_reservations,
+        "rejected_reservations": rejected_reservations,
+        "current_year_reservations": current_year_reservations,
+        "available_years": available_years,
+        "structures": structures,
+        "selected_year": selected_year,
+        "selected_status": selected_status,
+        "selected_structure": selected_structure,
+        "current_year": current_year,
     }
 
     return render(request, "shop/reservation_list.html", context)
@@ -152,97 +158,132 @@ def reservation_list(request):
 def reservation_calendar(request):
     today = timezone.now()
     today_date = today.date()
-    end_date = today + timedelta(days=15)
+    tomorrow_date = today_date + timedelta(days=1)
 
-    kpi_stats = Reservation.objects.aggregate(
-        active=Count("id", filter=Q(
-            is_approved=True, start_date__date__lte=today_date,
-            end_date__date__gte=today_date
-        )),
-        departures=Count("id", filter=Q(
-            is_approved=True, start_date__date=today_date
-        )),
-        returns=Count("id", filter=Q(
-            is_approved=True, end_date__date=today_date
-        )),
-        pending=Count("id", filter=Q(
-            is_approved=False, is_rejected=False,
-            disapproval_reason__isnull=True
-        )),
+    try:
+        horizon = int(request.GET.get("horizon", 15))
+    except (ValueError, TypeError):
+        horizon = 15
+    if horizon not in (7, 15, 30):
+        horizon = 15
+    end_date = today + timedelta(days=horizon)
+
+    selected_structure = request.GET.get("structure", "")
+    selected_product = request.GET.get("product", "")
+    try:
+        structure_id = int(selected_structure) if selected_structure else None
+    except (ValueError, TypeError):
+        structure_id = None
+    try:
+        product_id = int(selected_product) if selected_product else None
+    except (ValueError, TypeError):
+        product_id = None
+
+    scoped = Reservation.objects.all()
+    if structure_id:
+        scoped = scoped.filter(structure_id=structure_id)
+    if product_id:
+        scoped = scoped.filter(product_id=product_id)
+
+    kpi_stats = scoped.aggregate(
+        active=Count(
+            "id",
+            filter=Q(
+                is_approved=True,
+                start_date__date__lte=today_date,
+                end_date__date__gte=today_date,
+            ),
+        ),
+        departures=Count("id", filter=Q(is_approved=True, start_date__date=today_date)),
+        returns=Count("id", filter=Q(is_approved=True, end_date__date=today_date)),
+        pending=Count(
+            "id",
+            filter=Q(
+                is_approved=False, is_rejected=False, disapproval_reason__isnull=True
+            ),
+        ),
     )
     active_reservations_count = kpi_stats["active"]
     departures_today_count = kpi_stats["departures"]
     returns_today_count = kpi_stats["returns"]
     pending_count = kpi_stats["pending"]
 
-    selected_structure = request.GET.get('structure', '')
-    selected_product = request.GET.get('product', '')
+    upcoming_reservations = (
+        scoped.filter(is_approved=True, start_date__gte=today, start_date__lte=end_date)
+        .select_related("product", "structure")
+        .order_by("start_date")
+    )
 
-    upcoming_reservations = Reservation.objects.filter(
-        is_approved=True,
-        start_date__gte=today,
-        start_date__lte=end_date
-    ).select_related('product', 'structure').order_by('start_date')
+    upcoming_returns = (
+        scoped.filter(is_approved=True, end_date__gte=today, end_date__lte=end_date)
+        .select_related("product", "structure")
+        .order_by("end_date")
+    )
 
-    upcoming_returns = Reservation.objects.filter(
-        is_approved=True,
-        end_date__gte=today,
-        end_date__lte=end_date
-    ).select_related('product', 'structure').order_by('end_date')
+    def _group_by_day(items, attr):
+        groups = []
+        current = None
+        for r in items:
+            day = getattr(r, attr).date()
+            if current is None or current["date"] != day:
+                current = {"date": day, "items": [], "count": 0, "units": 0}
+                groups.append(current)
+            current["items"].append(r)
+            current["count"] += 1
+            current["units"] += r.quantity
+        return groups
 
-    if selected_structure:
-        try:
-            structure_id = int(selected_structure)
-            upcoming_reservations = upcoming_reservations.filter(
-                structure_id=structure_id
-            )
-            upcoming_returns = upcoming_returns.filter(structure_id=structure_id)
-        except (ValueError, TypeError):
-            pass
+    departures_groups = _group_by_day(upcoming_reservations, "start_date")
+    returns_groups = _group_by_day(upcoming_returns, "end_date")
 
-    if selected_product:
-        try:
-            product_id = int(selected_product)
-            upcoming_reservations = upcoming_reservations.filter(
-                product_id=product_id
-            )
-            upcoming_returns = upcoming_returns.filter(product_id=product_id)
-        except (ValueError, TypeError):
-            pass
+    structure_name = ""
+    if structure_id:
+        structure = Structure.objects.filter(pk=structure_id).first()
+        structure_name = structure.name if structure else ""
+    product_name = ""
+    if product_id:
+        product = Product.objects.filter(pk=product_id).first()
+        product_name = product.name if product else ""
 
-    structures = Structure.objects.filter(is_registered=True).order_by('name')
-    products_data = Product.objects.filter(status=True).order_by('name')
+    structures = Structure.objects.filter(is_registered=True).order_by("name")
+    products_data = Product.objects.filter(status=True).order_by("name")
 
-    return render(request, "shop/reservation_calendar.html", {
-        'upcoming_reservations': upcoming_reservations,
-        'upcoming_returns': upcoming_returns,
-        'today': today,
-        'active_reservations_count': active_reservations_count,
-        'departures_today_count': departures_today_count,
-        'returns_today_count': returns_today_count,
-        'pending_count': pending_count,
-        'structures': structures,
-        'products': products_data,
-        'selected_structure': selected_structure,
-        'selected_product': selected_product,
-    })
+    return render(
+        request,
+        "shop/reservation_calendar.html",
+        {
+            "departures_groups": departures_groups,
+            "returns_groups": returns_groups,
+            "today": today,
+            "today_date": today_date,
+            "tomorrow_date": tomorrow_date,
+            "horizon": horizon,
+            "active_reservations_count": active_reservations_count,
+            "departures_today_count": departures_today_count,
+            "returns_today_count": returns_today_count,
+            "pending_count": pending_count,
+            "structures": structures,
+            "products": products_data,
+            "selected_structure": selected_structure,
+            "selected_product": selected_product,
+            "selected_structure_name": structure_name,
+            "selected_product_name": product_name,
+        },
+    )
 
 
 @login_required
 @user_passes_test(is_staff_or_superuser)
 def reservation_calendar_events(request):
-    start = request.GET.get('start')
-    end = request.GET.get('end')
-    selected_structure = request.GET.get('structure', '')
-    selected_product = request.GET.get('product', '')
+    start = request.GET.get("start")
+    end = request.GET.get("end")
+    selected_structure = request.GET.get("structure", "")
+    selected_product = request.GET.get("product", "")
 
     reservations = Reservation.objects.filter(is_approved=True)
 
     if start and end:
-        reservations = reservations.filter(
-            start_date__lte=end,
-            end_date__gte=start
-        )
+        reservations = reservations.filter(start_date__lte=end, end_date__gte=start)
 
     if selected_structure:
         try:
@@ -257,21 +298,23 @@ def reservation_calendar_events(request):
             pass
 
     events = []
-    for r in reservations.select_related('product', 'structure'):
-        color = r.structure.color if r.structure.color else '#6366f1'
-        events.append({
-            'id': r.pk,
-            'title': f"{r.product.name} - {r.structure.name}",
-            'start': r.start_date.strftime('%Y-%m-%dT%H:%M:%S'),
-            'end': r.end_date.strftime('%Y-%m-%dT%H:%M:%S'),
-            'color': color,
-            'extendedProps': {
-                'product': r.product.name,
-                'structure': r.structure.name,
-                'quantity': r.quantity,
-            },
-            'url': reverse("reservation_details", args=[r.pk]),
-        })
+    for r in reservations.select_related("product", "structure"):
+        color = r.structure.color if r.structure.color else "#6366f1"
+        events.append(
+            {
+                "id": r.pk,
+                "title": f"{r.product.name} - {r.structure.name}",
+                "start": r.start_date.strftime("%Y-%m-%dT%H:%M:%S"),
+                "end": r.end_date.strftime("%Y-%m-%dT%H:%M:%S"),
+                "color": color,
+                "extendedProps": {
+                    "product": r.product.name,
+                    "structure": r.structure.name,
+                    "quantity": r.quantity,
+                },
+                "url": reverse("reservation_details", args=[r.pk]),
+            }
+        )
 
     return JsonResponse(events, safe=False)
 
@@ -289,10 +332,15 @@ def approve_reservation(request, pk):
             reservation.is_approved = True
             reservation.save()
             from notifications.email_service import send_notification
-            send_notification("reservation_approved", {
-                "reservation": reservation,
-                "product": reservation.product,
-            }, extra_recipients=[reservation.structure.email])
+
+            send_notification(
+                "reservation_approved",
+                {
+                    "reservation": reservation,
+                    "product": reservation.product,
+                },
+                extra_recipients=[reservation.structure.email],
+            )
             messages.success(
                 request,
                 "La r\u00e9servation a \u00e9t\u00e9 approuv\u00e9e avec succ\u00e8s.",
@@ -317,17 +365,21 @@ def disapprove_reservation(request, pk):
         form = DisapprovalForm(request.POST)
         if form.is_valid():
             reservation.reject_reservation(
-                reason=form.cleaned_data["reason"],
-                comment=form.cleaned_data["comment"]
+                reason=form.cleaned_data["reason"], comment=form.cleaned_data["comment"]
             )
 
             from notifications.email_service import send_notification
-            send_notification("reservation_disapproved", {
-                "reservation": reservation,
-                "product": reservation.product,
-                "reason": form.cleaned_data["reason"],
-                "comment": form.cleaned_data["comment"],
-            }, extra_recipients=[reservation.structure.email])
+
+            send_notification(
+                "reservation_disapproved",
+                {
+                    "reservation": reservation,
+                    "product": reservation.product,
+                    "reason": form.cleaned_data["reason"],
+                    "comment": form.cleaned_data["comment"],
+                },
+                extra_recipients=[reservation.structure.email],
+            )
 
             messages.success(
                 request,
@@ -349,7 +401,10 @@ def disapprove_reservation(request, pk):
 def delete_reservation(request, pk):
     if request.method != "POST":
         from django.http import HttpResponseNotAllowed
+
         return HttpResponseNotAllowed(["POST"])
     get_object_or_404(Reservation, pk=pk).delete()
-    messages.success(request, "La r\u00e9servation a \u00e9t\u00e9 supprim\u00e9e avec succ\u00e8s.")
+    messages.success(
+        request, "La r\u00e9servation a \u00e9t\u00e9 supprim\u00e9e avec succ\u00e8s."
+    )
     return redirect("reservation_list")
