@@ -71,42 +71,39 @@ def reservation_list(request):
     selected_status = request.GET.get("status", "")
     selected_structure = request.GET.get("structure", "")
 
+    selected_product = request.GET.get("product", "")
+    search_query = request.GET.get("q", "").strip()
+
     try:
         selected_year = int(selected_year)
     except (ValueError, TypeError):
         selected_year = datetime.now().year
 
-    reservations = Reservation.objects.select_related("product", "structure").all()
+    try:
+        structure_id = int(selected_structure) if selected_structure else None
+    except (ValueError, TypeError):
+        structure_id = None
+    try:
+        product_id = int(selected_product) if selected_product else None
+    except (ValueError, TypeError):
+        product_id = None
+
+    base = Reservation.objects.select_related("product", "structure").all()
 
     if selected_year:
-        reservations = reservations.filter(start_date__year=selected_year)
-
-    if selected_status == "approved":
-        reservations = reservations.filter(is_approved=True)
-    elif selected_status == "pending":
-        reservations = reservations.filter(
-            is_approved=False, is_rejected=False, disapproval_reason__isnull=True
-        )
-    elif selected_status == "rejected":
-        reservations = reservations.filter(
-            Q(is_rejected=True) | Q(disapproval_reason__isnull=False)
+        base = base.filter(start_date__year=selected_year)
+    if structure_id:
+        base = base.filter(structure_id=structure_id)
+    if product_id:
+        base = base.filter(product_id=product_id)
+    if search_query:
+        base = base.filter(
+            Q(structure__name__icontains=search_query)
+            | Q(product__name__icontains=search_query)
         )
 
-    if selected_structure:
-        try:
-            structure_id = int(selected_structure)
-            reservations = reservations.filter(structure_id=structure_id)
-        except (ValueError, TypeError):
-            pass
-
-    reservations = reservations.order_by("-start_date")
-
-    paginator = Paginator(reservations, 25)
-    page_number = request.GET.get("page", 1)
-    reservations = paginator.get_page(page_number)
-
-    current_year = datetime.now().year
-    year_stats = Reservation.objects.filter(start_date__year=current_year).aggregate(
+    # KPI recalculés sur le périmètre filtré (année/structure/produit/recherche).
+    year_stats = base.aggregate(
         total=Count("id"),
         approved=Count("id", filter=Q(is_approved=True)),
         pending=Count(
@@ -125,6 +122,47 @@ def reservation_list(request):
     pending_reservations = year_stats["pending"]
     rejected_reservations = year_stats["rejected"]
 
+    reservations = base
+    if selected_status == "approved":
+        reservations = reservations.filter(is_approved=True)
+    elif selected_status == "pending":
+        reservations = reservations.filter(
+            is_approved=False, is_rejected=False, disapproval_reason__isnull=True
+        )
+    elif selected_status == "rejected":
+        reservations = reservations.filter(
+            Q(is_rejected=True) | Q(disapproval_reason__isnull=False)
+        )
+
+    reservations = reservations.order_by("-start_date")
+
+    paginator = Paginator(reservations, 25)
+    page_number = request.GET.get("page", 1)
+    reservations = paginator.get_page(page_number)
+
+    # Enrichissement des lignes de la page courante (lecture seule, sans save).
+    today_date = timezone.now().date()
+    for r in reservations:
+        start_day = r.start_date.date() if r.start_date else None
+        end_day = r.end_date.date() if r.end_date else None
+        if r.end_date and r.start_date and r.end_date >= r.start_date:
+            r.duration_days = round(
+                (r.end_date - r.start_date).total_seconds() / 86400, 1
+            )
+        else:
+            r.duration_days = None
+        r.is_current = bool(
+            start_day and end_day and start_day <= today_date <= end_day
+        )
+        r.days_to_start = (start_day - today_date).days if start_day else None
+        r.is_starting_soon = r.days_to_start is not None and 0 < r.days_to_start <= 7
+        r.is_finished = bool(end_day and end_day < today_date)
+
+    params = request.GET.copy()
+    params.pop("page", None)
+    query_string = params.urlencode()
+
+    current_year = datetime.now().year
     available_years = list(
         Reservation.objects.values_list("start_date__year", flat=True)
         .distinct()
@@ -132,11 +170,18 @@ def reservation_list(request):
     )
 
     structures = Structure.objects.filter(is_registered=True).order_by("name")
+    products_data = Product.objects.filter(status=True).order_by("name")
+
+    has_active_filters = bool(
+        selected_status or structure_id or product_id or search_query
+    )
 
     context = {
         "reservations": reservations,
         "page_obj": reservations,
         "paginator": paginator,
+        "query_string": query_string,
+        "total_results": paginator.count,
         "total_reservations": total_reservations,
         "approved_reservations": approved_reservations,
         "pending_reservations": pending_reservations,
@@ -144,9 +189,14 @@ def reservation_list(request):
         "current_year_reservations": current_year_reservations,
         "available_years": available_years,
         "structures": structures,
+        "products": products_data,
         "selected_year": selected_year,
         "selected_status": selected_status,
         "selected_structure": selected_structure,
+        "selected_product": selected_product,
+        "search_query": search_query,
+        "has_active_filters": has_active_filters,
+        "today_date": today_date,
         "current_year": current_year,
     }
 

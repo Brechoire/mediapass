@@ -5,74 +5,90 @@
 
 {% block content %}
 <section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
-    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="absolute inset-0 opacity-[0.08]" aria-hidden="true" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
     <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div class="flex items-start justify-between gap-4">
-            <div>
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="min-w-0">
                 <div class="flex items-center gap-3 mb-3">
-                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0"><i class="bx bx-calendar-check text-2xl text-white"></i></div>
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0" aria-hidden="true"><i class="bx bx-calendar-check text-2xl text-white"></i></div>
                     <h1 class="text-3xl sm:text-4xl font-bold text-white">Liste des réservations</h1>
                 </div>
-                <p class="text-white/70 text-sm">Gestion des réservations de ressources</p>
+                <p class="text-white/80 text-sm">Gestion des r&eacute;servations de ressources &middot; {{ total_results }} r&eacute;sultat{{ total_results|pluralize }} (ann&eacute;e {{ selected_year }})</p>
             </div>
-            <a href="{% url 'reservation_calendar' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors shrink-0">
-                <i class="bx bx-calendar text-sm"></i> Calendrier
+            <a href="{% url 'reservation_calendar' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors shrink-0 min-h-[40px]">
+                <i class="bx bx-calendar text-sm" aria-hidden="true"></i> Calendrier
             </a>
         </div>
     </div>
 </section>
 
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4">
-            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Total {{ current_year }}</p>
-            <p class="text-2xl font-bold text-[#4a6fa5] mt-1">{{ total_reservations }}</p>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" role="list" aria-label="Indicateurs sur le périmètre filtré">
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4" role="listitem">
+            <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Total {{ selected_year }}</p>
+            <p class="text-2xl font-bold text-[#2f4d75] mt-1">{{ total_reservations }}</p>
         </div>
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4">
-            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Approuvées</p>
+        <a href="?year={{ selected_year }}&status=approved&structure={{ selected_structure }}&product={{ selected_product }}&q={{ search_query|urlencode }}" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4 block hover:border-emerald-400 transition focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]" role="listitem" title="Filtrer les approuvées">
+            <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Approuv&eacute;es</p>
             <p class="text-2xl font-bold text-emerald-600 mt-1">{{ approved_reservations }}</p>
-        </div>
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4">
-            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">En attente</p>
+        </a>
+        <a href="?year={{ selected_year }}&status=pending&structure={{ selected_structure }}&product={{ selected_product }}&q={{ search_query|urlencode }}" class="bg-white rounded-2xl border {% if pending_reservations %}border-amber-300 bg-amber-50/50{% else %}border-[#dce3ef]{% endif %} shadow-sm p-4 block hover:border-amber-400 transition focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]" role="listitem" title="Filtrer les demandes en attente">
+            <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">En attente</p>
             <p class="text-2xl font-bold text-amber-600 mt-1">{{ pending_reservations }}</p>
-        </div>
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4">
-            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Refusées</p>
+        </a>
+        <a href="?year={{ selected_year }}&status=rejected&structure={{ selected_structure }}&product={{ selected_product }}&q={{ search_query|urlencode }}" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4 block hover:border-red-300 transition focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]" role="listitem" title="Filtrer les refusées">
+            <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Refus&eacute;es</p>
             <p class="text-2xl font-bold text-red-600 mt-1">{{ rejected_reservations }}</p>
-        </div>
+        </a>
     </div>
+    {% if has_active_filters %}<p class="text-xs text-[#5a6f80] -mt-3 mb-6">Indicateurs calcul&eacute;s sur le p&eacute;rim&egrave;tre filtr&eacute; (statut, structure, produit, recherche).</p>{% endif %}
 
     <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4 mb-6">
-        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <form id="filtersForm" method="get" class="grid grid-cols-1 md:grid-cols-6 gap-3">
+            <div class="md:col-span-2">
+                <label for="q" class="block text-xs font-medium text-[#5a6f80] uppercase tracking-wider mb-1.5">Recherche</label>
+                <input id="q" name="q" type="search" value="{{ search_query }}" placeholder="Structure ou produit…" autocomplete="off"
+                    class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 min-h-[40px]" />
+            </div>
             <div>
-                <label class="block text-xs font-medium text-[#b0bedb] uppercase tracking-wider mb-1.5">Année</label>
-                <select name="year" class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20">
+                <label for="fYear" class="block text-xs font-medium text-[#5a6f80] uppercase tracking-wider mb-1.5">Ann&eacute;e</label>
+                <select id="fYear" name="year" class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 min-h-[40px]">
                     {% for year in available_years %}
                     <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-[#b0bedb] uppercase tracking-wider mb-1.5">Statut</label>
-                <select name="status" class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20">
+                <label for="fStatus" class="block text-xs font-medium text-[#5a6f80] uppercase tracking-wider mb-1.5">Statut</label>
+                <select id="fStatus" name="status" class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 min-h-[40px]">
                     <option value="">Tous</option>
-                    <option value="approved" {% if selected_status == 'approved' %}selected{% endif %}>Approuvées</option>
+                    <option value="approved" {% if selected_status == 'approved' %}selected{% endif %}>Approuv&eacute;es</option>
                     <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>En attente</option>
-                    <option value="rejected" {% if selected_status == 'rejected' %}selected{% endif %}>Refusées</option>
+                    <option value="rejected" {% if selected_status == 'rejected' %}selected{% endif %}>Refus&eacute;es</option>
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-[#b0bedb] uppercase tracking-wider mb-1.5">Structure</label>
-                <select name="structure" class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20">
+                <label for="fStructure" class="block text-xs font-medium text-[#5a6f80] uppercase tracking-wider mb-1.5">Structure</label>
+                <select id="fStructure" name="structure" class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 min-h-[40px]">
                     <option value="">Toutes</option>
                     {% for s in structures %}
                     <option value="{{ s.pk }}" {% if selected_structure == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="flex items-end gap-2">
-                <button type="submit" class="w-full px-4 py-2.5 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-colors"><i class="bx bx-filter-alt"></i> Filtrer</button>
-                <a href="{% url 'reservation_list' %}" class="px-4 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-refresh"></i></a>
+            <div>
+                <label for="fProduct" class="block text-xs font-medium text-[#5a6f80] uppercase tracking-wider mb-1.5">Produit</label>
+                <select id="fProduct" name="product" class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 min-h-[40px]">
+                    <option value="">Tous</option>
+                    {% for p in products %}
+                    <option value="{{ p.pk }}" {% if selected_product == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-end gap-2 md:col-span-6">
+                <button type="submit" class="px-4 py-2.5 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-colors min-h-[40px]"><i class="bx bx-filter-alt" aria-hidden="true"></i> Filtrer</button>
+                <a href="{% url 'reservation_list' %}" class="px-4 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors min-h-[40px] inline-flex items-center" title="Réinitialiser les filtres"><i class="bx bx-refresh" aria-hidden="true"></i><span class="sr-only">R&eacute;initialiser</span></a>
+                <p class="text-sm text-[#5a6f80] ml-auto self-center" role="status">{{ total_results }} r&eacute;sultat{{ total_results|pluralize }}{% if page_obj.has_other_pages %} &middot; page {{ page_obj.number }} sur {{ paginator.num_pages }}{% endif %}</p>
             </div>
         </form>
     </div>
@@ -81,22 +97,23 @@
         {% if reservations %}
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-[#dce3ef]">
+                <caption class="sr-only">R&eacute;servations {{ selected_year }}, tri&eacute;es par d&eacute;but d&eacute;croissant</caption>
                 <thead class="bg-[#f8f9fc]">
                     <tr>
-                        <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Structure</th>
-                        <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden sm:table-cell">Produit</th>
-                        <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Début</th>
-                        <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden md:table-cell">Fin</th>
-                        <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Qté</th>
-                        <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Statut</th>
-                        <th class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Actions</th>
+                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Structure</th>
+                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider hidden sm:table-cell">Produit</th>
+                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">D&eacute;but</th>
+                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider hidden md:table-cell">Fin</th>
+                        <th scope="col" class="px-6 py-3.5 text-center text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Qt&eacute;</th>
+                        <th scope="col" class="px-6 py-3.5 text-center text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Statut</th>
+                        <th scope="col" class="px-6 py-3.5 text-center text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-[#dce3ef]">
                     {% for r in reservations %}
-                    <tr class="hover:bg-[#f8f9fc] transition-colors">
+                    <tr class="hover:bg-[#f8f9fc] transition-colors {% if r.is_current %}bg-blue-50/60{% elif r.is_finished %}opacity-60{% endif %}">
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <a href="{% url 'structure_detail' r.structure.pk %}" class="text-sm font-medium text-[#4a6fa5] hover:text-[#3d5f8f]">{{ r.structure.name|truncatechars:25 }}</a>
+                            <a href="{% url 'structure_detail' r.structure.pk %}" class="text-sm font-medium text-[#4a6fa5] hover:text-[#3d5f8f] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5] rounded">{{ r.structure.name|truncatechars:25 }}</a>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                             <div class="flex items-center gap-2">
@@ -104,38 +121,63 @@
                                 <span class="text-sm text-[#5a6f80]">{{ r.product.name|truncatechars:15 }}</span>
                             </div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80] font-mono">{{ r.start_date|date:"d/m/Y" }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80] font-mono hidden md:table-cell">{{ r.end_date|date:"d/m/Y" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80] font-mono">{{ r.start_date|date:"d/m/Y" }} <span class="text-xs">{{ r.start_date|date:"H:i" }}</span>
+                            {% if r.is_current %}<span class="ml-1 text-xs font-semibold text-blue-700">En cours</span>
+                            {% elif r.is_starting_soon %}<span class="ml-1 text-xs font-semibold text-[#4a6fa5]">(J+{{ r.days_to_start }})</span>{% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80] font-mono hidden md:table-cell">{{ r.end_date|date:"d/m/Y" }} <span class="text-xs">{{ r.end_date|date:"H:i" }}</span>
+                            {% if r.duration_days %}<span class="ml-1 text-xs text-[#9fb0c3]">&middot; {{ r.duration_days|floatformat:1 }} j</span>{% endif %}
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center"><span class="text-xs font-medium bg-[#e8eef7] text-[#4a6fa5] px-2 py-0.5 rounded-full">{{ r.quantity }}</span></td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
                             {% if r.is_approved %}
-                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span> Approuvée</span>
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full" aria-hidden="true"></span> Approuv&eacute;e</span>
                             {% elif r.is_rejected or r.disapproval_reason %}
-                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200"><span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span> Refusée</span>
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200"><span class="w-1.5 h-1.5 bg-red-500 rounded-full" aria-hidden="true"></span> Refus&eacute;e</span>
                             {% else %}
-                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200"><span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span> En attente</span>
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200"><span class="w-1.5 h-1.5 bg-amber-500 rounded-full" aria-hidden="true"></span> En attente</span>
                             {% endif %}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
                             <div class="flex items-center justify-center gap-1">
-                                <a href="{% url 'reservation_details' r.pk %}" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#b0bedb] hover:bg-[#e8eef7] hover:text-[#4a6fa5] transition-colors" title="Voir"><i class="bx bx-show text-sm"></i></a>
+                                <a href="{% url 'reservation_details' r.pk %}" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#5a6f80] hover:bg-[#e8eef7] hover:text-[#4a6fa5] transition-colors" title="Voir" aria-label="Voir la réservation"><i class="bx bx-show text-sm" aria-hidden="true"></i></a>
                                 {% if not r.is_approved and not r.is_rejected and not r.disapproval_reason %}
-                                <a href="{% url 'approve_reservation' r.pk %}" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#b0bedb] hover:bg-emerald-50 hover:text-emerald-600 transition-colors" title="Approuver"><i class="bx bx-check text-sm"></i></a>
-                                <a href="{% url 'disapprove_reservation' r.pk %}" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#b0bedb] hover:bg-amber-50 hover:text-amber-600 transition-colors" title="Désapprouver"><i class="bx bx-x text-sm"></i></a>
+                                <a href="{% url 'approve_reservation' r.pk %}" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#5a6f80] hover:bg-emerald-50 hover:text-emerald-600 transition-colors" title="Approuver" aria-label="Approuver la réservation"><i class="bx bx-check text-sm" aria-hidden="true"></i></a>
+                                <a href="{% url 'disapprove_reservation' r.pk %}" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#5a6f80] hover:bg-amber-50 hover:text-amber-600 transition-colors" title="Désapprouver" aria-label="Désapprouver la réservation"><i class="bx bx-x text-sm" aria-hidden="true"></i></a>
                                 {% endif %}
-                                <a href="{% url 'delete_reservation' r.pk %}" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#b0bedb] hover:bg-red-50 hover:text-red-600 transition-colors" title="Supprimer" onclick="return confirm('Êtes-vous sûr ?');"><i class="bx bx-trash text-sm"></i></a>
+                                <a href="{% url 'delete_reservation' r.pk %}" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#5a6f80] hover:bg-red-50 hover:text-red-600 transition-colors" title="Supprimer" aria-label="Supprimer la réservation" onclick="return confirm('Êtes-vous sûr ?');"><i class="bx bx-trash text-sm" aria-hidden="true"></i></a>
                             </div>
                         </td>
                     </tr>
-                    {% empty %}
-                    <tr><td colspan="7" class="px-6 py-20 text-center">
-                        <div class="w-16 h-16 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4"><i class="bx bx-calendar-x text-3xl text-[#4a6fa5]"></i></div>
-                        <h3 class="text-lg font-semibold text-[#4a6fa5] mb-1">Aucune réservation</h3>
-                        <p class="text-[#b0bedb] text-sm">Aucune réservation ne correspond aux critères.</p>
-                    </td></tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="Pagination des réservations" class="flex flex-wrap items-center justify-center gap-1.5 px-4 py-4 border-t border-[#dce3ef]">
+            {% if page_obj.has_previous %}
+            <a href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.previous_page_number }}" class="px-3 py-2 rounded-lg border border-[#dce3ef] text-sm text-[#4a6fa5] hover:bg-[#e8eef7] min-h-[40px] inline-flex items-center" aria-label="Page précédente">&larr;</a>
+            {% endif %}
+            {% for num in paginator.page_range %}
+                {% if num == page_obj.number %}
+                <span class="px-3 py-2 rounded-lg bg-[#4a6fa5] text-white text-sm font-medium min-h-[40px] inline-flex items-center" aria-current="page">{{ num }}</span>
+                {% elif num <= 2 or num > paginator.num_pages|add:"-2" or num == page_obj.number|add:"-1" or num == page_obj.number|add:"1" %}
+                <a href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ num }}" class="px-3 py-2 rounded-lg border border-[#dce3ef] text-sm text-[#4a6fa5] hover:bg-[#e8eef7] min-h-[40px] inline-flex items-center">{{ num }}</a>
+                {% elif num == 3 and page_obj.number > 4 or num == paginator.num_pages|add:"-2" and page_obj.number < paginator.num_pages|add:"-3" %}
+                <span class="px-1 text-[#9fb0c3]" aria-hidden="true">&hellip;</span>
+                {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+            <a href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}" class="px-3 py-2 rounded-lg border border-[#dce3ef] text-sm text-[#4a6fa5] hover:bg-[#e8eef7] min-h-[40px] inline-flex items-center" aria-label="Page suivante">&rarr;</a>
+            {% endif %}
+        </nav>
+        {% endif %}
+        {% else %}
+        <div class="px-6 py-20 text-center">
+            <div class="w-16 h-16 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4" aria-hidden="true"><i class="bx bx-calendar-x text-3xl text-[#4a6fa5]"></i></div>
+            <h2 class="text-lg font-semibold text-[#1e293b] mb-1">Aucune r&eacute;servation</h2>
+            <p class="text-[#5a6f80] text-sm mb-4">Aucune r&eacute;servation ne correspond{% if has_active_filters %} aux filtres actifs{% endif %}.</p>
+            {% if has_active_filters %}<a href="{% url 'reservation_list' %}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] min-h-[40px]">R&eacute;initialiser les filtres</a>{% endif %}
         </div>
         {% endif %}
     </div>
@@ -145,7 +187,8 @@
 {% block javascripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('select').forEach(s => s.addEventListener('change', function() { this.closest('form').submit(); }));
+    var form = document.getElementById('filtersForm');
+    if (form) form.querySelectorAll('select').forEach(function(s) { s.addEventListener('change', function() { form.submit(); }); });
 });
 </script>
 {% endblock %}

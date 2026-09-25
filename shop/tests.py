@@ -1444,3 +1444,133 @@ class ReservationListViewTests(TestCase):
     def test_redirects_when_not_logged_in(self):
         response = self.client.get(reverse("reservation_list"))
         self.assertEqual(response.status_code, 302)
+
+    def _make_list_setup(self):
+        from django.utils import timezone
+
+        now = timezone.now()
+        category = Category.objects.create(name="Cat Liste")
+        product = Product.objects.create(
+            name="Produit Liste Unique",
+            quantity=50,
+            description="x",
+            category=category,
+            price=10,
+            status=True,
+        )
+        structure = Structure.objects.create(
+            name="Structure Liste",
+            address="1 rue",
+            city="Ville",
+            email="l@t.fr",
+            zip_code="59",
+            country="FR",
+        )
+        resa = Reservation.objects.create(
+            product=product,
+            start_date=now - timedelta(days=1),
+            end_date=now + timedelta(days=2),
+            structure=structure,
+            quantity=3,
+            is_approved=True,
+        )
+        return product, structure, resa
+
+    def test_search_filters_results(self):
+        _product, _structure, resa = self._make_list_setup()
+        year = resa.start_date.year
+        self.login()
+        response = self.client.get(
+            reverse("reservation_list") + f"?year={year}&q=Unique"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_results"], 1)
+        response = self.client.get(
+            reverse("reservation_list") + f"?year={year}&q=ZZZINTROUVABLE"
+        )
+        self.assertEqual(response.context["total_results"], 0)
+        self.assertContains(response, "initialiser les filtres")
+
+    def test_product_filter(self):
+        product, _structure, resa = self._make_list_setup()
+        year = resa.start_date.year
+        self.login()
+        response = self.client.get(
+            reverse("reservation_list") + f"?year={year}&product={product.pk}"
+        )
+        self.assertEqual(response.context["total_results"], 1)
+        response = self.client.get(
+            reverse("reservation_list") + f"?year={year}&product=999999"
+        )
+        self.assertEqual(response.context["total_results"], 0)
+
+    def test_kpis_follow_filters(self):
+        product, _structure, resa = self._make_list_setup()
+        year = resa.start_date.year
+        self.login()
+        response = self.client.get(
+            reverse("reservation_list") + f"?year={year}&product={product.pk}"
+        )
+        self.assertEqual(response.context["total_reservations"], 1)
+        self.assertEqual(response.context["approved_reservations"], 1)
+        response = self.client.get(
+            reverse("reservation_list") + f"?year={year}&product=999999"
+        )
+        self.assertEqual(response.context["total_reservations"], 0)
+
+    def test_row_enrichment_and_pagination_context(self):
+        _product, _structure, resa = self._make_list_setup()
+        year = resa.start_date.year
+        self.login()
+        response = self.client.get(reverse("reservation_list") + f"?year={year}")
+        page = list(response.context["reservations"])
+        self.assertEqual(len(page), 1)
+        row = page[0]
+        self.assertTrue(row.is_current)
+        self.assertEqual(row.duration_days, 3.0)
+        self.assertNotIn("page=", response.context["query_string"])
+        self.assertIn(f"year={year}", response.context["query_string"])
+        self.assertContains(response, "En cours")
+        self.assertContains(response, "j</span>", html=False)
+
+    def test_pagination_second_page(self):
+        from django.utils import timezone
+
+        category = Category.objects.create(name="Cat Pagination")
+        product = Product.objects.create(
+            name="Produit Pagination",
+            quantity=500,
+            description="x",
+            category=category,
+            price=10,
+            status=True,
+        )
+        structure = Structure.objects.create(
+            name="Structure Pagination",
+            address="1 rue",
+            city="Ville",
+            email="p@t.fr",
+            zip_code="59",
+            country="FR",
+        )
+        now = timezone.now()
+        year = now.year
+        for i in range(26):
+            Reservation.objects.create(
+                product=product,
+                start_date=timezone.make_aware(timezone.datetime(year, 1, 1))
+                + timedelta(days=i),
+                end_date=timezone.make_aware(timezone.datetime(year, 1, 2))
+                + timedelta(days=i),
+                structure=structure,
+                quantity=1,
+            )
+        self.login()
+        response = self.client.get(reverse("reservation_list") + f"?year={year}")
+        self.assertContains(response, "sur 2")
+        self.assertContains(response, "Pagination des r")
+        response2 = self.client.get(
+            reverse("reservation_list") + f"?year={year}&page=2"
+        )
+        self.assertEqual(response2.status_code, 200)
+        self.assertEqual(len(list(response2.context["reservations"])), 1)
