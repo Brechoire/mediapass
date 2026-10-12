@@ -39,7 +39,12 @@ class ReservationAdmin(admin.ModelAdmin):
         "quantity",
         "deposit_time",
         "pickup_time",
+        "is_approved",
+        "reminder_sent",
+        "arrival_reminder_sent",
     )
+    list_filter = ("is_approved", "reminder_sent", "arrival_reminder_sent")
+    readonly_fields = ("reminder_sent", "arrival_reminder_sent")
 
 
 admin.site.register(Product, ProductAdmin)

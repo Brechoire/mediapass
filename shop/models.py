@@ -153,7 +153,13 @@ class Reservation(models.Model):
     reminder_sent = models.BooleanField(
         default=False,
         verbose_name="Rappel envoyé",
-        help_text="Indique si le rappel J-1 a été envoyé pour cette réservation",
+        help_text="Indique si le rappel J-1 de fin a été envoyé pour cette réservation",
+        db_index=True
+    )
+    arrival_reminder_sent = models.BooleanField(
+        default=False,
+        verbose_name="Rappel arrivée envoyé",
+        help_text="Indique si le rappel J-1 d'arrivée a été envoyé pour cette réservation",
         db_index=True
     )
     deposit_time = models.TimeField(null=True)

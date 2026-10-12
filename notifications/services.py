@@ -62,6 +62,50 @@ def send_reservation_reminder_email(reservation, recipients):
         return False
 
 
+def send_reservation_arrival_reminder_email(reservation, recipients):
+    """Envoie un email de rappel pour une réservation commençant demain.
+
+    Args:
+        reservation: Instance du modèle Reservation
+        recipients: Liste des adresses email destinataires
+
+    Returns:
+        bool: True si l'email a été envoyé avec succès, False sinon
+    """
+    if not recipients:
+        return False
+
+    subject = "Rappel : Réservation qui commence demain"
+    from_email = settings.DEFAULT_FROM_EMAIL
+
+    context = {
+        "reservation": reservation,
+        "product": reservation.product,
+        "structure": reservation.structure,
+    }
+
+    html_content = render_to_string(
+        "notifications/reservation_arrival_reminder_email.html",
+        context,
+    )
+    text_content = strip_tags(html_content)
+
+    email = EmailMultiAlternatives(
+        subject,
+        text_content,
+        from_email,
+        recipients,
+    )
+    email.attach_alternative(html_content, "text/html")
+
+    try:
+        email.send()
+        return True
+    except Exception as e:
+        logger.error("Erreur lors de l'envoi de l'email de rappel d'arrivée: %s", e)
+        return False
+
+
 def send_workshop_reminder_email(workshop, participants, recipients):
     """Envoie un email de rappel J-1 pour un atelier.
 

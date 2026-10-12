@@ -4,7 +4,8 @@ Cette application gère les notifications par email, notamment les rappels de r�
 
 ## Fonctionnalités
 
-- **Rappels de réservation J-1** : Envoi automatique d'emails de rappel pour les réservations se terminant le lendemain
+- **Rappels de réservation J-1 arrivée** : Envoi automatique d'emails de rappel pour les réservations commençant le lendemain
+- **Rappels de réservation J-1 fin** : Envoi automatique d'emails de rappel pour les réservations se terminant le lendemain
 - **Gestion dynamique des destinataires** : Ajout/modification/suppression des adresses email via l'interface d'administration Django
 - **Historique des rappels** : Suivi de tous les rappels envoyés
 
@@ -53,8 +54,10 @@ python manage.py send_reservation_reminders
 ## Utilisation
 
 La commande `send_reservation_reminders` :
-- Récupère toutes les réservations approuvées qui se terminent demain
-- Vérifie qu'aucun rappel n'a déjà été envoyé
+- Récupère toutes les réservations approuvées qui commencent demain (arrivée)
+- Récupère toutes les réservations approuvées qui se terminent demain (fin)
+- Une réservation d'un seul jour (début et fin demain) ne reçoit qu'un seul email arrivée
+- Vérifie qu'aucun rappel n'a déjà été envoyé (flags `arrival_reminder_sent` / `reminder_sent`)
 - Envoie un email à tous les destinataires actifs
 - Marque les réservations comme ayant reçu un rappel
 - Crée un historique dans la base de données

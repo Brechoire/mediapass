@@ -56,10 +56,11 @@ class ReservationReminderAdmin(admin.ModelAdmin):
 
     list_display = (
         "reservation",
+        "kind",
         "sent_at",
         "recipients",
     )
-    list_filter = ("sent_at",)
+    list_filter = ("kind", "sent_at")
     search_fields = (
         "reservation__product__name",
         "reservation__structure__name",
@@ -67,6 +68,7 @@ class ReservationReminderAdmin(admin.ModelAdmin):
     )
     readonly_fields = (
         "reservation",
+        "kind",
         "sent_at",
         "recipients",
     )

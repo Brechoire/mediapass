@@ -138,6 +138,13 @@ class ReservationReminder(models.Model):
         verbose_name="Destinataires",
         help_text="Liste des adresses email ayant reçu le rappel",
     )
+    kind = models.CharField(
+        max_length=10,
+        choices=[("arrival", "Arrivée"), ("ending", "Fin")],
+        default="ending",
+        verbose_name="Type de rappel",
+        db_index=True,
+    )
 
     class Meta:
         verbose_name = "Rappel de réservation"
