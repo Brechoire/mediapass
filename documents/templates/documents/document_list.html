@@ -1,0 +1,228 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Documents | {{ block.super }}{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="bx bx-file text-2xl text-white"></i>
+                    </div>
+                    <h1 class="text-3xl sm:text-4xl font-bold text-white">Documents</h1>
+                </div>
+                <p class="text-white/70 text-sm mb-4">Règlements, formulaires et documents utiles du réseau.</p>
+                <div class="flex flex-wrap gap-3">
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 text-white/90 text-sm">
+                        <i class="bx bx-file-blank text-sm"></i>
+                        {{ documents_count }} document{{ documents_count|pluralize }}
+                    </div>
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 text-white/90 text-sm">
+                        <i class="bx bx-category text-sm"></i>
+                        {{ categories|length }} catégorie{{ categories|length|pluralize }}
+                    </div>
+                </div>
+            </div>
+            {% if user.is_superuser %}
+            <a href="{% url 'documents:document_manage' %}"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors shrink-0">
+                <i class="bx bx-cog text-sm"></i> Gérer les documents
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+{% if documents_count %}
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div class="relative flex-1">
+                <i class="bx bx-search absolute left-3.5 top-1/2 -translate-y-1/2 text-[#b0bedb] text-lg"></i>
+                <input type="text" id="searchDocument" placeholder="Rechercher un document..."
+                    class="w-full pl-10 pr-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all" />
+            </div>
+            <div class="text-sm text-[#b0bedb] sm:text-right" id="documentCount">
+                {{ documents_count }} document{{ documents_count|pluralize }}
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {% if documents_count %}
+        {% for category in categories %}
+        <div class="document-section mb-12" data-section>
+            <div class="flex items-center gap-3 mb-5">
+                <div class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center shrink-0">
+                    <i class="bx {{ category.icon }} text-xl text-[#4a6fa5]"></i>
+                </div>
+                <div class="min-w-0">
+                    <h2 class="text-xl font-semibold text-[#1e293b]">{{ category.name }}</h2>
+                    {% if category.description %}
+                    <p class="text-sm text-[#7a8fa0]">{{ category.description }}</p>
+                    {% endif %}
+                </div>
+                <span class="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5] shrink-0">
+                    <i class="bx bx-file-blank text-xs"></i> {{ category.published_count }} document{{ category.published_count|pluralize }}
+                </span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {% for document in category.documents.all %}
+                <div class="document-item h-full" data-search="{{ document.title|lower }} {{ document.description|lower }} {{ category.name|lower }}">
+                    <div class="h-full flex flex-col bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                        <div class="p-5 flex-1">
+                            <div class="flex items-start gap-4">
+                                <div class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+                                    <i class="bx bxs-file-pdf text-2xl text-red-500"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <h3 class="text-base font-semibold text-[#1e293b] leading-snug">{{ document.title }}</h3>
+                                    {% if document.description %}
+                                    <p class="text-sm text-[#7a8fa0] leading-relaxed mt-1.5 line-clamp-2">{{ document.description }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="px-5 pb-5">
+                            <div class="flex items-center gap-3 text-xs text-[#b0bedb] mb-4 pt-4 border-t border-[#dce3ef]">
+                                <span class="inline-flex items-center gap-1">
+                                    <i class="bx bx-calendar"></i> Mis à jour le {{ document.updated_at|date:"d/m/Y" }}
+                                </span>
+                                <span class="inline-flex items-center gap-1 ml-auto">
+                                    <i class="bx bx-hdd"></i> {{ document.file.size|filesizeformat }}
+                                </span>
+                            </div>
+                            <a href="{{ document.file.url }}" download
+                                class="inline-flex items-center justify-center w-full gap-2 px-4 py-2.5 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-colors">
+                                <i class="bx bx-download"></i> Télécharger le PDF
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if uncategorized_documents %}
+        <div class="document-section mb-12" data-section>
+            <div class="flex items-center gap-3 mb-5">
+                <div class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center shrink-0">
+                    <i class="bx bx-folder-open text-xl text-[#4a6fa5]"></i>
+                </div>
+                <div class="min-w-0">
+                    <h2 class="text-xl font-semibold text-[#1e293b]">Autres documents</h2>
+                    <p class="text-sm text-[#7a8fa0]">Documents non classés dans une catégorie.</p>
+                </div>
+                <span class="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5] shrink-0">
+                    <i class="bx bx-file-blank text-xs"></i> {{ uncategorized_documents|length }} document{{ uncategorized_documents|length|pluralize }}
+                </span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {% for document in uncategorized_documents %}
+                <div class="document-item h-full" data-search="{{ document.title|lower }} {{ document.description|lower }}">
+                    <div class="h-full flex flex-col bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                        <div class="p-5 flex-1">
+                            <div class="flex items-start gap-4">
+                                <div class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+                                    <i class="bx bxs-file-pdf text-2xl text-red-500"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <h3 class="text-base font-semibold text-[#1e293b] leading-snug">{{ document.title }}</h3>
+                                    {% if document.description %}
+                                    <p class="text-sm text-[#7a8fa0] leading-relaxed mt-1.5 line-clamp-2">{{ document.description }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="px-5 pb-5">
+                            <div class="flex items-center gap-3 text-xs text-[#b0bedb] mb-4 pt-4 border-t border-[#dce3ef]">
+                                <span class="inline-flex items-center gap-1">
+                                    <i class="bx bx-calendar"></i> Mis à jour le {{ document.updated_at|date:"d/m/Y" }}
+                                </span>
+                                <span class="inline-flex items-center gap-1 ml-auto">
+                                    <i class="bx bx-hdd"></i> {{ document.file.size|filesizeformat }}
+                                </span>
+                            </div>
+                            <a href="{{ document.file.url }}" download
+                                class="inline-flex items-center justify-center w-full gap-2 px-4 py-2.5 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-colors">
+                                <i class="bx bx-download"></i> Télécharger le PDF
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div id="emptySearch" class="hidden text-center py-20">
+            <div class="w-16 h-16 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4">
+                <i class="bx bx-search-alt text-3xl text-[#4a6fa5]"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-[#4a6fa5] mb-1">Aucun résultat</h3>
+            <p class="text-[#7a8fa0] text-sm">Essayez de modifier votre recherche.</p>
+        </div>
+    {% else %}
+    <div class="text-center py-20">
+        <div class="w-16 h-16 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4">
+            <i class="bx bx-file text-3xl text-[#4a6fa5]"></i>
+        </div>
+        <h3 class="text-xl font-semibold text-[#4a6fa5] mb-2">Aucun document disponible</h3>
+        <p class="text-[#7a8fa0]">Les documents seront bientôt ajoutés.</p>
+        {% if user.is_superuser %}
+        <a href="{% url 'documents:document_manage' %}"
+            class="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-xl bg-[#4a6fa5] text-white font-medium text-sm hover:bg-[#3d5f8f] transition-colors shadow-sm">
+            <i class="bx bx-plus"></i> Ajouter un document
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchDocument');
+    const countLabel = document.getElementById('documentCount');
+    const emptySearch = document.getElementById('emptySearch');
+    const items = Array.from(document.querySelectorAll('.document-item'));
+    const sections = Array.from(document.querySelectorAll('.document-section'));
+
+    if (!searchInput) return;
+
+    function filterDocuments() {
+        const searchVal = searchInput.value.trim().toLowerCase();
+        let visibleCount = 0;
+
+        items.forEach(function(item) {
+            const matches = !searchVal || item.dataset.search.includes(searchVal);
+            item.style.display = matches ? '' : 'none';
+            if (matches) visibleCount++;
+        });
+
+        sections.forEach(function(section) {
+            const hasVisible = Array.from(section.querySelectorAll('.document-item'))
+                .some(function(item) { return item.style.display !== 'none'; });
+            section.style.display = hasVisible ? '' : 'none';
+        });
+
+        if (countLabel) {
+            countLabel.textContent = visibleCount + ' document' + (visibleCount > 1 ? 's' : '');
+        }
+        if (emptySearch) {
+            emptySearch.classList.toggle('hidden', visibleCount > 0);
+        }
+    }
+
+    searchInput.addEventListener('input', filterDocuments);
+});
+</script>
+{% endblock %}

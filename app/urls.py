@@ -23,6 +23,7 @@ urlpatterns = [
     path("distribution/", include("distribution.urls")),
     path("newsletter/", include("newsletter.urls")),
     path("notifications/admin/", include("notifications.urls")),
+    path("documents/", include("documents.urls")),
 ]
 
 if settings.DEBUG:

@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     "notifications",
     "visitor_tracking",
     "newsletter",
+    "documents",
 ]
 
 MIDDLEWARE = [

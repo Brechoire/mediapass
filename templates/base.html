@@ -93,6 +93,13 @@ data-template="vertical-menu-template-free"
                         {% endfor %}
                     </li>
                     
+                    <li>
+                        <a href="{% url 'documents:document_list' %}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                            <i class="bx bx-file text-[20px]" aria-hidden="true"></i>
+                            <span>Documents</span>
+                        </a>
+                    </li>
+                    
                     {% if user.is_authenticated %}
                     
                     <li class="px-3 pt-6 pb-1 text-[11px] font-semibold tracking-wider uppercase text-gray-400">Divers</li>

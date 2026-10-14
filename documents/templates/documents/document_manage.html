@@ -1,0 +1,229 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Gestion des documents | {{ block.super }}{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="bx bx-cog text-2xl text-white"></i>
+                    </div>
+                    <h1 class="text-3xl sm:text-4xl font-bold text-white">Gestion des documents</h1>
+                </div>
+                <p class="text-white/70 text-sm">Ajoutez, organisez et publiez les PDF de la page Documents.</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="{% url 'documents:document_list' %}"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    <i class="bx bx-show text-sm"></i> Voir la page publique
+                </a>
+                <a href="{% url 'documents:document_create' %}"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-[#3d5f8f] text-sm font-medium hover:bg-[#e8eef7] transition-colors">
+                    <i class="bx bx-plus text-sm"></i> Nouveau document
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4">
+        <form method="get" class="md:flex md:items-center gap-3">
+            <div class="relative flex-1">
+                <i class="bx bx-search absolute left-3.5 top-1/2 -translate-y-1/2 text-[#b0bedb] text-lg"></i>
+                <input type="text" name="q" value="{{ q }}" placeholder="Rechercher un document..."
+                    class="w-full pl-10 pr-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all" />
+            </div>
+            <div class="mt-3 md:mt-0 md:w-64">
+                <select name="category"
+                    class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all">
+                    <option value="">Toutes les catégories</option>
+                    <option value="none" {% if selected_category == 'none' %}selected{% endif %}>Sans catégorie</option>
+                    {% for category in categories %}
+                    <option value="{{ category.pk }}" {% if selected_category == category.pk|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-center gap-2 mt-3 md:mt-0">
+                <button type="submit"
+                    class="px-4 py-2.5 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-colors">
+                    <i class="bx bx-filter-alt"></i> Filtrer
+                </button>
+                {% if q or selected_category %}
+                <a href="{% url 'documents:document_manage' %}"
+                    class="px-4 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors whitespace-nowrap">
+                    <i class="bx bx-x"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {% if messages %}
+    <div class="space-y-3 mb-6">
+        {% for message in messages %}
+        <div role="alert" class="flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm {% if message.tags == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-800{% elif message.tags == 'error' %}bg-red-50 border-red-200 text-red-700{% elif message.tags == 'warning' %}bg-amber-50 border-amber-200 text-amber-800{% else %}bg-[#e8eef7] border-[#dce3ef] text-[#4a6fa5]{% endif %}">
+            <i class="bx {% if message.tags == 'success' %}bx-check-circle{% elif message.tags == 'error' %}bx-error-circle{% elif message.tags == 'warning' %}bx-error{% else %}bx-info-circle{% endif %} text-base mt-0.5 shrink-0"></i>
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h2 class="font-semibold text-[#1e293b]">
+                <i class="bx bx-file mr-1.5"></i> Documents
+                <span class="text-[#b0bedb] font-normal">({{ documents|length }})</span>
+            </h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-[#f8f9fc] text-left text-xs uppercase tracking-wider text-[#b0bedb]">
+                        <th class="px-6 py-3 font-semibold">Titre</th>
+                        <th class="px-4 py-3 font-semibold">Catégorie</th>
+                        <th class="px-4 py-3 font-semibold">Ordre</th>
+                        <th class="px-4 py-3 font-semibold">Statut</th>
+                        <th class="px-4 py-3 font-semibold">Modifié le</th>
+                        <th class="px-6 py-3 font-semibold text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#dce3ef]">
+                    {% for document in documents %}
+                    <tr class="hover:bg-[#f8f9fc] transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <i class="bx bxs-file-pdf text-xl text-red-500 shrink-0"></i>
+                                <div class="min-w-0">
+                                    <p class="font-medium text-[#1e293b]">{{ document.title }}</p>
+                                    {% if document.description %}
+                                    <p class="text-xs text-[#b0bedb] truncate max-w-xs">{{ document.description }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 text-[#7a8fa0]">{{ document.category.name|default:"—" }}</td>
+                        <td class="px-4 py-4 text-[#7a8fa0]">{{ document.display_order }}</td>
+                        <td class="px-4 py-4">
+                            {% if document.is_published %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">Publié</span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">Brouillon</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-4 text-[#7a8fa0] whitespace-nowrap">{{ document.updated_at|date:"d/m/Y H:i" }}</td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ document.file.url }}" target="_blank" rel="noopener"
+                                    class="p-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors" title="Ouvrir le PDF">
+                                    <i class="bx bx-show"></i>
+                                </a>
+                                <a href="{% url 'documents:document_update' document.pk %}"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#dce3ef] text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors whitespace-nowrap">
+                                    <i class="bx bx-edit"></i> Modifier
+                                </a>
+                                <form method="post" action="{% url 'documents:document_delete' document.pk %}"
+                                    onsubmit="return confirm('Supprimer le document « {{ document.title|escapejs }} » ?');">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors whitespace-nowrap">
+                                        <i class="bx bx-trash"></i> Supprimer
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-[#b0bedb]">
+                            <i class="bx bx-file text-3xl block mb-2"></i>
+                            Aucun document{% if q or selected_category %} pour ce filtre{% endif %}.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-[#dce3ef] flex items-center justify-between gap-4">
+            <h2 class="font-semibold text-[#1e293b]">
+                <i class="bx bx-category mr-1.5"></i> Catégories
+                <span class="text-[#b0bedb] font-normal">({{ categories|length }})</span>
+            </h2>
+            <a href="{% url 'documents:documentcategory_create' %}"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#dce3ef] text-sm font-medium text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
+                <i class="bx bx-plus text-sm"></i> Nouvelle catégorie
+            </a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-[#f8f9fc] text-left text-xs uppercase tracking-wider text-[#b0bedb]">
+                        <th class="px-6 py-3 font-semibold">Nom</th>
+                        <th class="px-4 py-3 font-semibold">Description</th>
+                        <th class="px-4 py-3 font-semibold">Ordre</th>
+                        <th class="px-4 py-3 font-semibold">Documents</th>
+                        <th class="px-6 py-3 font-semibold text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#dce3ef]">
+                    {% for category in categories %}
+                    <tr class="hover:bg-[#f8f9fc] transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-[#e8eef7] flex items-center justify-center shrink-0">
+                                    <i class="bx {{ category.icon }} text-lg text-[#4a6fa5]"></i>
+                                </div>
+                                <span class="font-medium text-[#1e293b]">{{ category.name }}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 text-[#7a8fa0]">{{ category.description|default:"—" }}</td>
+                        <td class="px-4 py-4 text-[#7a8fa0]">{{ category.display_order }}</td>
+                        <td class="px-4 py-4 text-[#7a8fa0]">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">
+                                <i class="bx bx-file-blank text-xs"></i> {{ category.document_count }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{% url 'documents:documentcategory_update' category.pk %}"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#dce3ef] text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors whitespace-nowrap">
+                                    <i class="bx bx-edit"></i> Modifier
+                                </a>
+                                <form method="post" action="{% url 'documents:documentcategory_delete' category.pk %}"
+                                    onsubmit="return confirm('Supprimer la catégorie « {{ category.name|escapejs }} » ? Les documents liés seront conservés dans « Autres documents ».');">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors whitespace-nowrap">
+                                        <i class="bx bx-trash"></i> Supprimer
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-[#b0bedb]">
+                            <i class="bx bx-category text-3xl block mb-2"></i>
+                            Aucune catégorie pour le moment.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

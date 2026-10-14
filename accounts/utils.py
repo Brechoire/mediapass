@@ -6,6 +6,11 @@ def is_staff_or_superuser(user):
     return user.is_staff or user.is_superuser
 
 
+def is_superuser(user):
+    """Vérifie si l'utilisateur est superuser."""
+    return user.is_superuser
+
+
 def group_required(*group_names):
     """Décorateur qui vérifie l'appartenance aux groupes spécifiés.
 
