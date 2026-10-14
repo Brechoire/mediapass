@@ -37,7 +37,7 @@
     </div>
 </section>
 
-{% if documents_count %}
+{% if documents_count > 4 %}
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
     <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4">
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -72,7 +72,7 @@
                     <i class="bx bx-file-blank text-xs"></i> {{ category.published_count }} document{{ category.published_count|pluralize }}
                 </span>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div class="flex flex-col gap-3">
                 {% for document in category.documents.all %}
                 {% include "documents/includes/document_card.html" with document=document section_name=category.name %}
                 {% endfor %}
@@ -94,7 +94,7 @@
                     <i class="bx bx-file-blank text-xs"></i> {{ uncategorized_documents|length }} document{{ uncategorized_documents|length|pluralize }}
                 </span>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div class="flex flex-col gap-3">
                 {% for document in uncategorized_documents %}
                 {% include "documents/includes/document_card.html" with document=document %}
                 {% endfor %}

@@ -215,6 +215,18 @@ class DocumentListViewTests(MediaTestCase):
         # Nom de téléchargement propre, dérivé du titre (accents neutralisés)
         self.assertContains(response, 'download="reglement-du-reseau.pdf"')
 
+    def test_recherche_masquee_avec_peu_de_documents(self):
+        response = self.client.get(reverse("documents:document_list"))
+        self.assertNotContains(response, 'id="searchDocument"')
+
+    def test_recherche_visible_avec_beaucoup_de_documents(self):
+        for i in range(5):
+            Document.objects.create(
+                title=f"Document supplémentaire {i}", file=pdf_file()
+            )
+        response = self.client.get(reverse("documents:document_list"))
+        self.assertContains(response, 'id="searchDocument"')
+
 
 class DocumentPermissionTests(TestCase):
     def setUp(self):
