@@ -178,6 +178,9 @@ class DocumentListViewTests(MediaTestCase):
         self.assertContains(
             response, reverse("documents:document_manage")
         )
+        self.assertContains(
+            response, f'{reverse("documents:document_manage")}#categories'
+        )
 
     def test_bouton_gestion_masque_pour_utilisateur_simple(self):
         user = User.objects.create_user("simple", password="x")
@@ -238,6 +241,13 @@ class DocumentManageViewTests(MediaTestCase):
         self.assertContains(response, "Règlement réseau")
         self.assertContains(response, "Marque-page")
         self.assertContains(response, "Brouillon")
+
+    def test_onglets_documents_et_categories(self):
+        response = self.client.get(reverse("documents:document_manage"))
+        self.assertContains(response, 'id="panel-documents"')
+        self.assertContains(response, 'id="panel-categories"')
+        self.assertContains(response, 'data-tab="categories"')
+        self.assertContains(response, 'role="tablist"')
 
     def test_filtre_recherche(self):
         response = self.client.get(
@@ -420,7 +430,8 @@ class DocumentCategoryCrudViewTests(MediaTestCase):
             },
         )
         self.assertRedirects(
-            response, reverse("documents:document_manage")
+            response,
+            f"{reverse('documents:document_manage')}#categories",
         )
         category = DocumentCategory.objects.get(name="Marque-pages")
         self.assertEqual(category.icon, "bx-book")
@@ -453,7 +464,8 @@ class DocumentCategoryCrudViewTests(MediaTestCase):
             },
         )
         self.assertRedirects(
-            response, reverse("documents:document_manage")
+            response,
+            f"{reverse('documents:document_manage')}#categories",
         )
         category.refresh_from_db()
         self.assertEqual(category.name, "Règlements du réseau")
@@ -469,7 +481,8 @@ class DocumentCategoryCrudViewTests(MediaTestCase):
             )
         )
         self.assertRedirects(
-            response, reverse("documents:document_manage")
+            response,
+            f"{reverse('documents:document_manage')}#categories",
         )
         self.assertFalse(
             DocumentCategory.objects.filter(pk=category.pk).exists()

@@ -3,6 +3,14 @@
 
 {% block title %}Gestion des documents | {{ block.super }}{% endblock %}
 
+{% block stylesheets %}
+<style>
+.manage-tab { color: #4a6fa5; }
+.manage-tab:hover { background: #e8eef7; }
+.manage-tab.is-active { background: #4a6fa5; color: #ffffff; }
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
     <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
@@ -32,6 +40,35 @@
 </section>
 
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+    <div class="inline-flex items-center gap-1 bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-1.5" role="tablist" aria-label="Gestion des documents et catégories">
+        <button type="button" id="tab-documents" role="tab" aria-selected="true" aria-controls="panel-documents" data-tab="documents"
+            class="manage-tab is-active inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer">
+            <i class="bx bx-file"></i> Documents
+            <span class="text-xs opacity-70">({{ documents|length }})</span>
+        </button>
+        <button type="button" id="tab-categories" role="tab" aria-selected="false" aria-controls="panel-categories" data-tab="categories"
+            class="manage-tab inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer">
+            <i class="bx bx-category"></i> Catégories
+            <span class="text-xs opacity-70">({{ categories|length }})</span>
+        </button>
+    </div>
+</section>
+
+{% if messages %}
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+    <div class="space-y-3">
+        {% for message in messages %}
+        <div role="alert" class="flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm {% if message.tags == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-800{% elif message.tags == 'error' %}bg-red-50 border-red-200 text-red-700{% elif message.tags == 'warning' %}bg-amber-50 border-amber-200 text-amber-800{% else %}bg-[#e8eef7] border-[#dce3ef] text-[#4a6fa5]{% endif %}">
+            <i class="bx {% if message.tags == 'success' %}bx-check-circle{% elif message.tags == 'error' %}bx-error-circle{% elif message.tags == 'warning' %}bx-error{% else %}bx-info-circle{% endif %} text-base mt-0.5 shrink-0"></i>
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<div id="panel-documents" role="tabpanel" aria-labelledby="tab-documents">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 relative z-10">
     <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4">
         <form method="get" class="md:flex md:items-center gap-3">
             <div class="relative flex-1">
@@ -66,17 +103,6 @@
 </section>
 
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    {% if messages %}
-    <div class="space-y-3 mb-6">
-        {% for message in messages %}
-        <div role="alert" class="flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm {% if message.tags == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-800{% elif message.tags == 'error' %}bg-red-50 border-red-200 text-red-700{% elif message.tags == 'warning' %}bg-amber-50 border-amber-200 text-amber-800{% else %}bg-[#e8eef7] border-[#dce3ef] text-[#4a6fa5]{% endif %}">
-            <i class="bx {% if message.tags == 'success' %}bx-check-circle{% elif message.tags == 'error' %}bx-error-circle{% elif message.tags == 'warning' %}bx-error{% else %}bx-info-circle{% endif %} text-base mt-0.5 shrink-0"></i>
-            <span>{{ message }}</span>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-
     <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-[#dce3ef]">
             <h2 class="font-semibold text-[#1e293b]">
@@ -154,8 +180,10 @@
         </div>
     </div>
 </section>
+</div>
 
-<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+<div id="panel-categories" role="tabpanel" aria-labelledby="tab-categories">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-12">
     <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-[#dce3ef] flex items-center justify-between gap-4">
             <h2 class="font-semibold text-[#1e293b]">
@@ -226,4 +254,43 @@
         </div>
     </div>
 </section>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = Array.from(document.querySelectorAll('.manage-tab'));
+    const panels = {
+        documents: document.getElementById('panel-documents'),
+        categories: document.getElementById('panel-categories'),
+    };
+    if (!tabs.length) return;
+
+    function showTab(name) {
+        tabs.forEach(function(tab) {
+            const active = tab.dataset.tab === name;
+            tab.classList.toggle('is-active', active);
+            tab.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        Object.keys(panels).forEach(function(key) {
+            if (panels[key]) {
+                panels[key].style.display = key === name ? '' : 'none';
+            }
+        });
+    }
+
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            const name = tab.dataset.tab;
+            showTab(name);
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState(null, '', '#' + name);
+            }
+        });
+    });
+
+    showTab(window.location.hash === '#categories' ? 'categories' : 'documents');
+});
+</script>
 {% endblock %}

@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from accounts.utils import is_superuser
@@ -17,6 +18,11 @@ def _published_documents():
     return Document.objects.filter(is_published=True).order_by(
         "display_order", "title"
     )
+
+
+def _category_manage_url():
+    """URL de la page de gestion, onglet Catégories ouvert."""
+    return f"{reverse('documents:document_manage')}#categories"
 
 
 def document_list(request):
@@ -146,7 +152,7 @@ def documentcategory_create(request):
                 request,
                 f"La catégorie « {category.name} » a été créée.",
             )
-            return redirect("documents:document_manage")
+            return redirect(_category_manage_url())
     else:
         form = DocumentCategoryForm()
     return render(
@@ -166,7 +172,7 @@ def documentcategory_update(request, pk):
                 request,
                 f"La catégorie « {category.name} » a été mise à jour.",
             )
-            return redirect("documents:document_manage")
+            return redirect(_category_manage_url())
     else:
         form = DocumentCategoryForm(instance=category)
     return render(
@@ -186,4 +192,4 @@ def documentcategory_delete(request, pk):
         f"La catégorie « {name} » a été supprimée. Les documents liés sont "
         "conservés dans « Autres documents ».",
     )
-    return redirect("documents:document_manage")
+    return redirect(_category_manage_url())
