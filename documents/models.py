@@ -99,3 +99,27 @@ class Document(models.Model):
 
     def __str__(self):
         return self.title
+
+    @property
+    def file_exists(self):
+        """Indique si le fichier est réellement présent sur le stockage."""
+        if not self.file:
+            return False
+        try:
+            return self.file.storage.exists(self.file.name)
+        except OSError:
+            return False
+
+    @property
+    def file_size(self):
+        """Taille du fichier en octets, ou None si indisponible.
+
+        Ne lève jamais FileNotFoundError : un enregistrement dont le
+        fichier a disparu du disque ne doit pas faire planter la page.
+        """
+        if not self.file_exists:
+            return None
+        try:
+            return self.file.size
+        except OSError:
+            return None

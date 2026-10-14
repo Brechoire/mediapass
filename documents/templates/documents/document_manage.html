@@ -144,14 +144,19 @@
                             {% else %}
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">Brouillon</span>
                             {% endif %}
+                            {% if not document.file_exists %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200 mt-1">Fichier manquant</span>
+                            {% endif %}
                         </td>
                         <td class="px-4 py-4 text-[#7a8fa0] whitespace-nowrap">{{ document.updated_at|date:"d/m/Y H:i" }}</td>
                         <td class="px-6 py-4">
                             <div class="flex items-center justify-end gap-2">
+                                {% if document.file_exists %}
                                 <a href="{{ document.file.url }}" target="_blank" rel="noopener"
                                     class="p-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors" title="Ouvrir le PDF">
                                     <i class="bx bx-show"></i>
                                 </a>
+                                {% endif %}
                                 <a href="{% url 'documents:document_update' document.pk %}"
                                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#dce3ef] text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors whitespace-nowrap">
                                     <i class="bx bx-edit"></i> Modifier

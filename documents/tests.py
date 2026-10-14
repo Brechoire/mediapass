@@ -117,6 +117,15 @@ class DocumentModelTests(MediaTestCase):
         with self.assertRaises(ValidationError):
             document.full_clean()
 
+    def test_file_exists_et_file_size_avec_fichier_manquant(self):
+        document = Document.objects.create(title="Doc", file=pdf_file())
+        self.assertTrue(document.file_exists)
+        self.assertIsNotNone(document.file_size)
+        document.file.delete(save=False)
+        document.refresh_from_db()
+        self.assertFalse(document.file_exists)
+        self.assertIsNone(document.file_size)
+
 
 class DocumentListViewTests(MediaTestCase):
     def setUp(self):
@@ -189,6 +198,22 @@ class DocumentListViewTests(MediaTestCase):
         self.assertNotContains(
             response, reverse("documents:document_manage")
         )
+
+    def test_fichier_manquant_ne_fait_pas_planter_la_page(self):
+        self.published.file.delete(save=False)
+        response = self.client.get(reverse("documents:document_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Règlement du réseau")
+        self.assertContains(response, "Fichier indisponible")
+
+    def test_boutons_visualiser_et_telecharger(self):
+        response = self.client.get(reverse("documents:document_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Visualiser")
+        self.assertContains(response, "Télécharger")
+        self.assertContains(response, 'target="_blank"')
+        # Nom de téléchargement propre, dérivé du titre (accents neutralisés)
+        self.assertContains(response, 'download="reglement-du-reseau.pdf"')
 
 
 class DocumentPermissionTests(TestCase):

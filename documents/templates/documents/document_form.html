@@ -84,11 +84,20 @@
                         {{ form.file.label }} {% if not form.instance.pk %}<span class="text-red-500">*</span>{% endif %}
                     </label>
                     {% if form.instance.pk and form.instance.file %}
+                    {% if form.instance.file_exists %}
                     <div class="flex items-center gap-2 text-sm bg-[#f8f9fc] border border-[#dce3ef] rounded-xl px-4 py-3 mb-2">
                         <i class="bx bxs-file-pdf text-red-500 text-xl shrink-0"></i>
                         <a href="{{ form.instance.file.url }}" target="_blank" rel="noopener" class="text-[#4a6fa5] hover:underline truncate">{{ form.instance.file.name }}</a>
-                        <span class="text-[#b0bedb] shrink-0">· {{ form.instance.file.size|filesizeformat }}</span>
+                        {% if form.instance.file_size is not None %}
+                        <span class="text-[#b0bedb] shrink-0">· {{ form.instance.file_size|filesizeformat }}</span>
+                        {% endif %}
                     </div>
+                    {% else %}
+                    <div class="flex items-center gap-2 text-sm bg-amber-50 border border-amber-200 text-amber-700 rounded-xl px-4 py-3 mb-2">
+                        <i class="bx bx-error shrink-0"></i>
+                        <span>Le fichier précédemment uploadé est introuvable sur le disque. Uploadez un nouveau fichier PDF ci-dessous.</span>
+                    </div>
+                    {% endif %}
                     {% endif %}
                     {{ form.file|add_class:"w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] transition-all file:mr-4 file:px-4 file:py-2 file:rounded-lg file:border-0 file:bg-[#e8eef7] file:text-[#4a6fa5] file:text-sm file:font-medium file:cursor-pointer" }}
                     <p class="text-xs text-[#b0bedb] mt-1.5">{{ form.file.help_text }}</p>

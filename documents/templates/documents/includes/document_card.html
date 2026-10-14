@@ -1,0 +1,48 @@
+{# Carte d'un document PDF : boutons Visualiser + Télécharger. #}
+{# Attend `document` dans le contexte. Ne plante jamais si le fichier #}
+{# a disparu du disque : affiche alors « Fichier indisponible ». #}
+<div class="document-item h-full" data-search="{{ document.title|lower }} {{ document.description|lower }}{% if section_name %} {{ section_name|lower }}{% endif %}">
+    <div class="h-full flex flex-col bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+        <div class="p-5 flex-1">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+                    <i class="bx bxs-file-pdf text-2xl text-red-500"></i>
+                </div>
+                <div class="min-w-0">
+                    <h3 class="text-base font-semibold text-[#1e293b] leading-snug">{{ document.title }}</h3>
+                    {% if document.description %}
+                    <p class="text-sm text-[#7a8fa0] leading-relaxed mt-1.5 line-clamp-2">{{ document.description }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="px-5 pb-5">
+            <div class="flex items-center gap-3 text-xs text-[#b0bedb] mb-4 pt-4 border-t border-[#dce3ef]">
+                <span class="inline-flex items-center gap-1">
+                    <i class="bx bx-calendar"></i> Mis à jour le {{ document.updated_at|date:"d/m/Y" }}
+                </span>
+                {% if document.file_size is not None %}
+                <span class="inline-flex items-center gap-1 ml-auto">
+                    <i class="bx bx-hdd"></i> {{ document.file_size|filesizeformat }}
+                </span>
+                {% endif %}
+            </div>
+            {% if document.file_exists %}
+            <div class="grid grid-cols-2 gap-2">
+                <a href="{{ document.file.url }}" target="_blank" rel="noopener"
+                    class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-[#dce3ef] text-sm font-medium text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
+                    <i class="bx bx-show"></i> Visualiser
+                </a>
+                <a href="{{ document.file.url }}" download="{{ document.title|slugify }}.pdf"
+                    class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-colors">
+                    <i class="bx bx-download"></i> Télécharger
+                </a>
+            </div>
+            {% else %}
+            <div class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm">
+                <i class="bx bx-error"></i> Fichier indisponible
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
