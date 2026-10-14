@@ -29,6 +29,7 @@ Un système de réservation moderne et complet pour la gestion des équipements 
 - 📧 Notifications par email automatiques
 - 📊 Tableau de bord analytique avec statistiques détaillées
 - 🔍 Recherche et filtrage avancés
+- 📄 Documents PDF téléchargeables (règlements, formulaires, marque-pages)
 - 📄 Export des statistiques au format Word (.docx)
 - 🏠 Page d'accueil personnalisée avec informations légales
 
@@ -145,6 +146,11 @@ MediapassReservation/
 │   ├── models.py     # Modèles pour les kakemonos
 │   ├── views.py      # Vues des kakemonos
 │   └── forms.py      # Formulaires kakemonos
+├── documents/        # Documents PDF téléchargeables (page publique + CRUD superadmin)
+│   ├── models.py     # Modèles documents et catégories
+│   ├── validators.py # Validation des PDF uploadés
+│   ├── views.py      # Vues publique et gestion
+│   └── forms.py      # Formulaires documents/catégories
 ├── analytics/        # Système d'analytics
 │   ├── models.py     # Modèles de suivi
 │   ├── views.py      # Vues analytics

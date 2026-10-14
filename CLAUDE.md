@@ -46,6 +46,7 @@ python scripts/pre_push_check.py
 - `analytics/` - Page visit tracking via `AnalyticsMiddleware`
 - `notifications/` - Email notifications, J-1 reminders for reservations
 - `accounts/` - User authentication
+- `documents/` - Downloadable PDF documents (public page + superadmin CRUD)
 - `home/` - Homepage and static content
 
 **Configuration:**
