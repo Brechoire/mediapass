@@ -430,3 +430,83 @@ class WorkshopStatsViewTests(TestCase):
         # Avesnes n'a que 2 ateliers : exclue du top/flop
         communes = [c["commune"] for c in top_flop["top_presence"]]
         self.assertNotIn("Avesnes", communes)
+
+    def test_weekday_filter(self):
+        self.login_staff()
+        # 2024-05-20 = lundi -> week_day Django = 2
+        response = self.client.get(
+            reverse("workshop_stats"),
+            {"year": self.year, "weekday": "2"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_workshops"], 1)
+        self.assertTrue(response.context["has_active_filters"])
+
+    def test_invalid_weekday_does_not_500(self):
+        self.login_staff()
+        response = self.client.get(
+            reverse("workshop_stats"),
+            {"year": self.year, "weekday": "abc"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_workshops"], 3)
+
+    def test_slot_filter(self):
+        self.login_staff()
+        # Les 3 ateliers de test sont à 09:00 -> matin.
+        response = self.client.get(
+            reverse("workshop_stats"),
+            {"year": self.year, "slot": "matin"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_workshops"], 3)
+        response = self.client.get(
+            reverse("workshop_stats"),
+            {"year": self.year, "slot": "soir"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_workshops"], 0)
+
+    def test_new_abc_context_keys(self):
+        self.login_staff()
+        response = self.client.get(
+            reverse("workshop_stats"), {"year": self.year}
+        )
+        for key in (
+            "fill_tranches",
+            "noshow_top",
+            "zero_registered",
+            "pareto",
+            "recurrence",
+            "weekday_stats",
+            "slot_stats",
+            "duration_stats",
+            "coverage_gaps",
+            "location_load",
+            "active_weekday",
+            "active_slot",
+            "synthese",
+        ):
+            self.assertIn(key, response.context)
+        self.assertEqual(len(response.context["weekday_stats"]), 7)
+        self.assertEqual(len(response.context["slot_stats"]), 3)
+
+    def test_synthese_content(self):
+        self.login_staff()
+        response = self.client.get(
+            reverse("workshop_stats"), {"year": self.year}
+        )
+        synthese = response.context["synthese"]
+        phrases = synthese["phrases"]
+        # ~10 lignes, ton naturel, déterministe.
+        self.assertGreaterEqual(len(phrases), 8)
+        self.assertLessEqual(len(phrases), 12)
+        full = " ".join(phrases)
+        self.assertIn(str(self.year), full)
+        self.assertIn("3 ateliers", full)
+        # Export Word reprend la synthèse sans 500.
+        response = self.client.get(
+            reverse("workshop_stats"),
+            {"year": self.year, "export": "1"},
+        )
+        self.assertEqual(response.status_code, 200)

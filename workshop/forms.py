@@ -403,6 +403,52 @@ class WorkshopStatsFilterForm(forms.Form):
         widget=forms.Select(attrs={"class": "form-control"}),
         label="Type",
     )
+    month = forms.ChoiceField(
+        required=False,
+        choices=[("", "Tous")]
+        + [(str(m), f"{m:02d}") for m in range(1, 13)],
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="Mois",
+    )
+    channel = forms.ChoiceField(
+        required=False,
+        choices=[
+            ("", "Tous"),
+            ("instagram", "Instagram"),
+            ("facebook", "Facebook"),
+            ("mail", "Mail"),
+            ("portail", "Portail"),
+            ("vdn", "VDN"),
+        ],
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="Canal",
+    )
+    weekday = forms.ChoiceField(
+        required=False,
+        choices=[
+            ("", "Tous"),
+            ("2", "Lundi"),
+            ("3", "Mardi"),
+            ("4", "Mercredi"),
+            ("5", "Jeudi"),
+            ("6", "Vendredi"),
+            ("7", "Samedi"),
+            ("1", "Dimanche"),
+        ],
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="Jour",
+    )
+    slot = forms.ChoiceField(
+        required=False,
+        choices=[
+            ("", "Tous"),
+            ("matin", "Matin (<12h)"),
+            ("am", "Après-midi (12-17h)"),
+            ("soir", "Soir (≥17h)"),
+        ],
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="Créneau",
+    )
 
     def __init__(self, *args, **kwargs):
         """Initialise les choix dynamiques d'années et de villes."""

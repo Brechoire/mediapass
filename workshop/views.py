@@ -48,6 +48,22 @@ from .services import (
     get_poster_and_channel_stats,
     get_top_flop_communes,
     get_stats_cache_key,
+    get_channel_cross_stats,
+    get_month_type_cross,
+    get_commune_month_matrix,
+    get_fill_tranches,
+    get_noshow_top,
+    get_zero_registered,
+    get_pareto,
+    get_recurrence_by_name,
+    get_weekday_stats,
+    get_slot_stats,
+    get_duration_stats,
+    get_coverage_gaps,
+    get_location_load,
+    build_synthese,
+    WEEKDAY_LABELS,
+    SLOT_LABELS,
 )
 from .utils.html_to_word import save_stats_to_word
 
@@ -165,6 +181,10 @@ def workshop_stats(request):
     location_id = location_filter.pk if location_filter else None
     city_filter = filter_data.get("city") or ""
     class_welcome_filter = filter_data.get("class_welcome") or ""
+    month_filter = filter_data.get("month") or ""
+    channel_filter = filter_data.get("channel") or ""
+    weekday_filter = filter_data.get("weekday") or ""
+    slot_filter = filter_data.get("slot") or ""
     # La sélection d'année du formulaire ne remplace pas le parsing durci ci-dessus
     # pour garder la compatibilité ?year= et le message d'avertissement.
 
@@ -175,8 +195,22 @@ def workshop_stats(request):
         location_id=location_id,
         city=city_filter,
         class_welcome=class_welcome_filter,
+        month=month_filter,
+        channel=channel_filter,
+        weekday=weekday_filter,
+        slot=slot_filter,
     )
-    has_active_filters = bool(location_id or city_filter or class_welcome_filter)
+    has_active_filters = bool(
+        location_id or city_filter or class_welcome_filter or month_filter or channel_filter or weekday_filter or slot_filter
+    )
+    # Base sans les axes de croisement (mois/canal/jour/créneau) : sert aux
+    # matrices croisées pour garder du contexte en drill-down.
+    cross_base_workshops = apply_stats_filters(
+        base_workshops,
+        location_id=location_id,
+        city=city_filter,
+        class_welcome=class_welcome_filter,
+    )
 
     # Toutes les stats en 1 seule requête (au lieu de 14)
     stats = workshops.aggregate(
@@ -372,7 +406,7 @@ def workshop_stats(request):
         )
         
         # Filtrer les ateliers de l'année précédente sur la même période
-        # (avec les mêmes filtres lieu/ville/type pour une comparaison cohérente)
+        # (avec les mêmes filtres pour une comparaison cohérente)
         previous_workshops = apply_stats_filters(
             Workshop.objects.filter(
                 date__year=previous_year,
@@ -382,6 +416,10 @@ def workshop_stats(request):
             location_id=location_id,
             city=city_filter,
             class_welcome=class_welcome_filter,
+            month=month_filter,
+            channel=channel_filter,
+            weekday=weekday_filter,
+            slot=slot_filter,
         )
         
         if previous_workshops.exists():
@@ -524,7 +562,14 @@ def workshop_stats(request):
     
     # Préparation des données de contexte
     cache_key = get_stats_cache_key(
-        selected_year, location_id, city_filter, class_welcome_filter
+        selected_year,
+        location_id,
+        city_filter,
+        class_welcome_filter,
+        month_filter,
+        channel_filter,
+        weekday_filter,
+        slot_filter,
     )
     cached_extra = cache.get(cache_key) if not export_word else None
     if cached_extra is None:
@@ -532,6 +577,21 @@ def workshop_stats(request):
         distribution = get_distribution_stats(workshops)
         poster_channels = get_poster_and_channel_stats(workshops, total_workshops)
         top_flop = get_top_flop_communes(commune_table_data)
+        # Croisements calculés sur la base sans mois/canal/jour/créneau pour
+        # garder du contexte quand ces axes sont filtrés (drill-down).
+        channel_cross = get_channel_cross_stats(cross_base_workshops)
+        month_type_cross = get_month_type_cross(cross_base_workshops)
+        commune_month_matrix = get_commune_month_matrix(cross_base_workshops)
+        fill_tranches = get_fill_tranches(cross_base_workshops)
+        noshow_top = get_noshow_top(cross_base_workshops)
+        zero_registered = get_zero_registered(cross_base_workshops)
+        pareto = get_pareto(cross_base_workshops)
+        recurrence = get_recurrence_by_name(cross_base_workshops)
+        weekday_stats = get_weekday_stats(cross_base_workshops)
+        slot_stats = get_slot_stats(cross_base_workshops)
+        duration_stats = get_duration_stats(cross_base_workshops)
+        coverage_gaps = get_coverage_gaps(cross_base_workshops, commune_table_data)
+        location_load = get_location_load(cross_base_workshops)
         cached_extra = {
             "presence_by_location": presence["by_location"],
             "presence_by_commune": presence["by_commune"],
@@ -539,6 +599,19 @@ def workshop_stats(request):
             "poster_stats": poster_channels["poster"],
             "channel_coverage": poster_channels["channels"],
             "top_flop_communes": top_flop,
+            "channel_cross": channel_cross,
+            "month_type_cross": month_type_cross,
+            "commune_month_matrix": commune_month_matrix,
+            "fill_tranches": fill_tranches,
+            "noshow_top": noshow_top,
+            "zero_registered": zero_registered,
+            "pareto": pareto,
+            "recurrence": recurrence,
+            "weekday_stats": weekday_stats,
+            "slot_stats": slot_stats,
+            "duration_stats": duration_stats,
+            "coverage_gaps": coverage_gaps,
+            "location_load": location_load,
         }
         if not export_word:
             cache.set(cache_key, cached_extra, CACHE_TIMEOUT)
@@ -553,6 +626,12 @@ def workshop_stats(request):
         "active_location_name": location_filter.name if location_filter else "",
         "active_city": city_filter,
         "active_class_welcome": class_welcome_filter,
+        "active_month": month_filter,
+        "active_channel": channel_filter,
+        "active_weekday": weekday_filter,
+        "active_weekday_label": WEEKDAY_LABELS.get(int(weekday_filter), "") if weekday_filter else "",
+        "active_slot": slot_filter,
+        "active_slot_label": SLOT_LABELS.get(slot_filter, "") if slot_filter else "",
         "is_htmx_partial": is_htmx_partial,
         "chart_type": {
             "labels": ["Classiques", "Accueils de classe"],
@@ -594,6 +673,21 @@ def workshop_stats(request):
         "poster_stats": cached_extra["poster_stats"],
         "channel_coverage": cached_extra["channel_coverage"],
         "top_flop_communes": cached_extra["top_flop_communes"],
+        "channel_cross": cached_extra.get("channel_cross", []),
+        "month_type_cross": cached_extra.get("month_type_cross", []),
+        "commune_month_matrix": cached_extra.get(
+            "commune_month_matrix", {"cities": [], "matrix": [], "months": list(range(1, 13))}
+        ),
+        "fill_tranches": cached_extra.get("fill_tranches", {"tranches": {}, "total": 0}),
+        "noshow_top": cached_extra.get("noshow_top", []),
+        "zero_registered": cached_extra.get("zero_registered", {"total": 0, "sample": []}),
+        "pareto": cached_extra.get("pareto", {"top_count": 0, "total_count": 0, "top_share": 0.0, "total_registered": 0}),
+        "recurrence": cached_extra.get("recurrence", []),
+        "weekday_stats": cached_extra.get("weekday_stats", []),
+        "slot_stats": cached_extra.get("slot_stats", []),
+        "duration_stats": cached_extra.get("duration_stats", {"count": 0, "avg": 0.0, "median": 0.0}),
+        "coverage_gaps": cached_extra.get("coverage_gaps", {"gaps": [], "shares": [], "total_registered": 0}),
+        "location_load": cached_extra.get("location_load", []),
         "communication_stats": {
             "instagram": stats["instagram"],
             "facebook": stats["facebook"],
@@ -652,6 +746,10 @@ def workshop_stats(request):
                 location_id=location_id,
                 city=city_filter,
                 class_welcome=class_welcome_filter,
+                month=month_filter,
+                channel=channel_filter,
+                weekday=weekday_filter,
+                slot=slot_filter,
             )
             previous_commune_stats = (
                 previous_workshops_full_year.values("location__city")
@@ -684,6 +782,104 @@ def workshop_stats(request):
                 commune['variation_percentage'] = 100  # Nouvelle commune
 
     context["bilan_data"] = bilan_data
+
+    # Libellés mois (utilisés par la synthèse et les filtres).
+    month_names = [
+        "Jan", "Fév", "Mar", "Avr", "Mai", "Juin",
+        "Juil", "Août", "Sep", "Oct", "Nov", "Déc",
+    ]
+    context["month_names"] = month_names
+
+    # Synthèse narrative (~10 lignes, ton naturel) : remplace le bilan.
+    # Construite après les variations par commune, avant l'export Word.
+    progress_communes = sorted(
+        [
+            (c["commune"], c.get("variation_ateliers", 0))
+            for c in commune_table_data
+            if c.get("variation_ateliers", 0) > 0
+        ],
+        key=lambda x: x[1],
+        reverse=True,
+    )
+    decline_communes = sorted(
+        [
+            (c["commune"], c.get("variation_ateliers", 0))
+            for c in commune_table_data
+            if c.get("variation_ateliers", 0) < 0
+        ],
+        key=lambda x: x[1],
+    )
+    perimetre_parts = []
+    if location_filter:
+        perimetre_parts.append(f"lieu {location_filter.name}")
+    if city_filter:
+        perimetre_parts.append(f"commune {city_filter}")
+    if class_welcome_filter == "yes":
+        perimetre_parts.append("accueils de classe uniquement")
+    elif class_welcome_filter == "no":
+        perimetre_parts.append("ateliers classiques uniquement")
+    if month_filter:
+        try:
+            perimetre_parts.append(
+                f"mois de {month_names[int(month_filter) - 1].lower()}"
+            )
+        except (ValueError, IndexError):
+            pass
+    if channel_filter:
+        perimetre_parts.append(f"canal {channel_filter}")
+    if weekday_filter:
+        try:
+            perimetre_parts.append(
+                f"{WEEKDAY_LABELS.get(int(weekday_filter), '').lower()}s"
+            )
+        except ValueError:
+            pass
+    if slot_filter:
+        perimetre_parts.append(f"créneau {SLOT_LABELS.get(slot_filter, slot_filter).lower()}")
+    context["synthese"] = build_synthese(
+        {
+            "year": selected_year,
+            "total_workshops": total_workshops,
+            "total_classics": total_workshops_except_class,
+            "total_accueils": total_accueil_classe,
+            "total_registered": total_registered,
+            "total_attendees": total_attendees,
+            "attendance_rate": attendance_rate,
+            "total_communes": len(commune_table_data),
+            "previous": previous_year_data,
+            "top_communes": sorted(
+                commune_table_data,
+                key=lambda x: x["total_ateliers"],
+                reverse=True,
+            ),
+            "months": [
+                {"label": m["label"], "count": m["count"]}
+                for m in workshops_by_month
+            ],
+            "weekdays": cached_extra.get("weekday_stats", []),
+            "slots": cached_extra.get("slot_stats", []),
+            "channels": cached_extra.get("channel_cross", []),
+            "gaps": cached_extra.get("coverage_gaps", {}).get("gaps", []),
+            "low_count": cached_extra.get("fill_tranches", {})
+            .get("tranches", {})
+            .get("low", 0),
+            "progress": progress_communes,
+            "decline": decline_communes,
+            "perimetre": ", ".join(perimetre_parts) or None,
+        }
+    )
+
+    # Plages de dates par mois pour lier vers la liste des ateliers.
+    import calendar as _calendar
+
+    month_ranges = {}
+    for m in range(1, 13):
+        last_day = _calendar.monthrange(selected_year, m)[1]
+        month_ranges[m] = {
+            "from": f"{selected_year}-{m:02d}-01",
+            "to": f"{selected_year}-{m:02d}-{last_day}",
+        }
+    context["month_ranges"] = month_ranges
 
     if export_word:
         # Générer le fichier Word (nom basé sur l'année sélectionnée)

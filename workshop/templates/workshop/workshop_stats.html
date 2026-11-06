@@ -1,84 +1,157 @@
 {% extends "base_new.html" %}
 {% load static %}
 
-{% block title %}Stats ateliers {{ selected_year }} | {{ block.super }}{% endblock %}
+{% block title %}Statistiques ateliers {{ selected_year }} | {{ block.super }}{% endblock %}
 
 {% block content %}
 <style>
 .htmx-indicator { display: none; }
 .htmx-request .htmx-indicator { display: flex; }
 .htmx-request.htmx-indicator { display: flex; }
+.stats-kpi:focus-visible, .stats-nav a:focus-visible, .stats-table a:focus-visible, .stats-table button:focus-visible { outline: 2px solid #4a6fa5; outline-offset: 2px; }
 </style>
-<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
-    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
-    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-        <div class="flex flex-col gap-4">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <div class="flex items-center gap-3 mb-2">
-                        <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
-                            <i class="bx bx-bar-chart-alt-2 text-2xl text-white"></i>
-                        </div>
-                        <h1 class="text-2xl sm:text-3xl font-bold text-white">Stats ateliers</h1>
-                    </div>
-                    <p class="text-white/70 text-sm">Analyse détaillée des ateliers de l'année {{ selected_year }}</p>
-                </div>
-                <a href="?export=1&year={{ selected_year }}{% if active_location_id %}&location={{ active_location_id }}{% endif %}{% if active_city %}&city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&class_welcome={{ active_class_welcome }}{% endif %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors self-start sm:self-auto">
-                    <i class="bx bx-export"></i> Exporter Word
-                </a>
-            </div>
-            {% if messages %}
-            <div class="space-y-2" role="alert">
-                {% for message in messages %}
-                <p class="text-sm text-white/90 bg-white/10 border border-white/20 rounded-lg px-3 py-2">{{ message }}</p>
-                {% endfor %}
-            </div>
-            {% endif %}
-            <form id="stats-filters" method="get" action="{% url 'workshop_stats' %}"
-                  hx-get="{% url 'workshop_stats' %}" hx-select="#stats-content" hx-target="#stats-content"
-                  hx-swap="innerHTML" hx-push-url="true" hx-indicator="#stats-loading"
-                  class="flex flex-wrap items-center gap-2">
-                <label class="sr-only" for="filter-year">Année</label>
-                <select name="year" id="filter-year" onchange="this.form.requestSubmit()" class="bg-white/10 border border-white/20 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 [&>option]:text-gray-800">
-                    {% for year in available_years %}
-                    <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
-                    {% endfor %}
-                </select>
-                <label class="sr-only" for="filter-location">Lieu</label>
-                <select name="location" id="filter-location" onchange="this.form.requestSubmit()" class="bg-white/10 border border-white/20 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 [&>option]:text-gray-800">
-                    <option value="">Tous lieux</option>
-                    {% for loc in stats_filter_form.fields.location.queryset %}
-                    <option value="{{ loc.pk }}" {% if active_location_id == loc.pk %}selected{% endif %}>{{ loc.name }}</option>
-                    {% endfor %}
-                </select>
-                <label class="sr-only" for="filter-city">Ville</label>
-                <select name="city" id="filter-city" onchange="this.form.requestSubmit()" class="bg-white/10 border border-white/20 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 [&>option]:text-gray-800">
-                    {% for val, label in stats_filter_form.fields.city.choices %}
-                    <option value="{{ val }}" {% if active_city == val %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-                <label class="sr-only" for="filter-type">Type d'atelier</label>
-                <select name="class_welcome" id="filter-type" onchange="this.form.requestSubmit()" class="bg-white/10 border border-white/20 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 [&>option]:text-gray-800">
-                    <option value="" {% if not active_class_welcome %}selected{% endif %}>Tous types</option>
-                    <option value="no" {% if active_class_welcome == "no" %}selected{% endif %}>Classiques</option>
-                    <option value="yes" {% if active_class_welcome == "yes" %}selected{% endif %}>Accueils</option>
-                </select>
-                <a href="?year={{ selected_year }}" class="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
-                    <i class="bx bx-refresh"></i> Reset
-                </a>
-            </form>
-        </div>
-    </div>
-</section>
 
-<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10 pb-12">
-    <div id="stats-loading" class="htmx-indicator items-center justify-center gap-2 py-6 text-sm text-[#4a6fa5]" role="status" aria-live="polite">
-        <i class="bx bx-loader-alt bx-spin text-xl"></i> Chargement des statistiques…
+<div class="bg-white border-b border-slate-200">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <nav aria-label="Fil d’Ariane" class="text-xs text-slate-500 mb-2">
+      <a href="{% url 'workshop_list' %}" class="hover:text-[#4a6fa5]">Ateliers</a>
+      <span aria-hidden="true" class="mx-1">/</span>
+      <span aria-current="page" class="text-slate-700 font-medium">Statistiques {{ selected_year }}</span>
+    </nav>
+    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900">Statistiques des ateliers</h1>
+        <p class="text-sm text-slate-600 mt-1">
+          Année {{ selected_year }} — {{ total_workshops }} atelier{{ total_workshops|pluralize }},
+          {{ total_registered }} inscrit{{ total_registered|pluralize }}, {{ total_attendees }} présent{{ total_attendees|pluralize }}.
+          Cliquez sur un indicateur, un graphique ou une ligne pour filtrer et croiser les données.
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <a href="?export=1&amp;year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}{% if active_weekday %}&amp;weekday={{ active_weekday }}{% endif %}{% if active_slot %}&amp;slot={{ active_slot }}{% endif %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f]">
+          <i class="bx bx-export" aria-hidden="true"></i> Exporter Word
+        </a>
+        <a href="?year={{ selected_year }}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-700 hover:bg-slate-50">
+          <i class="bx bx-refresh" aria-hidden="true"></i> Réinitialiser
+        </a>
+      </div>
     </div>
-    <div id="stats-content">
-        {% include "workshop/partials/stats_content.html" %}
+
+    {% if messages %}
+    <div class="mt-4 space-y-2" role="alert">
+      {% for message in messages %}
+      <p class="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{{ message }}</p>
+      {% endfor %}
     </div>
-</section>
+    {% endif %}
+
+    <form id="stats-filters" method="get" action="{% url 'workshop_stats' %}"
+          hx-get="{% url 'workshop_stats' %}" hx-select="#stats-content" hx-target="#stats-content"
+          hx-swap="innerHTML" hx-push-url="true" hx-indicator="#stats-loading"
+          class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <fieldset>
+        <legend class="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Filtres — combinables et partageables par URL</legend>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <label for="filter-year" class="block text-xs font-medium text-slate-600 mb-1">Année</label>
+            <select name="year" id="filter-year" onchange="this.form.requestSubmit()" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5]">
+              {% for year in available_years %}
+              <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label for="filter-location" class="block text-xs font-medium text-slate-600 mb-1">Lieu</label>
+            <select name="location" id="filter-location" onchange="this.form.requestSubmit()" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5]">
+              <option value="">Tous lieux</option>
+              {% for loc in stats_filter_form.fields.location.queryset %}
+              <option value="{{ loc.pk }}" {% if active_location_id == loc.pk %}selected{% endif %}>{{ loc.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label for="filter-city" class="block text-xs font-medium text-slate-600 mb-1">Commune</label>
+            <select name="city" id="filter-city" onchange="this.form.requestSubmit()" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5]">
+              {% for val, label in stats_filter_form.fields.city.choices %}
+              <option value="{{ val }}" {% if active_city == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label for="filter-type" class="block text-xs font-medium text-slate-600 mb-1">Type</label>
+            <select name="class_welcome" id="filter-type" onchange="this.form.requestSubmit()" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5]">
+              <option value="" {% if not active_class_welcome %}selected{% endif %}>Tous types</option>
+              <option value="no" {% if active_class_welcome == "no" %}selected{% endif %}>Classiques</option>
+              <option value="yes" {% if active_class_welcome == "yes" %}selected{% endif %}>Accueils de classe</option>
+            </select>
+          </div>
+          <div>
+            <label for="filter-month" class="block text-xs font-medium text-slate-600 mb-1">Mois</label>
+            <select name="month" id="filter-month" onchange="this.form.requestSubmit()" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5]">
+              <option value="" {% if not active_month %}selected{% endif %}>Toute l’année</option>
+              {% for m in month_names %}
+              <option value="{{ forloop.counter }}" {% if active_month == forloop.counter|stringformat:"s" %}selected{% endif %}>{{ m }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label for="filter-channel" class="block text-xs font-medium text-slate-600 mb-1">Canal com.</label>
+            <select name="channel" id="filter-channel" onchange="this.form.requestSubmit()" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5]">
+              <option value="" {% if not active_channel %}selected{% endif %}>Tous canaux</option>
+              <option value="instagram" {% if active_channel == "instagram" %}selected{% endif %}>Instagram</option>
+              <option value="facebook" {% if active_channel == "facebook" %}selected{% endif %}>Facebook</option>
+              <option value="mail" {% if active_channel == "mail" %}selected{% endif %}>Mail</option>
+              <option value="portail" {% if active_channel == "portail" %}selected{% endif %}>Portail</option>
+              <option value="vdn" {% if active_channel == "vdn" %}selected{% endif %}>VDN</option>
+            </select>
+          </div>
+          <div>
+            <label for="filter-weekday" class="block text-xs font-medium text-slate-600 mb-1">Jour semaine</label>
+            <select name="weekday" id="filter-weekday" onchange="this.form.requestSubmit()" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5]">
+              <option value="" {% if not active_weekday %}selected{% endif %}>Tous jours</option>
+              <option value="2" {% if active_weekday == "2" %}selected{% endif %}>Lundi</option>
+              <option value="3" {% if active_weekday == "3" %}selected{% endif %}>Mardi</option>
+              <option value="4" {% if active_weekday == "4" %}selected{% endif %}>Mercredi</option>
+              <option value="5" {% if active_weekday == "5" %}selected{% endif %}>Jeudi</option>
+              <option value="6" {% if active_weekday == "6" %}selected{% endif %}>Vendredi</option>
+              <option value="7" {% if active_weekday == "7" %}selected{% endif %}>Samedi</option>
+              <option value="1" {% if active_weekday == "1" %}selected{% endif %}>Dimanche</option>
+            </select>
+          </div>
+          <div>
+            <label for="filter-slot" class="block text-xs font-medium text-slate-600 mb-1">Créneau</label>
+            <select name="slot" id="filter-slot" onchange="this.form.requestSubmit()" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5]">
+              <option value="" {% if not active_slot %}selected{% endif %}>Toute journée</option>
+              <option value="matin" {% if active_slot == "matin" %}selected{% endif %}>Matin (&lt;12h)</option>
+              <option value="am" {% if active_slot == "am" %}selected{% endif %}>Après-midi (12-17h)</option>
+              <option value="soir" {% if active_slot == "soir" %}selected{% endif %}>Soir (≥17h)</option>
+            </select>
+          </div>
+        </div>
+      </fieldset>
+    </form>
+
+    <nav aria-label="Sections de la page" class="stats-nav mt-4 flex flex-wrap gap-2 text-sm">
+      <a href="#vue-ensemble" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Vue d’ensemble</a>
+      <a href="#croisements" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Stats croisées</a>
+      <a href="#remplissage-avance" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Remplissage</a>
+      <a href="#temporalite" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Temporalité</a>
+      <a href="#territoire" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Territoire</a>
+      <a href="#communes" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Communes</a>
+      <a href="#mensuel" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Détail mensuel</a>
+      <a href="#bilan" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Bilan</a>
+    </nav>
+  </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div id="stats-loading" class="htmx-indicator items-center justify-center gap-2 py-4 text-sm text-[#4a6fa5]" role="status" aria-live="polite">
+    <i class="bx bx-loader-alt bx-spin text-xl" aria-hidden="true"></i> Chargement des statistiques…
+  </div>
+  <div id="stats-content">
+    {% include "workshop/partials/stats_content.html" %}
+  </div>
+</div>
 {% endblock %}
 
 {% block javascripts %}
@@ -102,6 +175,24 @@ function readStatsJson(id) {
     try { return JSON.parse(el.textContent); } catch (e) { return null; }
 }
 
+/* Drill-down : met à jour un paramètre de filtre dans l'URL et recharge.
+   Préserve année/lieu/ville/type/mois/canal (bookmarkable, sans JS requis côté liens). */
+function statsDrill(param, value) {
+    try {
+        var url = new URL(window.location.href);
+        if (value === '' || value === null || value === undefined) {
+            url.searchParams.delete(param);
+        } else {
+            url.searchParams.set(param, value);
+        }
+        url.searchParams.delete('partial');
+        window.location.href = url.pathname + '?' + url.searchParams.toString();
+    } catch (e) {
+        window.location.search = '?' + param + '=' + encodeURIComponent(value);
+    }
+}
+window.statsDrill = statsDrill;
+
 function initStatsCharts() {
     destroyStatsCharts();
     if (!window.Chart) return;
@@ -112,15 +203,15 @@ function initStatsCharts() {
     var colors = {
         primary: '#4a6fa5',
         secondary: '#3d5f8f',
-        cyan: '#06b6d4',
-        emerald: '#10b981',
-        amber: '#f59e0b',
-        red: '#d46a78'
+        cyan: '#0e7490',
+        emerald: '#047857',
+        amber: '#b45309',
+        red: '#be5a69',
+        slate: '#64748b'
     };
 
     var datalabelsConfig = {
         color: '#fff',
-        borderRadius: 3,
         font: { weight: 'bold', size: 10 },
         padding: 3,
         formatter: function(v) { return v > 0 ? Math.round(v) : ''; }
@@ -145,9 +236,17 @@ function initStatsCharts() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '65%',
+                cutout: '62%',
+                onClick: function(evt, elements) {
+                    if (elements && elements.length) {
+                        var idx = elements[0].index;
+                        statsDrill('class_welcome', idx === 0 ? 'no' : 'yes');
+                    }
+                },
+                onHover: function(e, el) { if (e && e.native) e.native.target.style.cursor = el && el.length ? 'pointer' : 'default'; },
                 plugins: {
                     legend: { display: false },
+                    tooltip: { callbacks: { footer: function() { return 'Cliquer pour filtrer par type'; } } },
                     datalabels: {
                         display: function(ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; },
                         color: '#fff',
@@ -170,25 +269,21 @@ function initStatsCharts() {
                     label: 'Ateliers',
                     data: locData.ateliers,
                     backgroundColor: colors.primary,
-                    borderRadius: 6,
+                    borderRadius: 4,
                     borderSkipped: false
                 }, {
                     label: 'Inscrits',
                     data: locData.inscrits,
                     backgroundColor: colors.cyan,
-                    borderRadius: 6,
+                    borderRadius: 4,
                     borderSkipped: false
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    datalabels: datalabelsConfig
-                },
-                scales: {
-                    y: { beginAtZero: true, ticks: { precision: 0 } }
-                }
+                plugins: { datalabels: datalabelsConfig, legend: { position: 'bottom' } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
             }
         }));
     }
@@ -204,21 +299,31 @@ function initStatsCharts() {
                     label: 'Accueils',
                     data: comData.accueils,
                     backgroundColor: colors.amber,
-                    borderRadius: 6,
+                    borderRadius: 4,
                     borderSkipped: false
                 }, {
                     label: 'Classiques',
                     data: comData.classiques,
                     backgroundColor: colors.primary,
-                    borderRadius: 6,
+                    borderRadius: 4,
                     borderSkipped: false
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                onClick: function(evt, elements) {
+                    if (elements && elements.length) {
+                        var idx = elements[0].index;
+                        var city = comData.labels[idx];
+                        if (city && city !== 'Inconnu') statsDrill('city', city);
+                    }
+                },
+                onHover: function(e, el) { if (e && e.native) e.native.target.style.cursor = el && el.length ? 'pointer' : 'default'; },
                 plugins: {
-                    datalabels: datalabelsConfig
+                    datalabels: datalabelsConfig,
+                    legend: { position: 'bottom' },
+                    tooltip: { callbacks: { footer: function() { return 'Cliquer pour filtrer par commune'; } } }
                 },
                 scales: {
                     x: { stacked: true },
@@ -239,9 +344,9 @@ function initStatsCharts() {
                     label: 'Ateliers',
                     data: monthlyData.map(function(m) { return m.count; }),
                     borderColor: colors.primary,
-                    backgroundColor: 'rgba(74,111,165,0.1)',
+                    backgroundColor: 'rgba(74,111,165,0.10)',
                     borderWidth: 2,
-                    tension: 0.4,
+                    tension: 0.35,
                     fill: true,
                     pointRadius: 4,
                     pointBackgroundColor: colors.primary
@@ -249,9 +354,9 @@ function initStatsCharts() {
                     label: 'Inscrits',
                     data: monthlyData.map(function(m) { return m.total_registered; }),
                     borderColor: colors.cyan,
-                    backgroundColor: 'rgba(6,182,212,0.1)',
+                    backgroundColor: 'rgba(14,116,144,0.08)',
                     borderWidth: 2,
-                    tension: 0.4,
+                    tension: 0.35,
                     fill: true,
                     pointRadius: 4,
                     pointBackgroundColor: colors.cyan
@@ -261,7 +366,7 @@ function initStatsCharts() {
                     borderColor: colors.emerald,
                     backgroundColor: 'transparent',
                     borderWidth: 2,
-                    tension: 0.4,
+                    tension: 0.35,
                     borderDash: [5, 5],
                     fill: false,
                     pointRadius: 4,
@@ -271,27 +376,34 @@ function initStatsCharts() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    datalabels: { display: false }
+                onClick: function(evt, elements) {
+                    if (elements && elements.length) {
+                        var idx = elements[0].index;
+                        statsDrill('month', String(idx + 1));
+                    }
                 },
-                scales: {
-                    y: { beginAtZero: true, ticks: { precision: 0 } }
-                }
+                onHover: function(e, el) { if (e && e.native) e.native.target.style.cursor = el && el.length ? 'pointer' : 'default'; },
+                plugins: {
+                    datalabels: { display: false },
+                    legend: { position: 'bottom' },
+                    tooltip: { callbacks: { footer: function() { return 'Cliquer pour filtrer par mois'; } } }
+                },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
             }
         }));
     }
 }
 
 function toggleCommune(city) {
-    var detail = document.querySelector('#communeTable tbody tr.commune-detail[data-city="' + city.replace(/"/g, '&quot;') + '"]');
-    var btn = document.querySelector('#communeTable tbody .toggle-btn[data-city="' + city.replace(/"/g, '&quot;') + '"]');
+    var safe = (city || '').replace(/"/g, '&quot;');
+    var detail = document.querySelector('#communeTable tbody tr.commune-detail[data-city="' + safe + '"]');
+    var btn = document.querySelector('#communeTable tbody .toggle-btn[data-city="' + safe + '"]');
     if (detail) {
-        detail.classList.toggle('hidden');
+        var isHidden = detail.classList.toggle('hidden');
         if (btn) {
+            btn.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
             var icon = btn.querySelector('i');
-            if (icon) {
-                icon.className = detail.classList.contains('hidden') ? 'bx bx-chevron-right text-sm' : 'bx bx-chevron-down text-sm';
-            }
+            if (icon) icon.className = isHidden ? 'bx bx-chevron-right text-sm' : 'bx bx-chevron-down text-sm';
         }
     }
 }
@@ -307,7 +419,7 @@ function updateSortIcons(col) {
         if (dataCol === col) {
             icon.className = 'bx ' + (window._statsSortDir === 'asc' ? 'bx-sort-up' : 'bx-sort-down') + ' ml-1 text-[#4a6fa5]';
         } else {
-            icon.className = 'bx bx-sort ml-1 text-[#b0bedb]';
+            icon.className = 'bx bx-sort ml-1 text-slate-300';
         }
     });
 }
@@ -320,17 +432,15 @@ window.sortTable = function(col) {
     window._statsSortCol = col;
     var cellIdx = col + 1;
     rows.sort(function(a, b) {
-        var aVal = a.cells[cellIdx].textContent.trim();
-        var bVal = b.cells[cellIdx].textContent.trim();
+        var aVal = (a.cells[cellIdx].textContent || '').trim();
+        var bVal = (b.cells[cellIdx].textContent || '').trim();
         if (col === 0) return window._statsSortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
         return window._statsSortDir === 'asc' ? (parseInt(aVal) || 0) - (parseInt(bVal) || 0) : (parseInt(bVal) || 0) - (parseInt(aVal) || 0);
     });
     rows.forEach(function(r) {
         tbody.appendChild(r);
         var detail = r.nextElementSibling;
-        if (detail && detail.classList.contains('commune-detail')) {
-            tbody.appendChild(detail);
-        }
+        if (detail && detail.classList.contains('commune-detail')) tbody.appendChild(detail);
     });
     updateSortIcons(col);
 };
@@ -344,14 +454,12 @@ function filterCommuneTable() {
     var rows = document.querySelectorAll('#communeTable tbody tr.commune-row');
     var count = 0;
     rows.forEach(function(row) {
-        var commune = row.cells[1].textContent.toLowerCase();
+        var commune = (row.cells[1].textContent || '').toLowerCase();
         var total = parseInt(row.cells[2].textContent) || 0;
         var visible = commune.includes(filter) && total >= minAteliers;
         row.style.display = visible ? '' : 'none';
         var detail = row.nextElementSibling;
-        if (detail && detail.classList.contains('commune-detail')) {
-            detail.style.display = visible ? '' : 'none';
-        }
+        if (detail && detail.classList.contains('commune-detail')) detail.style.display = visible ? '' : 'none';
         if (visible) count++;
     });
     var counter = document.getElementById('visibleRows');
@@ -364,9 +472,7 @@ function initCommuneTable() {
         tbody.dataset.bound = '1';
         tbody.addEventListener('click', function(e) {
             var btn = e.target.closest('.toggle-btn');
-            if (btn) {
-                toggleCommune(btn.getAttribute('data-city'));
-            }
+            if (btn) toggleCommune(btn.getAttribute('data-city'));
         });
     }
     var filterInput = document.getElementById('filterCommune');
@@ -397,9 +503,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 document.body.addEventListener('htmx:beforeSwap', function(e) {
-    if (e.detail && e.detail.target && e.detail.target.id === 'stats-content') {
-        destroyStatsCharts();
-    }
+    if (e.detail && e.detail.target && e.detail.target.id === 'stats-content') destroyStatsCharts();
 });
 
 document.body.addEventListener('htmx:afterSwap', function(e) {

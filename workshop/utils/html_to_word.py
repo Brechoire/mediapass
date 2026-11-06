@@ -31,6 +31,17 @@ def create_word_from_stats(context_data):
         f" {year}."
     )
 
+    # Synthèse narrative (mêmes phrases que la page, ton naturel)
+    synthese = context_data.get("synthese") or {}
+    phrases = synthese.get("phrases", []) if isinstance(synthese, dict) else synthese
+    if phrases:
+        doc.add_heading("Synthèse", level=1)
+        if isinstance(synthese, dict) and synthese.get("perimetre"):
+            p = doc.add_paragraph()
+            p.add_run(f"Périmètre : {synthese['perimetre']}.").italic = True
+        for phrase in phrases:
+            doc.add_paragraph(str(phrase))
+
     # Statistiques de participation
     doc.add_heading("Statistiques de participation", level=1)
     if "participation_stats" in context_data:

@@ -4,684 +4,616 @@
 {{ chart_communes|json_script:"stats-communes" }}
 
 {% if has_active_filters %}
-<div class="flex flex-wrap items-center gap-2 mb-4" role="status" aria-live="polite">
-    <span class="text-xs font-semibold text-[#7a8fa0] uppercase tracking-wider">Filtres actifs :</span>
-    {% if active_location_name %}
-    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Lieu : {{ active_location_name }}</span>
-    {% endif %}
-    {% if active_city %}
-    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Ville : {{ active_city }}</span>
-    {% endif %}
-    {% if active_class_welcome == "yes" %}
-    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Type : Accueils</span>
-    {% elif active_class_welcome == "no" %}
-    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Type : Classiques</span>
-    {% endif %}
-    <a href="?year={{ selected_year }}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white border border-[#dce3ef] text-[#7a8fa0] hover:bg-[#f8f9fc]">Réinitialiser</a>
+<div class="flex flex-wrap items-center gap-2 mb-5" role="status" aria-live="polite">
+  <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Filtres actifs :</span>
+  {% if active_location_name %}
+  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Lieu : {{ active_location_name }}
+    <a href="?year={{ selected_year }}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}{% if active_weekday %}&amp;weekday={{ active_weekday }}{% endif %}{% if active_slot %}&amp;slot={{ active_slot }}{% endif %}" aria-label="Retirer le filtre lieu" class="hover:underline">×</a>
+  </span>
+  {% endif %}
+  {% if active_city %}
+  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Commune : {{ active_city }}
+    <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}{% if active_weekday %}&amp;weekday={{ active_weekday }}{% endif %}{% if active_slot %}&amp;slot={{ active_slot }}{% endif %}" aria-label="Retirer le filtre commune" class="hover:underline">×</a>
+  </span>
+  {% endif %}
+  {% if active_class_welcome == "yes" %}
+  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Type : Accueils
+    <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}{% if active_weekday %}&amp;weekday={{ active_weekday }}{% endif %}{% if active_slot %}&amp;slot={{ active_slot }}{% endif %}" aria-label="Retirer le filtre type" class="hover:underline">×</a>
+  </span>
+  {% elif active_class_welcome == "no" %}
+  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Type : Classiques
+    <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}{% if active_weekday %}&amp;weekday={{ active_weekday }}{% endif %}{% if active_slot %}&amp;slot={{ active_slot }}{% endif %}" aria-label="Retirer le filtre type" class="hover:underline">×</a>
+  </span>
+  {% endif %}
+  {% if active_month %}
+  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Mois : {{ active_month }}
+    <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}{% if active_weekday %}&amp;weekday={{ active_weekday }}{% endif %}{% if active_slot %}&amp;slot={{ active_slot }}{% endif %}" aria-label="Retirer le filtre mois" class="hover:underline">×</a>
+  </span>
+  {% endif %}
+  {% if active_channel %}
+  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Canal : {{ active_channel }}
+    <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_weekday %}&amp;weekday={{ active_weekday }}{% endif %}{% if active_slot %}&amp;slot={{ active_slot }}{% endif %}" aria-label="Retirer le filtre canal" class="hover:underline">×</a>
+  </span>
+  {% endif %}
+  {% if active_weekday %}
+  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Jour : {{ active_weekday_label }}
+    <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}{% if active_slot %}&amp;slot={{ active_slot }}{% endif %}" aria-label="Retirer le filtre jour" class="hover:underline">×</a>
+  </span>
+  {% endif %}
+  {% if active_slot %}
+  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">Créneau : {{ active_slot_label }}
+    <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}{% if active_weekday %}&amp;weekday={{ active_weekday }}{% endif %}" aria-label="Retirer le filtre créneau" class="hover:underline">×</a>
+  </span>
+  {% endif %}
+  <a href="?year={{ selected_year }}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white border border-slate-300 text-slate-600 hover:bg-slate-50">Tout réinitialiser</a>
 </div>
 {% endif %}
 
 {% if total_workshops == 0 %}
-<div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6" role="status">
-    <p class="text-sm text-amber-800"><i class="bx bx-info-circle"></i> Aucun atelier{% if has_active_filters %} ne correspond à ces filtres{% else %} pour l'année {{ selected_year }}{% endif %}. Modifiez les filtres ou choisissez une autre année.</p>
+<div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6" role="status">
+  <p class="text-sm text-amber-900"><strong>Aucun atelier</strong>{% if has_active_filters %} ne correspond à ces filtres{% else %} pour l’année {{ selected_year }}{% endif %}. Modifiez les filtres ou choisissez une autre année.</p>
 </div>
 {% endif %}
 
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 hover:shadow-md transition-shadow">
-        <div class="flex items-center gap-3 mb-3">
-            <div class="w-10 h-10 rounded-xl bg-[#e8eef7] flex items-center justify-center shrink-0">
-                <i class="bx bx-calendar-event text-xl text-[#4a6fa5]"></i>
-            </div>
-            <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Ateliers</span>
-        </div>
-        <div class="text-3xl font-bold text-[#1e293b]">{{ total_workshops }}</div>
-        <div class="flex items-center gap-3 mt-2 text-xs text-[#7a8fa0]">
-            <span>{{ total_workshops_except_class }} classiques</span>
-            <span class="w-1 h-1 rounded-full bg-[#b0bedb]"></span>
-            <span>{{ total_accueil_classe }} accueils</span>
-        </div>
+<section id="vue-ensemble" aria-labelledby="titre-vue" class="scroll-mt-24">
+<h2 id="titre-vue" class="sr-only">Vue d’ensemble</h2>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+  <a href="#communes" class="stats-kpi block bg-white rounded-xl border border-slate-200 p-5 hover:border-[#4a6fa5] hover:shadow-sm transition-shadow">
+    <div class="flex items-center gap-2 mb-2">
+      <i class="bx bx-calendar-event text-lg text-[#4a6fa5]" aria-hidden="true"></i>
+      <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ateliers</span>
     </div>
-
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 hover:shadow-md transition-shadow">
-        <div class="flex items-center gap-3 mb-3">
-            <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
-                <i class="bx bx-user-plus text-xl text-emerald-600"></i>
-            </div>
-            <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Inscrits</span>
-        </div>
-        <div class="text-3xl font-bold text-[#1e293b]">{{ total_registered }}</div>
-        <div class="text-xs text-[#7a8fa0] mt-2">Participants inscrits</div>
+    <div class="text-3xl font-bold text-slate-900">{{ total_workshops }}</div>
+    <div class="text-xs text-slate-500 mt-1">{{ total_workshops_except_class }} classiques · {{ total_accueil_classe }} accueils. Sert à : mesurer le volume d'activité.</div>
+    <span class="text-xs font-medium text-[#4a6fa5] mt-2 inline-block">Voir par commune →</span>
+  </a>
+  <a href="#mensuel" class="stats-kpi block bg-white rounded-xl border border-slate-200 p-5 hover:border-[#4a6fa5] hover:shadow-sm transition-shadow">
+    <div class="flex items-center gap-2 mb-2">
+      <i class="bx bx-user-plus text-lg text-emerald-700" aria-hidden="true"></i>
+      <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Inscrits</span>
     </div>
-
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 hover:shadow-md transition-shadow">
-        <div class="flex items-center gap-3 mb-3">
-            <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-                <i class="bx bx-user-check text-xl text-amber-600"></i>
-            </div>
-            <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Présents</span>
-        </div>
-        <div class="text-3xl font-bold text-[#1e293b]">{{ total_attendees }}</div>
-        <div class="flex items-center gap-2 mt-2">
-            <div class="flex-1 bg-[#e8eef7] rounded-full h-1.5">
-                <div class="bg-[#4a6fa5] h-1.5 rounded-full" style="width: {{ attendance_rate|floatformat:0 }}%"></div>
-            </div>
-            <span class="text-xs font-medium text-[#4a6fa5]">{{ attendance_rate|floatformat:1 }}%</span>
-        </div>
+    <div class="text-3xl font-bold text-slate-900">{{ total_registered }}</div>
+    <div class="text-xs text-slate-500 mt-1">Dont {{ total_registered_only_class_welcome }} en accueils de classe. Sert à : mesurer la demande réelle.</div>
+    <span class="text-xs font-medium text-[#4a6fa5] mt-2 inline-block">Voir par mois →</span>
+  </a>
+  <a href="#presence" class="stats-kpi block bg-white rounded-xl border border-slate-200 p-5 hover:border-[#4a6fa5] hover:shadow-sm transition-shadow">
+    <div class="flex items-center gap-2 mb-2">
+      <i class="bx bx-user-check text-lg text-amber-700" aria-hidden="true"></i>
+      <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Présents</span>
     </div>
-
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 hover:shadow-md transition-shadow">
-        <div class="flex items-center gap-3 mb-3">
-            <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
-                <i class="bx bx-group text-xl text-sky-600"></i>
-            </div>
-            <span class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Moyenne</span>
-        </div>
-        <div class="text-3xl font-bold text-[#1e293b]">{{ avg_registered|floatformat:1 }}</div>
-        <div class="text-xs text-[#7a8fa0] mt-2">Inscrits / atelier classique</div>
+    <div class="text-3xl font-bold text-slate-900">{{ total_attendees }}</div>
+    <div class="flex items-center gap-2 mt-2">
+      <div class="flex-1 bg-slate-100 rounded-full h-1.5" role="img" aria-label="Taux de présence {{ attendance_rate|floatformat:1 }} pour cent">
+        <div class="bg-[#4a6fa5] h-1.5 rounded-full" style="width: {{ attendance_rate|floatformat:0 }}%"></div>
+      </div>
+      <span class="text-xs font-semibold text-[#4a6fa5]">{{ attendance_rate|floatformat:1 }}%</span>
     </div>
+    <p class="text-xs text-slate-500 mt-2">Sert à : mesurer la fidélité (inscrits venus vs absents).</p>
+  </a>
+  <a href="#remplissage" class="stats-kpi block bg-white rounded-xl border border-slate-200 p-5 hover:border-[#4a6fa5] hover:shadow-sm transition-shadow">
+    <div class="flex items-center gap-2 mb-2">
+      <i class="bx bx-group text-lg text-cyan-800" aria-hidden="true"></i>
+      <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Moyenne / atelier</span>
+    </div>
+    <div class="text-3xl font-bold text-slate-900">{{ avg_registered|floatformat:1 }}</div>
+    <div class="text-xs text-slate-500 mt-1">Inscrits par atelier classique. Sert à : calibrer la jauge des salles et les groupes.</div>
+    <span class="text-xs font-medium text-[#4a6fa5] mt-2 inline-block">Voir la distribution →</span>
+  </a>
 </div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 text-sm">
+  <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}&amp;class_welcome=no" class="flex items-center justify-between bg-white rounded-xl border px-4 py-3 {% if active_class_welcome == 'no' %}border-[#4a6fa5] ring-1 ring-[#4a6fa5]/30{% else %}border-slate-200 hover:border-[#4a6fa5]{% endif %}">
+    <span class="text-slate-600">Filtrer : <strong class="text-slate-900">Classiques</strong> ({{ total_workshops_except_class }})</span>
+    <span class="text-[#4a6fa5] font-medium">{% if active_class_welcome == 'no' %}Actif ✓{% else %}Appliquer →{% endif %}</span>
+  </a>
+  <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}&amp;class_welcome=yes" class="flex items-center justify-between bg-white rounded-xl border px-4 py-3 {% if active_class_welcome == 'yes' %}border-emerald-600 ring-1 ring-emerald-600/30{% else %}border-slate-200 hover:border-emerald-600{% endif %}">
+    <span class="text-slate-600">Filtrer : <strong class="text-slate-900">Accueils de classe</strong> ({{ total_accueil_classe }})</span>
+    <span class="text-emerald-700 font-medium">{% if active_class_welcome == 'yes' %}Actif ✓{% else %}Appliquer →{% endif %}</span>
+  </a>
+</div>
+</section>
 
 {% if previous_year_data or previous_year_data_no_class or previous_year_data_class %}
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-    {% if previous_year_data %}
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-3 flex items-center gap-2">
-            <i class="bx bx-line-chart text-[#4a6fa5]"></i> Tous ateliers {{ previous_year_data.period }}
-        </h3>
-        <p class="text-xs text-[#7a8fa0] mb-3">vs {{ previous_year_data.year }}</p>
-        <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-                <span class="text-[#7a8fa0]">Ateliers</span>
-                <span class="font-semibold {% if previous_year_data.workshops_variation > 0 %}text-emerald-600{% elif previous_year_data.workshops_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
-                    {% if previous_year_data.workshops_variation > 0 %}+{% endif %}{{ previous_year_data.workshops_variation|floatformat:1 }}%
-                </span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-[#7a8fa0]">Inscrits</span>
-                <span class="font-semibold {% if previous_year_data.registered_variation > 0 %}text-emerald-600{% elif previous_year_data.registered_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
-                    {% if previous_year_data.registered_variation > 0 %}+{% endif %}{{ previous_year_data.registered_variation|floatformat:1 }}%
-                </span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-[#7a8fa0]">Présence</span>
-                <span class="font-semibold text-[#4a6fa5]">{{ previous_year_data.attendance_rate_to_date|floatformat:1 }}% <span class="font-normal text-[#b0bedb]">(N-1 : {{ previous_year_data.attendance_rate|floatformat:1 }}%)</span></span>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-    {% if previous_year_data_no_class %}
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-3 flex items-center gap-2">
-            <i class="bx bx-line-chart text-emerald-600"></i> Classiques {{ previous_year_data_no_class.period }}
-        </h3>
-        <p class="text-xs text-[#7a8fa0] mb-3">vs {{ previous_year_data_no_class.year }}</p>
-        <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-                <span class="text-[#7a8fa0]">Ateliers</span>
-                <span class="font-semibold {% if previous_year_data_no_class.workshops_variation > 0 %}text-emerald-600{% elif previous_year_data_no_class.workshops_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
-                    {% if previous_year_data_no_class.workshops_variation > 0 %}+{% endif %}{{ previous_year_data_no_class.workshops_variation|floatformat:1 }}%
-                </span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-[#7a8fa0]">Inscrits</span>
-                <span class="font-semibold {% if previous_year_data_no_class.registered_variation > 0 %}text-emerald-600{% elif previous_year_data_no_class.registered_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
-                    {% if previous_year_data_no_class.registered_variation > 0 %}+{% endif %}{{ previous_year_data_no_class.registered_variation|floatformat:1 }}%
-                </span>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-    {% if previous_year_data_class %}
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-3 flex items-center gap-2">
-            <i class="bx bx-line-chart text-amber-600"></i> Accueils {{ previous_year_data_class.period }}
-        </h3>
-        <p class="text-xs text-[#7a8fa0] mb-3">vs {{ previous_year_data_class.year }}</p>
-        <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-                <span class="text-[#7a8fa0]">Ateliers</span>
-                <span class="font-semibold {% if previous_year_data_class.workshops_variation > 0 %}text-emerald-600{% elif previous_year_data_class.workshops_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
-                    {% if previous_year_data_class.workshops_variation > 0 %}+{% endif %}{{ previous_year_data_class.workshops_variation|floatformat:1 }}%
-                </span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-[#7a8fa0]">Inscrits</span>
-                <span class="font-semibold {% if previous_year_data_class.registered_variation > 0 %}text-emerald-600{% elif previous_year_data_class.registered_variation < 0 %}text-[#d46a78]{% else %}text-[#7a8fa0]{% endif %}">
-                    {% if previous_year_data_class.registered_variation > 0 %}+{% endif %}{{ previous_year_data_class.registered_variation|floatformat:1 }}%
-                </span>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-</div>
+<section aria-label="Comparaison année précédente" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+  {% if previous_year_data %}
+  <div class="bg-white rounded-xl border border-slate-200 p-5">
+    <h3 class="text-sm font-semibold text-slate-900 mb-1">Tous ateliers {{ previous_year_data.period }}</h3>
+    <p class="text-xs text-slate-500 mb-3">vs {{ previous_year_data.year }} (même période). Sert à : voir si l'activité progresse ou baisse à périmètre constant.</p>
+    <dl class="space-y-2 text-sm">
+      <div class="flex justify-between"><dt class="text-slate-500">Ateliers</dt><dd class="font-semibold {% if previous_year_data.workshops_variation > 0 %}text-emerald-700{% elif previous_year_data.workshops_variation < 0 %}text-red-700{% else %}text-slate-500{% endif %}">{% if previous_year_data.workshops_variation > 0 %}+{% endif %}{{ previous_year_data.workshops_variation|floatformat:1 }}%</dd></div>
+      <div class="flex justify-between"><dt class="text-slate-500">Inscrits</dt><dd class="font-semibold {% if previous_year_data.registered_variation > 0 %}text-emerald-700{% elif previous_year_data.registered_variation < 0 %}text-red-700{% else %}text-slate-500{% endif %}">{% if previous_year_data.registered_variation > 0 %}+{% endif %}{{ previous_year_data.registered_variation|floatformat:1 }}%</dd></div>
+      <div class="flex justify-between"><dt class="text-slate-500">Présence</dt><dd class="font-semibold text-[#4a6fa5]">{{ previous_year_data.attendance_rate_to_date|floatformat:1 }}% <span class="font-normal text-slate-400">(N-1 : {{ previous_year_data.attendance_rate|floatformat:1 }}%)</span></dd></div>
+    </dl>
+  </div>
+  {% endif %}
+  {% if previous_year_data_no_class %}
+  <div class="bg-white rounded-xl border border-slate-200 p-5">
+    <h3 class="text-sm font-semibold text-slate-900 mb-1">Classiques {{ previous_year_data_no_class.period }}</h3>
+    <p class="text-xs text-slate-500 mb-3">vs {{ previous_year_data_no_class.year }}. Sert à : piloter l'offre tout-public hors scolaire.</p>
+    <dl class="space-y-2 text-sm">
+      <div class="flex justify-between"><dt class="text-slate-500">Ateliers</dt><dd class="font-semibold {% if previous_year_data_no_class.workshops_variation > 0 %}text-emerald-700{% elif previous_year_data_no_class.workshops_variation < 0 %}text-red-700{% else %}text-slate-500{% endif %}">{% if previous_year_data_no_class.workshops_variation > 0 %}+{% endif %}{{ previous_year_data_no_class.workshops_variation|floatformat:1 }}%</dd></div>
+      <div class="flex justify-between"><dt class="text-slate-500">Inscrits</dt><dd class="font-semibold {% if previous_year_data_no_class.registered_variation > 0 %}text-emerald-700{% elif previous_year_data_no_class.registered_variation < 0 %}text-red-700{% else %}text-slate-500{% endif %}">{% if previous_year_data_no_class.registered_variation > 0 %}+{% endif %}{{ previous_year_data_no_class.registered_variation|floatformat:1 }}%</dd></div>
+    </dl>
+  </div>
+  {% endif %}
+  {% if previous_year_data_class %}
+  <div class="bg-white rounded-xl border border-slate-200 p-5">
+    <h3 class="text-sm font-semibold text-slate-900 mb-1">Accueils {{ previous_year_data_class.period }}</h3>
+    <p class="text-xs text-slate-500 mb-3">vs {{ previous_year_data_class.year }}. Sert à : piloter l'accueil des classes d'une année sur l'autre.</p>
+    <dl class="space-y-2 text-sm">
+      <div class="flex justify-between"><dt class="text-slate-500">Ateliers</dt><dd class="font-semibold {% if previous_year_data_class.workshops_variation > 0 %}text-emerald-700{% elif previous_year_data_class.workshops_variation < 0 %}text-red-700{% else %}text-slate-500{% endif %}">{% if previous_year_data_class.workshops_variation > 0 %}+{% endif %}{{ previous_year_data_class.workshops_variation|floatformat:1 }}%</dd></div>
+      <div class="flex justify-between"><dt class="text-slate-500">Inscrits</dt><dd class="font-semibold {% if previous_year_data_class.registered_variation > 0 %}text-emerald-700{% elif previous_year_data_class.registered_variation < 0 %}text-red-700{% else %}text-slate-500{% endif %}">{% if previous_year_data_class.registered_variation > 0 %}+{% endif %}{{ previous_year_data_class.registered_variation|floatformat:1 }}%</dd></div>
+    </dl>
+  </div>
+  {% endif %}
+</section>
 {% endif %}
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-    <div class="lg:col-span-1 bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Répartition par type</h3>
-        <div class="h-56">
-            <canvas id="typeDistribution" role="img" aria-label="Répartition classiques et accueils de classe"></canvas>
-        </div>
-        <div class="flex justify-center gap-6 mt-4 text-sm">
-            <div class="flex items-center gap-2">
-                <span class="w-3 h-3 rounded bg-[#4a6fa5]"></span>
-                <span class="text-[#7a8fa0]">Classiques</span>
-                <span class="font-semibold text-[#1e293b]">{{ total_workshops_except_class }}</span>
-            </div>
-            <div class="flex items-center gap-2">
-                <span class="w-3 h-3 rounded bg-emerald-500"></span>
-                <span class="text-[#7a8fa0]">Accueils</span>
-                <span class="font-semibold text-[#1e293b]">{{ total_accueil_classe }}</span>
-            </div>
-        </div>
-    </div>
+<section id="croisements" aria-labelledby="titre-croisements" class="scroll-mt-24 mb-8">
+  <div class="mb-4">
+    <h2 id="titre-croisements" class="text-lg font-bold text-slate-900">Statistiques croisées</h2>
+    <p class="text-sm text-slate-600">Sert à : croiser deux dimensions pour trouver où et quand agir. Chaque nombre est cliquable : filtrer les stats ou ouvrir la liste des ateliers concernés.</p>
+  </div>
 
-    <div class="lg:col-span-2 bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Par lieu</h3>
-        <div class="h-56">
-            <canvas id="locationStats" role="img" aria-label="Ateliers et inscrits par lieu"></canvas>
-        </div>
-    </div>
-</div>
-
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Par commune</h3>
-        <div class="h-64">
-            <canvas id="communeStats" role="img" aria-label="Accueils et classiques par commune"></canvas>
-        </div>
-    </div>
-
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Évolution mensuelle</h3>
-        <div class="h-64">
-            <canvas id="monthlyStats" role="img" aria-label="Évolution mensuelle des ateliers, inscrits et présents"></canvas>
-        </div>
-    </div>
-</div>
-
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Taux de remplissage (hors accueils)</h3>
-        <div class="space-y-3">
-            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                <span class="text-sm text-[#7a8fa0]">Moyenne d'inscrits</span>
-                <span class="font-semibold text-[#1e293b]">{{ avg_registered|floatformat:1 }}</span>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                <span class="text-sm text-[#7a8fa0]">Moyenne de présents</span>
-                <span class="font-semibold text-[#1e293b]">{{ avg_attendees|floatformat:1 }}</span>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                <span class="text-sm text-[#7a8fa0]">Maximum</span>
-                <span class="font-semibold text-[#1e293b]">{{ participation_stats.maximum|default:0 }}</span>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                <span class="text-sm text-[#7a8fa0]">Minimum</span>
-                <span class="font-semibold text-[#1e293b]">{{ participation_stats.minimum|default:0 }}</span>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                <span class="text-sm text-[#7a8fa0]">Médiane d'inscrits</span>
-                <span class="font-semibold text-[#1e293b]">{{ distribution_stats.median|floatformat:0 }}</span>
-            </div>
-            <div class="p-3 bg-[#e8eef7] rounded-xl">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-sm font-medium text-[#4a6fa5]">Taux de présence global</span>
-                    <span class="text-sm font-bold text-[#4a6fa5]">{{ attendance_rate|floatformat:1 }}%</span>
-                </div>
-                <div class="bg-white rounded-full h-2.5 overflow-hidden">
-                    <div class="bg-[#4a6fa5] h-2.5 rounded-full" style="width: {{ attendance_rate|floatformat:0 }}%"></div>
-                </div>
-                <div class="text-xs text-[#7a8fa0] mt-1">{{ total_attendees }} présents / {{ total_registered }} inscrits</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Moyens de communication</h3>
-        <div class="space-y-3">
-            {% with total_com=communication_stats.instagram|add:communication_stats.facebook|add:communication_stats.mail|add:communication_stats.portail|add:communication_stats.vdn %}
-            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                <div class="flex items-center gap-2">
-                    <i class="bx bxl-instagram text-xl text-pink-500"></i>
-                    <span class="text-sm text-[#7a8fa0]">Instagram</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <div class="w-20 bg-[#e8eef7] rounded-full h-1.5">
-                        <div class="bg-pink-400 h-1.5 rounded-full" style="width: {% widthratio communication_stats.instagram total_com 100 %}%"></div>
-                    </div>
-                    <span class="text-sm font-semibold text-[#1e293b]">{{ communication_stats.instagram }}</span>
-                </div>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                <div class="flex items-center gap-2">
-                    <i class="bx bxl-facebook text-xl text-blue-600"></i>
-                    <span class="text-sm text-[#7a8fa0]">Facebook</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <div class="w-20 bg-[#e8eef7] rounded-full h-1.5">
-                        <div class="bg-blue-500 h-1.5 rounded-full" style="width: {% widthratio communication_stats.facebook total_com 100 %}%"></div>
-                    </div>
-                    <span class="text-sm font-semibold text-[#1e293b]">{{ communication_stats.facebook }}</span>
-                </div>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                <div class="flex items-center gap-2">
-                    <i class="bx bx-envelope text-xl text-[#4a6fa5]"></i>
-                    <span class="text-sm text-[#7a8fa0]">Mail</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <div class="w-20 bg-[#e8eef7] rounded-full h-1.5">
-                        <div class="bg-[#4a6fa5] h-1.5 rounded-full" style="width: {% widthratio communication_stats.mail total_com 100 %}%"></div>
-                    </div>
-                    <span class="text-sm font-semibold text-[#1e293b]">{{ communication_stats.mail }}</span>
-                </div>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                <div class="flex items-center gap-2">
-                    <i class="bx bx-globe text-xl text-emerald-600"></i>
-                    <span class="text-sm text-[#7a8fa0]">Portail</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <div class="w-20 bg-[#e8eef7] rounded-full h-1.5">
-                        <div class="bg-emerald-500 h-1.5 rounded-full" style="width: {% widthratio communication_stats.portail total_com 100 %}%"></div>
-                    </div>
-                    <span class="text-sm font-semibold text-[#1e293b]">{{ communication_stats.portail }}</span>
-                </div>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                <div class="flex items-center gap-2">
-                    <i class="bx bx-news text-xl text-amber-600"></i>
-                    <span class="text-sm text-[#7a8fa0]">VDN</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <div class="w-20 bg-[#e8eef7] rounded-full h-1.5">
-                        <div class="bg-amber-500 h-1.5 rounded-full" style="width: {% widthratio communication_stats.vdn total_com 100 %}%"></div>
-                    </div>
-                    <span class="text-sm font-semibold text-[#1e293b]">{{ communication_stats.vdn }}</span>
-                </div>
-            </div>
-            {% endwith %}
-            <p class="text-xs text-[#b0bedb]">Couverture : part des {{ total_workshops }} ateliers relayés par canal —
-                {% for key, ch in channel_coverage.items %}{% if key == "vdn" %}VDN{% else %}{{ key|capfirst }}{% endif %} {{ ch.rate|floatformat:0 }}%{% if not forloop.last %} · {% endif %}{% endfor %}.
-            </p>
-        </div>
-    </div>
-</div>
-
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-1">Présence par lieu</h3>
-        <p class="text-xs text-[#b0bedb] mb-4">Présents / inscrits et taux de présence</p>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider border-b border-[#dce3ef]">
-                        <th class="pb-3" scope="col">Lieu</th>
-                        <th class="pb-3 text-center" scope="col">Ateliers</th>
-                        <th class="pb-3 text-center" scope="col">Inscrits</th>
-                        <th class="pb-3 text-center" scope="col">Présents</th>
-                        <th class="pb-3 text-right" scope="col">Taux</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-[#dce3ef]">
-                    {% for row in presence_by_location %}
-                    <tr class="hover:bg-[#f8f9fc]">
-                        <td class="py-2.5 font-medium text-[#1e293b] truncate max-w-[180px]">{{ row.location__name|default:"Inconnu" }}</td>
-                        <td class="py-2.5 text-center text-[#7a8fa0]">{{ row.count }}</td>
-                        <td class="py-2.5 text-center text-[#7a8fa0]">{{ row.registered }}</td>
-                        <td class="py-2.5 text-center text-[#7a8fa0]">{{ row.attendees }}</td>
-                        <td class="py-2.5 text-right">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ row.attendance_rate|floatformat:1 }}%</span>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="5" class="py-4 text-center text-sm text-[#b0bedb]">Aucune donnée</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-1">Distribution des inscrits (hors accueils)</h3>
-        <p class="text-xs text-[#b0bedb] mb-4">{{ distribution_stats.count }} ateliers classiques — médiane {{ distribution_stats.median|floatformat:0 }}, p25 {{ distribution_stats.p25|floatformat:0 }}, p75 {{ distribution_stats.p75|floatformat:0 }}</p>
-        {% if distribution_stats.count %}
-        <div class="space-y-3">
-            {% for tranche in distribution_stats.histogram %}
-            <div class="flex items-center gap-3">
-                <span class="text-xs font-medium text-[#7a8fa0] w-12 shrink-0">{{ tranche.tranche }}</span>
-                <div class="flex-1 bg-[#e8eef7] rounded-full h-2.5 overflow-hidden">
-                    <div class="bg-[#06b6d4] h-2.5 rounded-full" style="width: {% widthratio tranche.count distribution_stats.count 100 %}%"></div>
-                </div>
-                <span class="text-xs font-semibold text-[#1e293b] w-8 text-right">{{ tranche.count }}</span>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <p class="text-sm text-[#b0bedb]">Aucun atelier classique sur la période.</p>
-        {% endif %}
-    </div>
-</div>
-
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-1">Affiches</h3>
-        <p class="text-xs text-[#b0bedb] mb-4">Suivi des affiches requises et validées</p>
-        <div class="space-y-3">
-            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                <span class="text-sm text-[#7a8fa0]">Affiches requises</span>
-                <span class="font-semibold text-[#1e293b]">{{ poster_stats.required }} <span class="text-xs font-normal text-[#b0bedb]">({{ poster_stats.required_rate|floatformat:0 }}%)</span></span>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                <span class="text-sm text-[#7a8fa0]">Affiches validées</span>
-                <span class="font-semibold text-[#1e293b]">{{ poster_stats.valide }} <span class="text-xs font-normal text-[#b0bedb]">({{ poster_stats.valide_rate|floatformat:0 }}% des requises)</span></span>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-[#f8f9fc] rounded-xl">
-                <span class="text-sm text-[#7a8fa0]">Ateliers avec visuel</span>
-                <span class="font-semibold text-[#1e293b]">{{ poster_stats.with_image }}</span>
-            </div>
-        </div>
-    </div>
-
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-1">Top / Flop communes</h3>
-        <p class="text-xs text-[#b0bedb] mb-4">Communes avec au moins {{ top_flop_communes.min_ateliers }} ateliers</p>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-            <div>
-                <p class="text-xs font-medium text-emerald-700 mb-2">Top présence</p>
-                {% for c in top_flop_communes.top_presence %}
-                <div class="flex items-center justify-between py-1 border-b border-[#dce3ef] last:border-0">
-                    <span class="text-[#1e293b] truncate">{{ c.commune }}</span>
-                    <span class="font-semibold text-emerald-700 ml-2">{{ c.attendance_rate|floatformat:0 }}%</span>
-                </div>
-                {% empty %}
-                <p class="text-xs text-[#b0bedb]">Données insuffisantes</p>
-                {% endfor %}
-            </div>
-            <div>
-                <p class="text-xs font-medium text-[#d46a78] mb-2">À renforcer</p>
-                {% for c in top_flop_communes.flop_presence %}
-                <div class="flex items-center justify-between py-1 border-b border-[#dce3ef] last:border-0">
-                    <span class="text-[#1e293b] truncate">{{ c.commune }}</span>
-                    <span class="font-semibold text-[#d46a78] ml-2">{{ c.attendance_rate|floatformat:0 }}%</span>
-                </div>
-                {% empty %}
-                <p class="text-xs text-[#b0bedb]">Données insuffisantes</p>
-                {% endfor %}
-            </div>
-            <div>
-                <p class="text-xs font-medium text-[#4a6fa5] mb-2">Top volume</p>
-                {% for c in top_flop_communes.top_volume %}
-                <div class="flex items-center justify-between py-1 border-b border-[#dce3ef] last:border-0">
-                    <span class="text-[#1e293b] truncate">{{ c.commune }}</span>
-                    <span class="font-semibold text-[#4a6fa5] ml-2">{{ c.total_participants }}</span>
-                </div>
-                {% empty %}
-                <p class="text-xs text-[#b0bedb]">Données insuffisantes</p>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 mb-6">
-    <h3 class="text-sm font-semibold text-[#1e293b] mb-1">Détail mensuel de la présence</h3>
-    <p class="text-xs text-[#b0bedb] mb-4">Ateliers, inscrits, présents et taux par mois</p>
+  <div class="bg-white rounded-xl border border-slate-200 p-5 mb-4">
+    <h3 class="text-sm font-semibold text-slate-900">Communes × mois <span class="font-normal text-slate-500">— nombre d’ateliers (top {{ commune_month_matrix.cities|length }})</span></h3>
+    <p class="text-xs text-slate-500 mt-1 mb-3">Sert à : repérer les trous d'offre et la saisonnalité par territoire. Ligne = commune, colonne = mois. Cliquez sur un nombre pour voir les ateliers du mois dans la commune.</p>
+    {% if commune_month_matrix.matrix %}
     <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider border-b border-[#dce3ef]">
-                    <th class="pb-3" scope="col">Mois</th>
-                    <th class="pb-3 text-center" scope="col">Ateliers</th>
-                    <th class="pb-3 text-center" scope="col">Inscrits</th>
-                    <th class="pb-3 text-center" scope="col">Présents</th>
-                    <th class="pb-3 text-right" scope="col">Taux</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-[#dce3ef]">
-                {% for m in workshops_by_month %}
-                <tr class="hover:bg-[#f8f9fc]">
-                    <td class="py-2.5 font-medium text-[#1e293b]">{{ m.label }}</td>
-                    <td class="py-2.5 text-center text-[#7a8fa0]">{{ m.count }}</td>
-                    <td class="py-2.5 text-center text-[#7a8fa0]">{{ m.total_registered }}</td>
-                    <td class="py-2.5 text-center text-[#7a8fa0]">{{ m.total_attendees }}</td>
-                    <td class="py-2.5 text-right font-semibold text-[#4a6fa5]">{{ m.attendance_rate|floatformat:1 }}%</td>
-                </tr>
-                {% endfor %}
-            </tbody>
+      <table class="w-full text-sm stats-table">
+        <caption class="sr-only">Nombre d’ateliers par commune et par mois en {{ selected_year }}</caption>
+        <thead>
+          <tr class="text-left text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
+            <th scope="col" class="py-2 pr-3">Commune</th>
+            {% for m in month_names %}<th scope="col" class="py-2 px-2 text-center {% if forloop.counter|stringformat:'s' == active_month %}text-[#4a6fa5]{% endif %}">{{ m }}</th>{% endfor %}
+            <th scope="col" class="py-2 pl-2 text-right">Total</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for row in commune_month_matrix.matrix %}
+          <tr class="hover:bg-slate-50">
+            <th scope="row" class="py-2 pr-3 font-medium text-slate-900 text-left">
+              <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}&amp;city={{ row.commune|urlencode }}" class="hover:text-[#4a6fa5] hover:underline">{{ row.commune }}</a>
+            </th>
+            {% for count in row.months %}
+            <td class="py-2 px-2 text-center">
+              {% if count > 0 %}
+              <a href="?year={{ selected_year }}&amp;city={{ row.commune|urlencode }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}&amp;month={{ forloop.counter }}" title="Filtrer les stats — {{ row.commune }}, mois {{ forloop.counter }}" class="inline-block min-w-7 px-1.5 py-0.5 rounded-md text-xs font-semibold {% if count >= 5 %}bg-[#4a6fa5] text-white{% elif count >= 3 %}bg-[#e8eef7] text-[#4a6fa5]{% else %}bg-slate-100 text-slate-700{% endif %} hover:ring-2 hover:ring-[#4a6fa5]/40">{{ count }}</a>
+              {% else %}
+              <span class="text-slate-300 text-xs">–</span>
+              {% endif %}
+            </td>
+            {% endfor %}
+            <td class="py-2 pl-2 text-right font-semibold text-slate-900">{{ row.total }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-slate-400 mt-2">Astuce : le total par ligne est indicatif — utilisez le tableau « Détail par commune » pour les totaux exacts avec inscrits.</p>
+    {% else %}
+    <p class="text-sm text-slate-400">Aucune donnée croisée sur la période.</p>
+    {% endif %}
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+      <h3 class="text-sm font-semibold text-slate-900">Mois × type</h3>
+      <p class="text-xs text-slate-500 mt-1 mb-3">Sert à : équilibrer scolaires et tout-public dans l'année. Cliquez sur un mois pour filtrer toute la page. Cliquez sur Classiques/Accueils pour croiser mois + type.</p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm stats-table">
+          <caption class="sr-only">Ateliers classiques et accueils par mois</caption>
+          <thead>
+            <tr class="text-left text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
+              <th scope="col" class="pb-2">Mois</th>
+              <th scope="col" class="pb-2 text-center">Classiques</th>
+              <th scope="col" class="pb-2 text-center">Accueils</th>
+              <th scope="col" class="pb-2 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for r in month_type_cross %}
+            <tr class="hover:bg-slate-50 {% if r.month|stringformat:'s' == active_month %}bg-[#f2f6fb]{% endif %}">
+              <td class="py-2 font-medium text-slate-900">
+                <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}&amp;month={{ r.month }}" class="hover:text-[#4a6fa5] hover:underline">{% if r.month == 1 %}Jan{% elif r.month == 2 %}Fév{% elif r.month == 3 %}Mar{% elif r.month == 4 %}Avr{% elif r.month == 5 %}Mai{% elif r.month == 6 %}Juin{% elif r.month == 7 %}Juil{% elif r.month == 8 %}Août{% elif r.month == 9 %}Sep{% elif r.month == 10 %}Oct{% elif r.month == 11 %}Nov{% else %}Déc{% endif %}{% if r.month|stringformat:'s' == active_month %} ✓{% endif %}</a>
+              </td>
+              <td class="py-2 text-center"><a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}&amp;month={{ r.month }}&amp;class_welcome=no" class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-800 hover:ring-2 hover:ring-sky-300">{{ r.classic_count }}</a></td>
+              <td class="py-2 text-center"><a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}&amp;month={{ r.month }}&amp;class_welcome=yes" class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 hover:ring-2 hover:ring-amber-300">{{ r.class_count }}</a></td>
+              <td class="py-2 text-right font-semibold text-slate-900">{{ r.classic_count|add:r.class_count }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
         </table>
-    </div>
-</div>
-
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Top 5 par inscrits</h3>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider border-b border-[#dce3ef]">
-                        <th class="pb-3" scope="col">Atelier</th>
-                        <th class="pb-3" scope="col">Date</th>
-                        <th class="pb-3 text-right" scope="col">Inscrits</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-[#dce3ef]">
-                    {% for w in most_registered %}
-                    <tr class="hover:bg-[#f8f9fc]">
-                        <td class="py-3 font-medium text-[#1e293b] truncate max-w-[180px]">{{ w.name }}</td>
-                        <td class="py-3 text-[#7a8fa0]">{{ w.date|date:"d/m/Y" }}</td>
-                        <td class="py-3 text-right">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ w.number_registered }}</span>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="3" class="py-4 text-center text-sm text-[#b0bedb]">Aucun atelier</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+      </div>
     </div>
 
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-4">Top 5 par taux de présence</h3>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider border-b border-[#dce3ef]">
-                        <th class="pb-3" scope="col">Atelier</th>
-                        <th class="pb-3" scope="col">Date</th>
-                        <th class="pb-3 text-right" scope="col">Taux</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-[#dce3ef]">
-                    {% for w in best_attendance %}
-                    <tr class="hover:bg-[#f8f9fc]">
-                        <td class="py-3 font-medium text-[#1e293b] truncate max-w-[180px]">{{ w.name }}</td>
-                        <td class="py-3 text-[#7a8fa0]">{{ w.date|date:"d/m/Y" }}</td>
-                        <td class="py-3 text-right">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">{{ w.attendance_rate|floatformat:1 }}%</span>
-                            <span class="text-xs text-[#b0bedb] ml-1">{{ w.number_attendees }}/{{ w.number_registered }}</span>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="3" class="py-4 text-center text-sm text-[#b0bedb]">Aucun atelier</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 mb-6">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-        <h3 class="text-sm font-semibold text-[#1e293b]">Détail par commune</h3>
-        <div class="flex flex-wrap items-center gap-2">
-            <label class="sr-only" for="filterCommune">Filtrer par commune</label>
-            <input type="text" id="filterCommune" placeholder="Commune..."
-                class="border border-[#dce3ef] rounded-lg px-3 py-1.5 text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] w-36" />
-            <label class="sr-only" for="filterMinAteliers">Minimum d'ateliers</label>
-            <input type="number" id="filterMinAteliers" placeholder="Min ateliers" min="0"
-                class="border border-[#dce3ef] rounded-lg px-3 py-1.5 text-sm text-[#1e293b] placeholder:text-[#b0bedb] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5] w-28" />
-            <button type="button" id="resetFilters"
-                class="px-3 py-1.5 text-sm text-[#7a8fa0] border border-[#dce3ef] rounded-lg hover:bg-[#f8f9fc] transition-colors">
-                <i class="bx bx-refresh"></i> Reset
-            </button>
-            <span id="visibleRows" class="text-xs text-[#b0bedb]">{{ commune_table_data|length }}/{{ commune_table_data|length }}</span>
-        </div>
-    </div>
-    <div class="overflow-x-auto max-h-80">
-        <table class="w-full text-sm" id="communeTable">
-            <thead class="sticky top-0 bg-[#f8f9fc]">
-                <tr class="text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">
-                    <th class="px-2 py-3 w-8"><span class="sr-only">Détails</span></th>
-                    <th class="px-3 py-3 rounded-l-lg cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0]" onclick="sortTable(0)" scope="col">
-                        Commune <i class="bx bx-sort ml-1"></i>
-                    </th>
-                    <th class="px-3 py-3 text-center cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0]" onclick="sortTable(1)" scope="col">
-                        Total
-                    </th>
-                    <th class="px-3 py-3 text-center cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0]" onclick="sortTable(2)" scope="col">
-                        Classiques
-                    </th>
-                    <th class="px-3 py-3 text-center cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0]" onclick="sortTable(3)" scope="col">
-                        Accueils
-                    </th>
-                    <th class="px-3 py-3 text-center cursor-pointer hover:bg-[#e8eef7] text-[#7a8fa0] rounded-r-lg" onclick="sortTable(4)" scope="col">
-                        Participants
-                    </th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-[#dce3ef]">
-                {% for commune in commune_table_data %}
-                <tr class="hover:bg-[#f8f9fc] transition-colors commune-row" data-city="{{ commune.commune }}">
-                    <td class="px-2 py-2.5 text-center">
-                        {% if commune.workshops %}
-                        <button type="button"
-                            class="inline-flex items-center justify-center w-6 h-6 rounded-md text-[#b0bedb] hover:text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors toggle-btn"
-                            data-city="{{ commune.commune|escapejs }}"
-                            title="Voir les ateliers"
-                            aria-label="Voir les ateliers de {{ commune.commune }}">
-                            <i class="bx bx-chevron-right text-sm"></i>
-                        </button>
-                        {% endif %}
-                    </td>
-                    <td class="px-3 py-2.5 font-medium text-[#1e293b]">
-                        <a href="{% url 'workshop_list' %}?year={{ selected_year }}&city={{ commune.commune|urlencode }}"
-                           target="_blank"
-                           class="hover:text-[#4a6fa5] transition-colors">
-                            {{ commune.commune }}
-                            <i class="bx bx-external-link text-[#b0bedb] text-xs align-middle ml-0.5"></i>
-                        </a>
-                    </td>
-                    <td class="px-3 py-2.5 text-center">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ commune.total_ateliers }}</span>
-                    </td>
-                    <td class="px-3 py-2.5 text-center">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-sky-50 text-sky-700">{{ commune.ateliers_classiques }}</span>
-                    </td>
-                    <td class="px-3 py-2.5 text-center">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">{{ commune.accueils_classe }}</span>
-                    </td>
-                    <td class="px-3 py-2.5 text-center">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">{{ commune.total_participants }}</span>
-                    </td>
-                </tr>
-                <tr class="hidden commune-detail" data-city="{{ commune.commune }}">
-                    <td colspan="6" class="px-3 py-0">
-                        <div class="bg-[#f8f9fc] border border-[#dce3ef] rounded-lg my-2 py-2 px-3">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Ateliers {{ commune.commune }}</span>
-                                <span class="text-xs text-[#b0bedb]">{{ commune.workshops|length }} atelier{{ commune.workshops|length|pluralize }}</span>
-                            </div>
-                            <div class="divide-y divide-[#dce3ef]">
-                                {% for w in commune.workshops %}
-                                <div class="flex items-center justify-between py-1.5 first:pt-0 last:pb-0">
-                                    <div class="flex items-center gap-2 min-w-0">
-                                        {% if w.class_welcome %}
-                                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 shrink-0">
-                                            <i class="bx bx-chalkboard text-[10px]"></i> Classe
-                                        </span>
-                                        {% else %}
-                                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#e8eef7] text-[#4a6fa5] shrink-0">
-                                            <i class="bx bx-calendar text-[10px]"></i> Atelier
-                                        </span>
-                                        {% endif %}
-                                        <a href="{% url 'workshop_detail' w.id %}" class="text-sm text-[#4a6fa5] hover:text-[#3d5f8f] truncate">{{ w.name }}</a>
-                                    </div>
-                                    <span class="text-xs text-[#b0bedb] shrink-0 ml-2">{{ w.date|date:"d/m/Y" }}</span>
-                                </div>
-                                {% empty %}
-                                <div class="text-sm text-[#b0bedb] py-2 text-center">Aucun atelier</div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+      <h3 class="text-sm font-semibold text-slate-900">Canal × performance</h3>
+      <p class="text-xs text-slate-500 mt-1 mb-3">Sert à : savoir quel canal diffuse le plus et lequel convertit en présence. Un atelier peut être relayé sur plusieurs canaux. Cliquez pour filtrer toute la page par canal.</p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm stats-table">
+          <caption class="sr-only">Performance par canal de communication</caption>
+          <thead>
+            <tr class="text-left text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
+              <th scope="col" class="pb-2">Canal</th>
+              <th scope="col" class="pb-2 text-center">Ateliers</th>
+              <th scope="col" class="pb-2 text-center">Inscrits</th>
+              <th scope="col" class="pb-2 text-right">Présence</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for r in channel_cross %}
+            <tr class="hover:bg-slate-50 {% if r.channel == active_channel %}bg-[#f2f6fb]{% endif %}">
+              <td class="py-2 font-medium text-slate-900">
+                <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}&amp;channel={{ r.channel }}" class="hover:text-[#4a6fa5] hover:underline">{{ r.label }}{% if r.channel == active_channel %} ✓{% endif %}</a>
+              </td>
+              <td class="py-2 text-center font-semibold">{{ r.count }}</td>
+              <td class="py-2 text-center text-slate-600">{{ r.registered }} <span class="text-slate-400 text-xs">(moy. {{ r.avg_registered|floatformat:1 }})</span></td>
+              <td class="py-2 text-right font-semibold text-[#4a6fa5]">{{ r.attendance_rate|floatformat:1 }}%</td>
+            </tr>
+            {% endfor %}
+          </tbody>
         </table>
+      </div>
+      {% if active_channel %}
+      <p class="mt-3"><a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_weekday %}&amp;weekday={{ active_weekday }}{% endif %}{% if active_slot %}&amp;slot={{ active_slot }}{% endif %}" class="text-xs font-medium text-[#4a6fa5] hover:underline">Retirer le filtre canal ({{ active_channel }})</a></p>
+      {% endif %}
     </div>
+  </div>
+</section>
+
+<section id="remplissage-avance" aria-labelledby="titre-remplissage-avance" class="scroll-mt-24 mb-4">
+  <div class="mb-4">
+    <h2 id="titre-remplissage-avance" class="text-lg font-bold text-slate-900">Remplissage et performance</h2>
+    <p class="text-sm text-slate-600">Tranches de présence, no-show et récurrence des formats. Basé sur le périmètre hors filtres mois/canal/jour/créneau pour garder le contexte.</p>
+  </div>
+  <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Présence &lt;50%</p>
+      <p class="text-3xl font-bold text-red-700">{{ fill_tranches.tranches.low|default:0 }}</p>
+      <p class="text-xs text-slate-500 mt-1">Sert à : repérer les ateliers à fort no-show pour relancer les inscrits ou revoir le format.</p>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">50-80%</p>
+      <p class="text-3xl font-bold text-amber-700">{{ fill_tranches.tranches.mid|default:0 }}</p>
+      <p class="text-xs text-slate-500 mt-1">Sert à : identifier le remplissage correct, marge de progression sans alerte.</p>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">&gt;80%</p>
+      <p class="text-3xl font-bold text-emerald-700">{{ fill_tranches.tranches.high|default:0 }}</p>
+      <p class="text-xs text-slate-500 mt-1">Sert à : repérer les succès à reproduire et les formats à programmer en priorité.</p>
+    </div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+      <h3 class="text-sm font-semibold text-slate-900 mb-1">Top no-show</h3>
+      <p class="text-xs text-slate-500 mb-3">Sert à : cibler les ateliers où les inscrits ne viennent pas, pour relancer ou ajuster (rappels, horaires, jauge). Inscrits &gt; 0, triés par % d'absents. Cliquez pour ouvrir la fiche.</p>
+      <div class="overflow-x-auto"><table class="w-full text-sm stats-table">
+        <thead><tr class="text-left text-xs font-semibold text-slate-500 uppercase border-b border-slate-200"><th scope="col" class="pb-2">Atelier</th><th scope="col" class="pb-2 text-center">Inscrits</th><th scope="col" class="pb-2 text-center">Présents</th><th scope="col" class="pb-2 text-right">No-show</th></tr></thead>
+        <tbody class="divide-y divide-slate-100">{% for w in noshow_top %}<tr class="hover:bg-slate-50"><td class="py-2 font-medium text-slate-900 max-w-44 truncate"><a href="{% url 'workshop_detail' w.id %}" class="hover:text-[#4a6fa5] hover:underline">{{ w.name }}</a> <span class="block text-xs font-normal text-slate-400">{{ w.location__city|default:"—" }} · {{ w.date|date:"d/m/Y" }}</span></td><td class="py-2 text-center text-slate-500">{{ w.number_registered }}</td><td class="py-2 text-center text-slate-500">{{ w.number_attendees }}</td><td class="py-2 text-right font-semibold text-red-700">{{ w.noshow_rate|floatformat:1 }}%</td></tr>{% empty %}<tr><td colspan="4" class="py-4 text-center text-sm text-slate-400">Aucune donnée</td></tr>{% endfor %}</tbody>
+      </table></div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+      <h3 class="text-sm font-semibold text-slate-900 mb-1">Récurrence par intitulé</h3>
+      <p class="text-xs text-slate-500 mb-3">Sert à : savoir quels formats sont rejoués et lesquels attirent en moyenne, pour arbitrer la programmation. Formats rejoués et leur moyenne d'inscrits.</p>
+      <div class="overflow-x-auto"><table class="w-full text-sm stats-table">
+        <thead><tr class="text-left text-xs font-semibold text-slate-500 uppercase border-b border-slate-200"><th scope="col" class="pb-2">Intitulé</th><th scope="col" class="pb-2 text-center">Séances</th><th scope="col" class="pb-2 text-right">Moy. inscrits</th></tr></thead>
+        <tbody class="divide-y divide-slate-100">{% for r in recurrence %}<tr class="hover:bg-slate-50"><td class="py-2 font-medium text-slate-900 max-w-52 truncate">{{ r.name }}</td><td class="py-2 text-center font-semibold">{{ r.count }}</td><td class="py-2 text-right text-slate-600">{{ r.avg_registered|floatformat:1 }}</td></tr>{% empty %}<tr><td colspan="3" class="py-4 text-center text-sm text-slate-400">Aucune donnée</td></tr>{% endfor %}</tbody>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+<section id="temporalite" aria-labelledby="titre-temporalite" class="scroll-mt-24 mb-4">
+  <div class="mb-4">
+    <h2 id="titre-temporalite" class="text-lg font-bold text-slate-900">Temporalité : jour, créneau, durée</h2>
+    <p class="text-sm text-slate-600">Sert à : choisir les bons jours et horaires selon la fréquentation. Cliquez sur un jour ou un créneau pour filtrer toute la page. Combinable avec commune, type, mois et canal.</p>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+      <h3 class="text-sm font-semibold text-slate-900 mb-1">Jour de semaine</h3>
+      <p class="text-xs text-slate-500 mb-3">Sert à : programmer les ateliers les jours où le public vient. Nombre d'ateliers, inscrits et taux de présence.</p>
+      <div class="overflow-x-auto"><table class="w-full text-sm stats-table">
+        <thead><tr class="text-left text-xs font-semibold text-slate-500 uppercase border-b border-slate-200"><th scope="col" class="pb-2">Jour</th><th scope="col" class="pb-2 text-center">Ateliers</th><th scope="col" class="pb-2 text-center">Inscrits</th><th scope="col" class="pb-2 text-right">Présence</th></tr></thead>
+        <tbody class="divide-y divide-slate-100">{% for d in weekday_stats %}<tr class="hover:bg-slate-50 {% if d.weekday|stringformat:'s' == active_weekday %}bg-[#f2f6fb]{% endif %}"><td class="py-2 font-medium text-slate-900"><a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}{% if active_slot %}&amp;slot={{ active_slot }}{% endif %}&amp;weekday={{ d.weekday }}" class="hover:text-[#4a6fa5] hover:underline">{{ d.label }}{% if d.weekday|stringformat:'s' == active_weekday %} ✓{% endif %}</a></td><td class="py-2 text-center font-semibold">{{ d.count }}</td><td class="py-2 text-center text-slate-500">{{ d.registered }}</td><td class="py-2 text-right font-semibold text-[#4a6fa5]">{{ d.attendance_rate|floatformat:1 }}%</td></tr>{% endfor %}</tbody>
+      </table></div>
+      {% if active_weekday %}<p class="mt-3"><a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}{% if active_slot %}&amp;slot={{ active_slot }}{% endif %}" class="text-xs font-medium text-[#4a6fa5] hover:underline">Retirer le filtre jour ({{ active_weekday_label }})</a></p>{% endif %}
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+      <h3 class="text-sm font-semibold text-slate-900 mb-1">Créneau horaire</h3>
+      <p class="text-xs text-slate-500 mb-3">Sert à : caler les horaires sur la disponibilité du public et standardiser les formats. Basé sur l'heure de début. Durée moyenne {{ duration_stats.avg|floatformat:0 }} min, médiane {{ duration_stats.median|floatformat:0 }} min ({{ duration_stats.count }} ateliers).</p>
+      <div class="overflow-x-auto"><table class="w-full text-sm stats-table">
+        <thead><tr class="text-left text-xs font-semibold text-slate-500 uppercase border-b border-slate-200"><th scope="col" class="pb-2">Créneau</th><th scope="col" class="pb-2 text-center">Ateliers</th><th scope="col" class="pb-2 text-center">Inscrits</th><th scope="col" class="pb-2 text-right">Présence</th></tr></thead>
+        <tbody class="divide-y divide-slate-100">{% for s in slot_stats %}<tr class="hover:bg-slate-50 {% if s.slot == active_slot %}bg-[#f2f6fb]{% endif %}"><td class="py-2 font-medium text-slate-900"><a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}{% if active_weekday %}&amp;weekday={{ active_weekday }}{% endif %}&amp;slot={{ s.slot }}" class="hover:text-[#4a6fa5] hover:underline">{{ s.label }}{% if s.slot == active_slot %} ✓{% endif %}</a></td><td class="py-2 text-center font-semibold">{{ s.count }}</td><td class="py-2 text-center text-slate-500">{{ s.registered }}</td><td class="py-2 text-right font-semibold text-[#4a6fa5]">{{ s.attendance_rate|floatformat:1 }}%</td></tr>{% endfor %}</tbody>
+      </table></div>
+      {% if active_slot %}<p class="mt-3"><a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}{% if active_weekday %}&amp;weekday={{ active_weekday }}{% endif %}" class="text-xs font-medium text-[#4a6fa5] hover:underline">Retirer le filtre créneau ({{ active_slot_label }})</a></p>{% endif %}
+    </div>
+  </div>
+</section>
+
+<section id="territoire" aria-labelledby="titre-territoire" class="scroll-mt-24 mb-4">
+  <div class="mb-4">
+    <h2 id="titre-territoire" class="text-lg font-bold text-slate-900">Territoire et équité</h2>
+    <p class="text-sm text-slate-600">Sert à : garantir une offre équitable entre communes et éviter la surcharge d'un lieu. Zones sans activité, part des inscrits par commune et charge par lieu.</p>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+      <h3 class="text-sm font-semibold text-slate-900 mb-1">Couverture et équité</h3>
+      <p class="text-xs text-slate-500 mb-2">Sert à : détecter les communes oubliées et rééquilibrer l'offre.</p>
+      {% if coverage_gaps.gaps %}
+      <p class="text-xs text-slate-500 mb-2">Communes avec un lieu mais 0 atelier sur le périmètre :</p>
+      <p class="text-sm mb-3">{% for c in coverage_gaps.gaps %}<a href="?year={{ selected_year }}&amp;city={{ c|urlencode }}" class="inline-block px-2 py-0.5 rounded-full text-xs bg-amber-50 text-amber-800 mr-1 mb-1 hover:underline">{{ c }}</a>{% endfor %}</p>
+      {% else %}
+      <p class="text-sm text-emerald-700 mb-3">Aucune zone blanche : toutes les communes avec lieu ont au moins un atelier.</p>
+      {% endif %}
+      <p class="text-xs font-medium text-slate-600 mb-1">Part des inscrits (top communes) :</p>
+      <ul class="space-y-2 text-sm">{% for s in coverage_gaps.shares %}<li class="flex items-center gap-3"><span class="text-slate-700 w-32 truncate">{{ s.commune }}</span><span class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden"><span class="block bg-[#4a6fa5] h-2 rounded-full" style="width: {{ s.share|floatformat:0 }}%"></span></span><span class="text-xs font-semibold text-slate-900 w-20 text-right">{{ s.registered }} ({{ s.share|floatformat:1 }}%)</span></li>{% empty %}<li class="text-sm text-slate-400">Aucune donnée.</li>{% endfor %}</ul>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+      <h3 class="text-sm font-semibold text-slate-900 mb-1">Charge par lieu (top 10)</h3>
+      <p class="text-xs text-slate-500 mb-3">Sert à : éviter la surcharge d'un lieu et le sous-usage d'un autre. Ateliers et durée cumulée d'animation.</p>
+      <div class="overflow-x-auto"><table class="w-full text-sm stats-table">
+        <thead><tr class="text-left text-xs font-semibold text-slate-500 uppercase border-b border-slate-200"><th scope="col" class="pb-2">Lieu</th><th scope="col" class="pb-2 text-center">Ateliers</th><th scope="col" class="pb-2 text-right">Heures animées</th></tr></thead>
+        <tbody class="divide-y divide-slate-100">{% for l in location_load %}<tr class="hover:bg-slate-50"><td class="py-2 font-medium text-slate-900 max-w-44 truncate">{{ l.location }}</td><td class="py-2 text-center font-semibold">{{ l.count }}</td><td class="py-2 text-right text-slate-600">{{ l.minutes|floatformat:0 }} min</td></tr>{% empty %}<tr><td colspan="3" class="py-4 text-center text-sm text-slate-400">Aucune donnée</td></tr>{% endfor %}</tbody>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+<section aria-label="Graphiques" class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+  <figure class="lg:col-span-1 bg-white rounded-xl border border-slate-200 p-5">
+    <figcaption class="text-sm font-semibold text-slate-900">Répartition par type <span class="block text-xs font-normal text-slate-500">Sert à : visualiser la part du scolaire d'un coup d'œil. Cliquez sur un segment pour filtrer</span></figcaption>
+    <div class="h-56 mt-2"><canvas id="typeDistribution" role="img" aria-label="Répartition classiques et accueils de classe, graphique cliquable"></canvas></div>
+    <div class="flex justify-center gap-6 mt-3 text-sm">
+      <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}&amp;class_welcome=no" class="flex items-center gap-2 hover:underline"><span class="w-3 h-3 rounded bg-[#4a6fa5]" aria-hidden="true"></span><span class="text-slate-500">Classiques</span><span class="font-semibold text-slate-900">{{ total_workshops_except_class }}</span></a>
+      <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}&amp;class_welcome=yes" class="flex items-center gap-2 hover:underline"><span class="w-3 h-3 rounded bg-emerald-600" aria-hidden="true"></span><span class="text-slate-500">Accueils</span><span class="font-semibold text-slate-900">{{ total_accueil_classe }}</span></a>
+    </div>
+  </figure>
+  <figure class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
+    <figcaption class="text-sm font-semibold text-slate-900">Par lieu <span class="block text-xs font-normal text-slate-500">Sert à : comparer les équipements entre eux. Ateliers et inscrits — utilisez le tableau Présence pour filtrer par lieu</span></figcaption>
+    <div class="h-56 mt-2"><canvas id="locationStats" role="img" aria-label="Ateliers et inscrits par lieu"></canvas></div>
+    <details class="mt-3 text-sm"><summary class="cursor-pointer text-[#4a6fa5] font-medium">Voir les données en tableau</summary>
+      <table class="w-full text-sm mt-2"><thead><tr class="text-left text-xs text-slate-500 uppercase border-b border-slate-200"><th scope="col">Lieu</th><th scope="col" class="text-right">Ateliers</th><th scope="col" class="text-right">Inscrits</th></tr></thead>
+      <tbody>{% for r in workshops_by_location %}<tr class="border-b border-slate-100 last:border-0"><td>{{ r.location__name|default:"Inconnu" }}</td><td class="text-right">{{ r.count }}</td><td class="text-right">{{ r.total_registered }}</td></tr>{% endfor %}</tbody></table>
+    </details>
+  </figure>
+</section>
+
+<section aria-label="Communes et temporalité" class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+  <figure class="bg-white rounded-xl border border-slate-200 p-5">
+    <figcaption class="text-sm font-semibold text-slate-900">Par commune <span class="block text-xs font-normal text-slate-500">Sert à : voir quels territoires portent l'activité. Cliquez sur une barre pour filtrer par commune</span></figcaption>
+    <div class="h-64 mt-2"><canvas id="communeStats" role="img" aria-label="Accueils et classiques par commune, graphique cliquable"></canvas></div>
+  </figure>
+  <figure class="bg-white rounded-xl border border-slate-200 p-5">
+    <figcaption class="text-sm font-semibold text-slate-900">Évolution mensuelle <span class="block text-xs font-normal text-slate-500">Sert à : anticiper pics et creux pour planifier les moyens. Cliquez sur un point pour filtrer par mois</span></figcaption>
+    <div class="h-64 mt-2"><canvas id="monthlyStats" role="img" aria-label="Évolution mensuelle des ateliers, inscrits et présents, graphique cliquable"></canvas></div>
+  </figure>
+</section>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+  <section id="remplissage" aria-labelledby="titre-remplissage" class="scroll-mt-24 bg-white rounded-xl border border-slate-200 p-5">
+    <h3 id="titre-remplissage" class="text-sm font-semibold text-slate-900 mb-1">Taux de remplissage (hors accueils)</h3>
+    <p class="text-xs text-slate-500 mb-3">Sert à : dimensionner les groupes et détecter sous/sur-remplissage.</p>
+    <dl class="space-y-2 text-sm">
+      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg"><dt class="text-slate-500">Moyenne d’inscrits</dt><dd class="font-semibold text-slate-900">{{ avg_registered|floatformat:1 }}</dd></div>
+      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg"><dt class="text-slate-500">Moyenne de présents</dt><dd class="font-semibold text-slate-900">{{ avg_attendees|floatformat:1 }}</dd></div>
+      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg"><dt class="text-slate-500">Maximum</dt><dd class="font-semibold text-slate-900">{{ participation_stats.maximum|default:0 }}</dd></div>
+      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg"><dt class="text-slate-500">Minimum</dt><dd class="font-semibold text-slate-900">{{ participation_stats.minimum|default:0 }}</dd></div>
+      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg"><dt class="text-slate-500">Médiane d’inscrits</dt><dd class="font-semibold text-slate-900">{{ distribution_stats.median|floatformat:0 }}</dd></div>
+      <div class="p-3 bg-[#eef3f9] rounded-lg">
+        <div class="flex items-center justify-between mb-2"><dt class="text-sm font-medium text-[#4a6fa5]">Taux de présence global</dt><dd class="text-sm font-bold text-[#4a6fa5]">{{ attendance_rate|floatformat:1 }}%</dd></div>
+        <div class="bg-white rounded-full h-2.5 overflow-hidden" role="img" aria-label="Taux de présence {{ attendance_rate|floatformat:1 }} pour cent"><div class="bg-[#4a6fa5] h-2.5 rounded-full" style="width: {{ attendance_rate|floatformat:0 }}%"></div></div>
+        <p class="text-xs text-slate-500 mt-1">{{ total_attendees }} présents / {{ total_registered }} inscrits</p>
+      </div>
+    </dl>
+  </section>
+
+  <section aria-labelledby="titre-com" class="bg-white rounded-xl border border-slate-200 p-5">
+    <h3 id="titre-com" class="text-sm font-semibold text-slate-900 mb-1">Moyens de communication</h3>
+    <p class="text-xs text-slate-500 mb-3">Sert à : investir dans les canaux qui remplissent vraiment. Cliquez sur un canal pour filtrer toute la page.</p>
+    <ul class="space-y-2 text-sm">
+      {% for r in channel_cross %}
+      <li>
+        <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}&amp;channel={{ r.channel }}" class="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:ring-2 hover:ring-[#4a6fa5]/30 {% if r.channel == active_channel %}ring-2 ring-[#4a6fa5]/40{% endif %}" {% if r.channel == active_channel %}aria-current="true"{% endif %}>
+          <span class="text-slate-600">{{ r.label }}{% if r.channel == active_channel %} <span class="text-[#4a6fa5] font-semibold">· actif</span>{% endif %}</span>
+          <span class="font-semibold text-slate-900">{{ r.count }} <span class="text-xs font-normal text-slate-400">({{ r.attendance_rate|floatformat:0 }}% présence)</span></span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="text-xs text-slate-400 mt-3">Couverture : part des {{ total_workshops }} ateliers relayés par canal — {% for key, ch in channel_coverage.items %}{% if key == "vdn" %}VDN{% else %}{{ key|capfirst }}{% endif %} {{ ch.rate|floatformat:0 }}%{% if not forloop.last %} · {% endif %}{% endfor %}.</p>
+  </section>
 </div>
 
-<div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-    <h3 class="text-sm font-semibold text-[#1e293b] mb-4 flex items-center gap-2">
-        <i class="bx bx-analyse text-[#4a6fa5]"></i>
-        Bilan détaillé des animations {{ bilan_data.current_year }}
-    </h3>
-    <div class="bg-[#e8eef7] border border-[#dce3ef] rounded-xl p-5">
-        <div class="prose prose-sm max-w-none text-[#1e293b]">
-            <p class="text-sm leading-relaxed mb-3">
-                L'année <strong>{{ bilan_data.current_year }}</strong> a été marquée par une activité soutenue avec
-                <strong>{{ total_workshops }}</strong> ateliers organisés dans <strong>{{ bilan_data.total_communes }}</strong> communes,
-                mobilisant <strong>{{ total_registered }}</strong> participants inscrits.
-            </p>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+  <section id="presence" aria-labelledby="titre-presence" class="scroll-mt-24 bg-white rounded-xl border border-slate-200 p-5">
+    <h3 id="titre-presence" class="text-sm font-semibold text-slate-900 mb-1">Présence par lieu</h3>
+    <p class="text-xs text-slate-500 mb-3">Sert à : repérer les lieux à fort no-show pour agir (rappels, accès, horaires). Présents / inscrits et taux. Cliquez sur un lieu pour filtrer.</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm stats-table">
+        <thead><tr class="text-left text-xs font-semibold text-slate-500 uppercase border-b border-slate-200"><th scope="col" class="pb-2">Lieu</th><th scope="col" class="pb-2 text-center">Ateliers</th><th scope="col" class="pb-2 text-center">Inscrits</th><th scope="col" class="pb-2 text-center">Présents</th><th scope="col" class="pb-2 text-right">Taux</th></tr></thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for row in presence_by_location %}
+          <tr class="hover:bg-slate-50">
+            <td class="py-2 font-medium text-slate-900 max-w-44 truncate">{{ row.location__name|default:"Inconnu" }}</td>
+            <td class="py-2 text-center text-slate-500">{{ row.count }}</td>
+            <td class="py-2 text-center text-slate-500">{{ row.registered }}</td>
+            <td class="py-2 text-center text-slate-500">{{ row.attendees }}</td>
+            <td class="py-2 text-right"><span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ row.attendance_rate|floatformat:1 }}%</span></td>
+          </tr>
+          {% empty %}<tr><td colspan="5" class="py-4 text-center text-sm text-slate-400">Aucune donnée</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-            <h4 class="text-sm font-semibold text-[#4a6fa5] mb-2">Communes les plus actives</h4>
-            <ul class="list-none space-y-1 mb-3">
-                {% for commune in bilan_data.top_communes %}
-                <li class="text-sm flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#4a6fa5] shrink-0"></span>
-                    <strong>{{ commune.commune }}</strong> : {{ commune.total_ateliers }} ateliers, {{ commune.total_participants }} participants
+  <section aria-labelledby="titre-distrib" class="bg-white rounded-xl border border-slate-200 p-5">
+    <h3 id="titre-distrib" class="text-sm font-semibold text-slate-900 mb-1">Distribution des inscrits (hors accueils)</h3>
+    <p class="text-xs text-slate-500 mb-3">Sert à : voir le niveau typique d'inscrits sans l'effet des extrêmes. {{ distribution_stats.count }} ateliers classiques — médiane {{ distribution_stats.median|floatformat:0 }}, p25 {{ distribution_stats.p25|floatformat:0 }}, p75 {{ distribution_stats.p75|floatformat:0 }}</p>
+    {% if distribution_stats.count %}
+    <ul class="space-y-2">
+      {% for tranche in distribution_stats.histogram %}
+      <li class="flex items-center gap-3">
+        <span class="text-xs font-medium text-slate-500 w-12">{{ tranche.tranche }}</span>
+        <div class="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden" role="img" aria-label="{{ tranche.tranche }} inscrits : {{ tranche.count }} ateliers"><div class="bg-cyan-700 h-2.5 rounded-full" style="width: {% widthratio tranche.count distribution_stats.count 100 %}%"></div></div>
+        <span class="text-xs font-semibold text-slate-900 w-8 text-right">{{ tranche.count }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="text-sm text-slate-400">Aucun atelier classique sur la période.</p>{% endif %}
+  </section>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+  <section aria-labelledby="titre-affiches" class="bg-white rounded-xl border border-slate-200 p-5">
+    <h3 id="titre-affiches" class="text-sm font-semibold text-slate-900 mb-1">Affiches</h3>
+    <p class="text-xs text-slate-500 mb-3">Sert à : suivre la production et détecter le goulot de validation. Suivi des affiches requises et validées.</p>
+    <dl class="space-y-2 text-sm">
+      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg"><dt class="text-slate-500">Affiches requises</dt><dd class="font-semibold text-slate-900">{{ poster_stats.required }} <span class="text-xs font-normal text-slate-400">({{ poster_stats.required_rate|floatformat:0 }}%)</span></dd></div>
+      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg"><dt class="text-slate-500">Affiches validées</dt><dd class="font-semibold text-slate-900">{{ poster_stats.valide }} <span class="text-xs font-normal text-slate-400">({{ poster_stats.valide_rate|floatformat:0 }}% des requises)</span></dd></div>
+      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg"><dt class="text-slate-500">Ateliers avec visuel</dt><dd class="font-semibold text-slate-900">{{ poster_stats.with_image }}</dd></div>
+    </dl>
+  </section>
+
+  <section aria-labelledby="titre-topflop" class="bg-white rounded-xl border border-slate-200 p-5">
+    <h3 id="titre-topflop" class="text-sm font-semibold text-slate-900 mb-1">Top / Flop communes</h3>
+    <p class="text-xs text-slate-500 mb-3">Sert à : diffuser les bonnes pratiques et soutenir les communes en retrait. Communes avec au moins {{ top_flop_communes.min_ateliers }} ateliers. Cliquez pour filtrer.</p>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+      <div><p class="text-xs font-medium text-emerald-700 mb-1">Top présence</p>{% for c in top_flop_communes.top_presence %}<div class="flex items-center justify-between py-1 border-b border-slate-100 last:border-0"><a href="?year={{ selected_year }}&amp;city={{ c.commune|urlencode }}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}" class="text-slate-900 truncate hover:text-[#4a6fa5] hover:underline">{{ c.commune }}</a><span class="font-semibold text-emerald-700 ml-2">{{ c.attendance_rate|floatformat:0 }}%</span></div>{% empty %}<p class="text-xs text-slate-400">Données insuffisantes</p>{% endfor %}</div>
+      <div><p class="text-xs font-medium text-red-700 mb-1">À renforcer</p>{% for c in top_flop_communes.flop_presence %}<div class="flex items-center justify-between py-1 border-b border-slate-100 last:border-0"><a href="?year={{ selected_year }}&amp;city={{ c.commune|urlencode }}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}" class="text-slate-900 truncate hover:text-[#4a6fa5] hover:underline">{{ c.commune }}</a><span class="font-semibold text-red-700 ml-2">{{ c.attendance_rate|floatformat:0 }}%</span></div>{% empty %}<p class="text-xs text-slate-400">Données insuffisantes</p>{% endfor %}</div>
+      <div><p class="text-xs font-medium text-[#4a6fa5] mb-1">Top volume</p>{% for c in top_flop_communes.top_volume %}<div class="flex items-center justify-between py-1 border-b border-slate-100 last:border-0"><a href="?year={{ selected_year }}&amp;city={{ c.commune|urlencode }}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}" class="text-slate-900 truncate hover:text-[#4a6fa5] hover:underline">{{ c.commune }}</a><span class="font-semibold text-[#4a6fa5] ml-2">{{ c.total_participants }}</span></div>{% empty %}<p class="text-xs text-slate-400">Données insuffisantes</p>{% endfor %}</div>
+    </div>
+  </section>
+</div>
+
+<section id="mensuel" aria-labelledby="titre-mensuel" class="scroll-mt-24 bg-white rounded-xl border border-slate-200 p-5 mb-4">
+  <h3 id="titre-mensuel" class="text-sm font-semibold text-slate-900 mb-1">Détail mensuel de la présence</h3>
+  <p class="text-xs text-slate-500 mb-3">Sert à : obtenir le chiffre exact derrière la courbe et planifier mois par mois. Cliquez sur un mois pour filtrer toute la page, ou sur « Ateliers » pour voir la liste.</p>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm stats-table">
+      <thead><tr class="text-left text-xs font-semibold text-slate-500 uppercase border-b border-slate-200"><th scope="col" class="pb-2">Mois</th><th scope="col" class="pb-2 text-center">Ateliers</th><th scope="col" class="pb-2 text-center">Inscrits</th><th scope="col" class="pb-2 text-center">Présents</th><th scope="col" class="pb-2 text-right">Taux</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for m in workshops_by_month %}
+        <tr class="hover:bg-slate-50 {% if m.month|stringformat:'s' == active_month %}bg-[#f2f6fb]{% endif %}">
+          <td class="py-2 font-medium text-slate-900"><a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}&amp;month={{ m.month }}" class="hover:text-[#4a6fa5] hover:underline">{{ m.label }}{% if m.month|stringformat:'s' == active_month %} ✓{% endif %}</a></td>
+          <td class="py-2 text-center"><a href="{% url 'workshop_list' %}?year={{ selected_year }}&amp;date_from={{ selected_year }}-{{ m.month|stringformat:'02d' }}-01&amp;date_to={{ selected_year }}-{{ m.month|stringformat:'02d' }}-28{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}" class="text-[#4a6fa5] font-semibold hover:underline">{{ m.count }}</a></td>
+          <td class="py-2 text-center text-slate-500">{{ m.total_registered }}</td>
+          <td class="py-2 text-center text-slate-500">{{ m.total_attendees }}</td>
+          <td class="py-2 text-right font-semibold text-[#4a6fa5]">{{ m.attendance_rate|floatformat:1 }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+  <section aria-labelledby="titre-top-inscrits" class="bg-white rounded-xl border border-slate-200 p-5">
+    <h3 id="titre-top-inscrits" class="text-sm font-semibold text-slate-900 mb-1">Top 5 par inscrits</h3>
+    <p class="text-xs text-slate-500 mb-2">Sert à : identifier les ateliers qui attirent le plus pour les reproduire.</p>
+    <div class="overflow-x-auto"><table class="w-full text-sm stats-table">
+      <thead><tr class="text-left text-xs font-semibold text-slate-500 uppercase border-b border-slate-200"><th scope="col" class="pb-2">Atelier</th><th scope="col" class="pb-2">Date</th><th scope="col" class="pb-2 text-right">Inscrits</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">{% for w in most_registered %}<tr class="hover:bg-slate-50"><td class="py-2 font-medium text-slate-900 max-w-44 truncate"><a href="{% url 'workshop_detail' w.id %}" class="hover:text-[#4a6fa5] hover:underline">{{ w.name }}</a></td><td class="py-2 text-slate-500">{{ w.date|date:"d/m/Y" }}</td><td class="py-2 text-right"><span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ w.number_registered }}</span></td></tr>{% empty %}<tr><td colspan="3" class="py-4 text-center text-sm text-slate-400">Aucun atelier</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </section>
+  <section aria-labelledby="titre-top-presence" class="bg-white rounded-xl border border-slate-200 p-5">
+    <h3 id="titre-top-presence" class="text-sm font-semibold text-slate-900 mb-1">Top 5 par taux de présence</h3>
+    <p class="text-xs text-slate-500 mb-2">Sert à : repérer les ateliers où les inscrits viennent vraiment.</p>
+    <div class="overflow-x-auto"><table class="w-full text-sm stats-table">
+      <thead><tr class="text-left text-xs font-semibold text-slate-500 uppercase border-b border-slate-200"><th scope="col" class="pb-2">Atelier</th><th scope="col" class="pb-2">Date</th><th scope="col" class="pb-2 text-right">Taux</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">{% for w in best_attendance %}<tr class="hover:bg-slate-50"><td class="py-2 font-medium text-slate-900 max-w-44 truncate"><a href="{% url 'workshop_detail' w.id %}" class="hover:text-[#4a6fa5] hover:underline">{{ w.name }}</a></td><td class="py-2 text-slate-500">{{ w.date|date:"d/m/Y" }}</td><td class="py-2 text-right"><span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">{{ w.attendance_rate|floatformat:1 }}%</span> <span class="text-xs text-slate-400 ml-1">{{ w.number_attendees }}/{{ w.number_registered }}</span></td></tr>{% empty %}<tr><td colspan="3" class="py-4 text-center text-sm text-slate-400">Aucun atelier</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </section>
+</div>
+
+<section id="communes" aria-labelledby="titre-communes" class="scroll-mt-24 bg-white rounded-xl border border-slate-200 p-5 mb-4">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+    <div><h3 id="titre-communes" class="text-sm font-semibold text-slate-900">Détail par commune</h3><p class="text-xs text-slate-500">Sert à : agir commune par commune avec le détail des ateliers. Tri cliquable, recherche locale, expansion des ateliers. Le nom ouvre la liste filtrée.</p></div>
+    <div class="flex flex-wrap items-center gap-2">
+      <label class="sr-only" for="filterCommune">Filtrer par commune</label>
+      <input type="text" id="filterCommune" placeholder="Commune…" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5] w-36" />
+      <label class="sr-only" for="filterMinAteliers">Minimum d’ateliers</label>
+      <input type="number" id="filterMinAteliers" placeholder="Min ateliers" min="0" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5] w-28" />
+      <button type="button" id="resetFilters" class="px-3 py-1.5 text-sm text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50"><i class="bx bx-refresh" aria-hidden="true"></i> Reset</button>
+      <span id="visibleRows" class="text-xs text-slate-400" role="status">{{ commune_table_data|length }}/{{ commune_table_data|length }}</span>
+    </div>
+  </div>
+  <div class="overflow-x-auto max-h-80 overflow-y-auto">
+    <table class="w-full text-sm stats-table" id="communeTable">
+      <thead class="sticky top-0 bg-slate-50">
+        <tr class="text-left text-xs font-semibold text-slate-500 uppercase">
+          <th class="px-2 py-2 w-8"><span class="sr-only">Détails</span></th>
+          <th class="px-3 py-2" scope="col"><button type="button" onclick="sortTable(0)" class="uppercase tracking-wider hover:text-[#4a6fa5]">Commune <i class="bx bx-sort ml-1" aria-hidden="true"></i></button></th>
+          <th class="px-3 py-2 text-center" scope="col"><button type="button" onclick="sortTable(1)" class="uppercase tracking-wider hover:text-[#4a6fa5]">Total</button></th>
+          <th class="px-3 py-2 text-center" scope="col"><button type="button" onclick="sortTable(2)" class="uppercase tracking-wider hover:text-[#4a6fa5]">Classiques</button></th>
+          <th class="px-3 py-2 text-center" scope="col"><button type="button" onclick="sortTable(3)" class="uppercase tracking-wider hover:text-[#4a6fa5]">Accueils</button></th>
+          <th class="px-3 py-2 text-center" scope="col"><button type="button" onclick="sortTable(4)" class="uppercase tracking-wider hover:text-[#4a6fa5]">Participants</button></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for commune in commune_table_data %}
+        <tr class="hover:bg-slate-50 commune-row" data-city="{{ commune.commune }}">
+          <td class="px-2 py-2 text-center">
+            {% if commune.workshops %}
+            <button type="button" class="inline-flex items-center justify-center w-6 h-6 rounded-md text-slate-400 hover:text-[#4a6fa5] hover:bg-[#e8eef7] toggle-btn" data-city="{{ commune.commune|escapejs }}" aria-expanded="false" aria-label="Voir les ateliers de {{ commune.commune }}"><i class="bx bx-chevron-right text-sm" aria-hidden="true"></i></button>
+            {% endif %}
+          </td>
+          <td class="px-3 py-2 font-medium text-slate-900">
+            <a href="{% url 'workshop_list' %}?year={{ selected_year }}&amp;city={{ commune.commune|urlencode }}" target="_blank" rel="noopener" class="hover:text-[#4a6fa5] hover:underline">{{ commune.commune }} <i class="bx bx-external-link text-slate-300 text-xs align-middle ml-0.5" aria-hidden="true"></i></a>
+            <a href="?year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}&amp;city={{ commune.commune|urlencode }}" class="ml-2 text-xs font-normal text-[#4a6fa5] hover:underline" title="Filtrer les stats sur {{ commune.commune }}">Filtrer</a>
+          </td>
+          <td class="px-3 py-2 text-center"><span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e8eef7] text-[#4a6fa5]">{{ commune.total_ateliers }}</span></td>
+          <td class="px-3 py-2 text-center"><span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-sky-50 text-sky-800">{{ commune.ateliers_classiques }}</span></td>
+          <td class="px-3 py-2 text-center"><span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800">{{ commune.accueils_classe }}</span></td>
+          <td class="px-3 py-2 text-center"><span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">{{ commune.total_participants }}</span></td>
+        </tr>
+        <tr class="hidden commune-detail" data-city="{{ commune.commune }}">
+          <td colspan="6" class="px-3 py-0">
+            <div class="bg-slate-50 border border-slate-200 rounded-lg my-2 py-2 px-3">
+              <div class="flex items-center justify-between mb-2"><span class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Ateliers — {{ commune.commune }}</span><span class="text-xs text-slate-400">{{ commune.workshops|length }} atelier{{ commune.workshops|length|pluralize }}</span></div>
+              <ul class="divide-y divide-slate-200">
+                {% for w in commune.workshops %}
+                <li class="flex items-center justify-between py-1.5">
+                  <span class="flex items-center gap-2 min-w-0">
+                    {% if w.class_welcome %}<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800">Classe</span>{% else %}<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#e8eef7] text-[#4a6fa5]">Atelier</span>{% endif %}
+                    <a href="{% url 'workshop_detail' w.id %}" class="text-sm text-[#4a6fa5] hover:underline truncate">{{ w.name }}</a>
+                  </span>
+                  <span class="text-xs text-slate-400 ml-2">{{ w.date|date:"d/m/Y" }}</span>
                 </li>
-                {% endfor %}
-            </ul>
-
-            {% if previous_year_data %}
-            <h4 class="text-sm font-semibold text-[#4a6fa5] mb-2">Évolution vs {{ bilan_data.previous_year }}</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-                <div>
-                    <p class="text-xs font-medium text-emerald-700 mb-1">En progression</p>
-                    {% for commune in commune_table_data %}
-                    {% if commune.variation_ateliers > 0 %}
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 mr-1 mb-1">
-                        {{ commune.commune }} +{{ commune.variation_ateliers }}
-                    </span>
-                    {% endif %}
-                    {% endfor %}
-                </div>
-                <div>
-                    <p class="text-xs font-medium text-[#d46a78] mb-1">En baisse</p>
-                    {% for commune in commune_table_data %}
-                    {% if commune.variation_ateliers < 0 %}
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-red-50 text-red-700 mr-1 mb-1">
-                        {{ commune.commune }} {{ commune.variation_ateliers }}
-                    </span>
-                    {% endif %}
-                    {% endfor %}
-                </div>
+                {% empty %}<li class="text-sm text-slate-400 py-2 text-center">Aucun atelier</li>{% endfor %}
+              </ul>
             </div>
-            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
 
-            {% if bilan_data.communes_without_activities %}
-            <h4 class="text-sm font-semibold text-[#4a6fa5] mb-2">Communes sans activité</h4>
-            <p class="text-sm text-[#7a8fa0]">
-                {% for commune in bilan_data.communes_without_activities %}
-                {{ commune.commune }}{% if not forloop.last %}, {% endif %}
-                {% endfor %}
-            </p>
-            {% endif %}
-        </div>
+<section id="bilan" aria-labelledby="titre-bilan" class="scroll-mt-24 bg-white rounded-xl border border-slate-200 p-5 sm:p-6">
+  <div class="flex items-center gap-3 mb-1">
+    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#4a6fa5] text-white" aria-hidden="true"><i class="bx bx-detail text-xl"></i></span>
+    <div class="flex flex-wrap items-center gap-2">
+      <h3 id="titre-bilan" class="text-base font-bold text-slate-900">Synthèse {{ selected_year }}</h3>
+      <span class="rounded-full bg-[#e8eef7] px-2.5 py-0.5 text-xs font-semibold text-[#4a6fa5]">{{ synthese.phrases|length }} points clés</span>
     </div>
-</div>
+  </div>
+  <p class="text-xs text-slate-500 mb-4 ml-12">Sert à : résumer l'année pour le rapport d'activité et les élus.</p>
+  <div class="border-l-4 border-[#4a6fa5] bg-[#eef3f9] rounded-r-lg p-4 sm:p-5 text-slate-800">
+    {% if synthese.perimetre %}
+    <p class="mb-3 inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-600"><i class="bx bx-filter-alt" aria-hidden="true"></i>Périmètre : {{ synthese.perimetre }}</p>
+    {% endif %}
+    {% for phrase in synthese.phrases %}
+    {% if forloop.first %}
+    <p class="text-[15px] font-medium leading-relaxed text-slate-900 first-letter:float-left first-letter:mr-1.5 first-letter:text-4xl first-letter:font-bold first-letter:leading-[0.9] first-letter:text-[#4a6fa5]">{{ phrase }}</p>
+    {% else %}
+    {% if forloop.counter == 2 %}<ol class="mt-4 space-y-2.5 text-sm leading-relaxed">{% endif %}
+      <li class="flex gap-2.5"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#4a6fa5] text-[11px] font-bold text-white" aria-hidden="true">{{ forloop.counter|add:"-1" }}</span><span>{{ phrase }}</span></li>
+    {% if forloop.last %}</ol>{% endif %}
+    {% endif %}
+    {% empty %}
+    <p class="leading-relaxed">Aucune donnée pour rédiger la synthèse sur ce périmètre.</p>
+    {% endfor %}
+  </div>
+</section>
