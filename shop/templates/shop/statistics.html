@@ -4,42 +4,109 @@
 {% block title %}Statistiques | {{ block.super }}{% endblock %}
 
 {% block content %}
-<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
-    <div class="absolute inset-0 opacity-[0.08]" aria-hidden="true" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
-    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div class="flex flex-wrap items-start justify-between gap-4">
-            <div class="min-w-0">
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0" aria-hidden="true"><i class="bx bx-bar-chart-alt-2 text-2xl text-white"></i></div>
-                    <h1 class="text-3xl sm:text-4xl font-bold text-white">Statistiques {{ selected_year }}</h1>
-                </div>
-                <p class="text-white/80 text-sm">Vue d'ensemble des réservations &middot; N&nbsp;=&nbsp;{{ total_reservations }} r&eacute;servation{{ total_reservations|pluralize }} &middot; ann&eacute;e {{ selected_year }}</p>
+<style>
+.stat-row-match { background-color: #e8eef7 !important; outline: 2px solid #4a6fa5; outline-offset: -2px; }
+.product-podium { background-color: #eef3f9; box-shadow: inset 3px 0 0 #4a6fa5; }
+@media print {
+  .print-hero { background: #fff !important; border-bottom: 1px solid #ccc; }
+  .print-hero * { color: #000 !important; text-shadow: none !important; }
+}
+</style>
+<div class="bg-white border-b border-slate-200 print-hero">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <nav aria-label="Fil d’Ariane" class="text-xs text-slate-500 mb-2">
+            <a href="{% url 'reservation_list' %}" class="hover:text-[#4a6fa5]">Réservations</a>
+            <span aria-hidden="true" class="mx-1">/</span>
+            <span aria-current="page" class="text-slate-700 font-medium">Statistiques {{ selected_year }}</span>
+        </nav>
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">Statistiques des réservations</h1>
+                <p class="text-sm text-slate-600 mt-1">Année {{ selected_year }} — {{ total_reservations }} réservation{{ total_reservations|pluralize }}{% if has_active_filters %} (périmètre filtré){% endif %}</p>
             </div>
-            <div class="flex items-center gap-2 print:hidden">
-                <label for="yearSelect" class="text-sm text-white/80">Ann&eacute;e&nbsp;:</label>
-                <select id="yearSelect" onchange="window.location.href='?year='+this.value"
-                    class="px-4 py-2 border border-white/20 rounded-xl bg-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/60 min-h-[40px]">
-                    {% for year in available_years %}
-                    <option value="{{ year }}" {% if year == selected_year %}selected{% endif %} class="text-[#1e293b]">{{ year }}</option>
-                    {% endfor %}
-                </select>
+            <div class="flex flex-wrap items-center gap-2 print:hidden">
+                <button type="button" id="btnExportCsv" title="Exporter les lignes visibles en CSV" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] min-h-[40px]">
+                    <i class="bx bx-download" aria-hidden="true"></i> Exporter CSV
+                </button>
+                <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 min-h-[40px]">
+                    <i class="bx bx-printer" aria-hidden="true"></i> Imprimer
+                </button>
             </div>
         </div>
+
+        {% if messages %}
+        <div class="mt-4 space-y-2" role="alert">
+            {% for message in messages %}
+            <p class="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{{ message }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="get" action="{% url 'statistics' %}" class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 print:hidden">
+            <fieldset>
+                <legend class="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Filtres — combinables et partageables par URL</legend>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                        <label for="yearSelect" class="block text-xs font-medium text-slate-600 mb-1">Année</label>
+                        <select name="year" id="yearSelect" onchange="this.form.submit()" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5] min-h-[40px]">
+                            {% for year in available_years %}
+                            <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="structureSelect" class="block text-xs font-medium text-slate-600 mb-1">Structure</label>
+                        <select name="structure" id="structureSelect" onchange="this.form.submit()" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5] min-h-[40px]">
+                            <option value="">Toutes structures</option>
+                            {% for s in all_structures %}
+                            <option value="{{ s.pk }}" {% if structure_id == s.pk %}selected{% endif %}>{{ s.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="categorySelect" class="block text-xs font-medium text-slate-600 mb-1">Catégorie</label>
+                        <select name="category" id="categorySelect" onchange="this.form.submit()" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5] min-h-[40px]">
+                            <option value="">Toutes catégories</option>
+                            {% for c in all_categories %}
+                            <option value="{{ c.pk }}" {% if category_id == c.pk %}selected{% endif %}>{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <a href="?year={{ selected_year }}" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 min-h-[40px]">
+                            <i class="bx bx-refresh" aria-hidden="true"></i> Réinitialiser
+                        </a>
+                    </div>
+                </div>
+            </fieldset>
+        </form>
+
+        <nav aria-label="Sections de la page" class="mt-4 flex flex-wrap gap-2 text-sm print:hidden">
+            <a href="#bloc-pilotage" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Pilotage</a>
+            <a href="#bloc-mensuel" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Mensuel</a>
+            <a href="#bloc-structures" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Structures</a>
+            <a href="#bloc-categories" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Catégories</a>
+            <a href="#bloc-durees" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Durées</a>
+            <a href="#bloc-saisonnalite" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Saisonnalité</a>
+            <a href="#bloc-approbation" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Approbation</a>
+            <a href="#bloc-produits" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Ressources</a>
+            <a href="#bloc-synthese" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">Synthèse</a>
+        </nav>
     </div>
-</section>
+</div>
 
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" role="list" aria-label="Indicateurs clés">
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6" role="listitem">
+        <a href="#bloc-mensuel" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6 block hover:border-[#4a6fa5] hover:shadow transition focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]" role="listitem" title="Aller au détail mensuel">
             <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider flex items-center gap-1.5"><i class="bx bx-calendar-check text-[#4a6fa5]" aria-hidden="true"></i> R&eacute;servations totales</p>
             <p class="text-4xl font-bold text-[#2f4d75] mt-2">{{ total_reservations }}</p>
-            <p class="text-xs text-[#5a6f80] mt-1">D&eacute;but de r&eacute;servation en {{ selected_year }}</p>
-        </div>
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6" role="listitem">
+            <p class="text-xs text-[#5a6f80] mt-1">D&eacute;but de r&eacute;servation en {{ selected_year }} &middot; cliquer pour d&eacute;tailler</p>
+        </a>
+        <a href="#bloc-durees" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6 block hover:border-[#4a6fa5] hover:shadow transition focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]" role="listitem" title="Aller aux durées de prêt">
             <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider flex items-center gap-1.5"><i class="bx bx-trending-up text-[#4a6fa5]" aria-hidden="true"></i> Moyenne mensuelle</p>
             <p class="text-4xl font-bold text-[#2f4d75] mt-2">{{ monthly_average|floatformat:1 }}</p>
-            <p class="text-xs text-[#5a6f80] mt-1">Total / 12 mois (m&ecirc;me sans donn&eacute;es)</p>
-        </div>
+            <p class="text-xs text-[#5a6f80] mt-1">Total / {{ average_months }} mois{% if average_months < 12 %} &eacute;coul&eacute;s (&agrave; date){% endif %} &middot; cliquer pour d&eacute;tailler</p>
+        </a>
         <a href="#bloc-structures" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6 block hover:border-[#4a6fa5] hover:shadow transition focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]" role="listitem" title="Aller au graphique par structure">
             <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider flex items-center gap-1.5"><i class="bx bx-buildings text-[#4a6fa5]" aria-hidden="true"></i> Top structure</p>
             <p class="text-xl font-bold text-[#2f4d75] mt-2 truncate" {% if top_structure %}title="{{ top_structure.name }}"{% endif %}>{% if top_structure %}{{ top_structure.name }}{% else %}&mdash;{% endif %}</p>
@@ -55,7 +122,7 @@
     <div id="bloc-pilotage" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6 mb-8">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-1">
             <h2 class="font-semibold text-[#1e293b] text-base"><i class="bx bx-timer mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i> &Agrave; traiter &mdash; validation des demandes {{ selected_year }}</h2>
-            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium {% if funnel.approval_rate >= 80 %}bg-emerald-100 text-emerald-800{% elif funnel.approval_rate >= 50 %}bg-amber-100 text-amber-800{% else %}bg-gray-100 text-gray-700{% endif %}">
+            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium {% if funnel.approval_rate >= approval_rate_high %}bg-emerald-100 text-emerald-800{% elif funnel.approval_rate >= approval_rate_medium %}bg-amber-100 text-amber-800{% else %}bg-gray-100 text-gray-700{% endif %}">
                 Taux d'approbation&nbsp;: {{ funnel.approval_rate|floatformat:1 }}&nbsp;%
             </span>
         </div>
@@ -80,7 +147,20 @@
         <div class="flex flex-wrap gap-x-6 gap-y-1 mt-4 text-sm text-[#1e293b]">
             <p><i class="bx bx-cube mr-1 text-[#4a6fa5]" aria-hidden="true"></i><strong>{{ total_quantity }}</strong> unit&eacute;{{ total_quantity|pluralize }} emprunt&eacute;e{{ total_quantity|pluralize }}</p>
             <p><i class="bx bx-basket mr-1 text-[#4a6fa5]" aria-hidden="true"></i>Panier moyen&nbsp;: <strong>{{ avg_basket|floatformat:1 }}</strong> unit&eacute; par r&eacute;servation</p>
+            <p><i class="bx bx-euro mr-1 text-[#4a6fa5]" aria-hidden="true"></i>Valeur mobilis&eacute;e&nbsp;: <strong>{{ stock_value|floatformat:2 }}&nbsp;&euro;</strong> de mat&eacute;riel mis &agrave; disposition</p>
         </div>
+        {% if funnel.rejected %}
+        <div class="mt-4 rounded-xl bg-slate-50 border border-[#dce3ef] p-4">
+            <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-2">Motifs de refus — sert &agrave; traiter la cause, pas seulement le volume</p>
+            <div class="flex flex-wrap gap-2">
+                {% for r in refusal_stats %}
+                <a href="{% url 'reservation_list' %}?year={{ selected_year }}&status=rejected" title="Voir les demandes refusées" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border {% if r.count %}border-[#dce3ef] bg-white text-[#1e293b] hover:border-[#4a6fa5]{% else %}border-[#dce3ef] bg-white/60 text-[#5a6f80]{% endif %}">
+                    {{ r.label }}&nbsp;: <strong>{{ r.count }}</strong>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <div class="flex flex-wrap items-center gap-3 mb-4 print:hidden">
@@ -88,12 +168,6 @@
             <input type="checkbox" id="toggleN1" checked class="w-4 h-4 accent-[#4a6fa5]" />
             Afficher la comparaison N-1
         </label>
-        <button type="button" id="btnExportCsv" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#dce3ef] bg-white text-sm font-medium text-[#2f4d75] hover:border-[#4a6fa5] min-h-[40px]">
-            <i class="bx bx-download" aria-hidden="true"></i> Exporter CSV
-        </button>
-        <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#dce3ef] bg-white text-sm font-medium text-[#2f4d75] hover:border-[#4a6fa5] min-h-[40px]">
-            <i class="bx bx-printer" aria-hidden="true"></i> Imprimer
-        </button>
     </div>
 
     {% if previous_year_data %}
@@ -126,7 +200,7 @@
                 <caption class="sr-only">Comparaison des r&eacute;servations par structure, ann&eacute;e {{ selected_year }} vs {{ previous_year_data.year }}</caption>
                 <thead class="bg-white sticky top-0"><tr>
                     <th scope="col" class="px-4 py-2 text-left text-xs font-semibold text-[#5a6f80]"><button type="button" data-sort="0" class="inline-flex items-center gap-1 hover:text-[#2f4d75] min-h-[32px]">Structure <span aria-hidden="true">↕</span></button></th>
-                    <th scope="col" class="px-4 py-2 text-center text-xs font-semibold text-[#5a6f80]" aria-sort="none"><button type="button" data-sort="1" class="inline-flex items-center gap-1 hover:text-[#2f4d75] min-h-[32px]">{{ selected_year }} <span aria-hidden="true">↕</span></button></th>
+                    <th scope="col" class="px-4 py-2 text-center text-xs font-semibold text-[#5a6f80]"><button type="button" data-sort="1" class="inline-flex items-center gap-1 hover:text-[#2f4d75] min-h-[32px]">{{ selected_year }} <span aria-hidden="true">↕</span></button></th>
                     <th scope="col" class="px-4 py-2 text-center text-xs font-semibold text-[#5a6f80]"><button type="button" data-sort="2" class="inline-flex items-center gap-1 hover:text-[#2f4d75] min-h-[32px]">{{ previous_year_data.year }} <span aria-hidden="true">↕</span></button></th>
                     <th scope="col" class="px-4 py-2 text-center text-xs font-semibold text-[#5a6f80]"><button type="button" data-sort="3" class="inline-flex items-center gap-1 hover:text-[#2f4d75] min-h-[32px]">Var. <span aria-hidden="true">↕</span></button></th>
                 </tr></thead>
@@ -160,11 +234,12 @@
     </div>
     {% endif %}
 
+    {% if total_reservations %}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div id="bloc-mensuel" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-[#dce3ef]">
                 <h2 class="font-semibold text-[#1e293b] text-base"><i class="bx bx-bar-chart mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i> R&eacute;servations mensuelles</h2>
-                <p class="text-xs text-[#5a6f80] mt-0.5">Total {{ total_reservations }} &middot; moyenne {{ monthly_average|floatformat:1 }}/mois{% if monthly_max_index >= 0 %} &middot; pic&nbsp;: <span id="peakMonthLabel">&mdash;</span>{% endif %}</p>
+                <p class="text-xs text-[#5a6f80] mt-0.5">Total {{ total_reservations }} &middot; moyenne {{ monthly_average|floatformat:1 }}/mois{% if monthly_max_label %} &middot; pic&nbsp;: {{ monthly_max_label }} ({{ monthly_max_value }}){% endif %}</p>
             </div>
             <div class="p-6">
                 <div class="h-64 sm:h-72"><canvas id="myChart" role="img" aria-label="Graphique en barres des réservations par mois pour l'année {{ selected_year }}"></canvas></div>
@@ -175,7 +250,11 @@
                         <table class="min-w-full text-sm border border-[#dce3ef] rounded-xl overflow-hidden">
                             <caption class="sr-only">R&eacute;servations par mois, {{ selected_year }}</caption>
                             <thead class="bg-[#f8f9fc]"><tr><th scope="col" class="px-3 py-2 text-left text-xs font-semibold text-[#5a6f80]">Mois</th><th scope="col" class="px-3 py-2 text-right text-xs font-semibold text-[#5a6f80]">R&eacute;servations</th></tr></thead>
-                            <tbody id="monthlyDataBody" class="divide-y divide-[#dce3ef]/60"></tbody>
+                            <tbody class="divide-y divide-[#dce3ef]/60">
+                                {% for m in monthly_rows %}
+                                <tr class="border-t border-[#dce3ef]/60"><th scope="row" class="px-3 py-2 text-left font-normal">{{ m.label }}</th><td class="px-3 py-2 text-right">{{ m.count }}</td></tr>
+                                {% endfor %}
+                            </tbody>
                         </table>
                     </div>
                 </details>
@@ -205,6 +284,28 @@
                         </table>
                     </div>
                 </details>
+                <details class="mt-4 text-sm">
+                    <summary class="cursor-pointer font-medium text-[#2f4d75] min-h-[32px]">Voir toutes les structures en tableau</summary>
+                    <div class="overflow-x-auto mt-2">
+                        <table class="min-w-full text-sm border border-[#dce3ef] rounded-xl overflow-hidden">
+                            <caption class="sr-only">Toutes les structures et leurs r&eacute;servations, {{ selected_year }}</caption>
+                            <thead class="bg-[#f8f9fc]"><tr><th scope="col" class="px-3 py-2 text-left text-xs font-semibold text-[#5a6f80]">Structure</th><th scope="col" class="px-3 py-2 text-right text-xs font-semibold text-[#5a6f80]">R&eacute;servations</th></tr></thead>
+                            <tbody>
+                                {% for s in reservations_by_structure %}
+                                <tr class="border-t border-[#dce3ef]/60"><th scope="row" class="px-3 py-2 text-left font-normal">{{ s.name }}</th><td class="px-3 py-2 text-right">{{ s.total_reservations }}</td></tr>
+                                {% empty %}
+                                <tr><td colspan="2" class="px-3 py-4 text-center text-[#5a6f80]">Aucune structure.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+                {% if inactive_structures %}
+                <div class="mt-4 rounded-xl border border-dashed border-[#b0bedb] p-4 text-sm">
+                    <p class="text-[#1e293b]"><i class="bx bx-building-house mr-1 text-[#4a6fa5]" aria-hidden="true"></i><strong>{{ inactive_structures|length }}</strong> structure{{ inactive_structures|length|pluralize }} sans r&eacute;servation en {{ selected_year }} — &agrave; accompagner</p>
+                    <p class="text-xs text-[#5a6f80] mt-1">{% for s in inactive_structures|slice:":12" %}<a href="{% url 'structure_detail' s.pk %}" class="underline text-[#2f4d75] hover:text-[#4a6fa5]">{{ s.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}{% if inactive_structures|length > 12 %} et {{ inactive_structures|length|add:"-12" }} autre{{ inactive_structures|length|add:"-12"|pluralize }}{% endif %}</p>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -237,7 +338,7 @@
                 <div class="mt-4 rounded-xl border border-dashed border-[#b0bedb] p-4 text-sm">
                     <p class="text-[#1e293b]"><i class="bx bx-archive mr-1 text-[#4a6fa5]" aria-hidden="true"></i><strong>{{ dormant_count }}</strong> produit{{ dormant_count|pluralize }} jamais r&eacute;serv&eacute;{{ dormant_count|pluralize }} en {{ selected_year }}</p>
                     {% if dormant_sample %}
-                    <p class="text-xs text-[#5a6f80] mt-1">Ex.&nbsp;: {% for p in dormant_sample %}{{ p.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if dormant_count > 10 %} et {{ dormant_count|add:"-10" }} autre{{ dormant_count|add:"-10"|pluralize }}{% endif %}</p>
+                    <p class="text-xs text-[#5a6f80] mt-1">Ex.&nbsp;:{% for p in dormant_sample %} <a href="{% url 'product_detail' p.pk %}" class="underline text-[#2f4d75] hover:text-[#4a6fa5]">{{ p.name }}</a>{% if not forloop.last %},{% endif %}{% endfor %}{% if dormant_count > 10 %} et {{ dormant_count|add:"-10" }} autre{{ dormant_count|add:"-10"|pluralize }}{% endif %}</p>
                     {% endif %}
                 </div>
             </div>
@@ -272,13 +373,84 @@
             </div>
         </div>
     </div>
+    {% endif %}
+
+    {% if total_reservations %}
+    <div id="bloc-saisonnalite" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h2 class="font-semibold text-[#1e293b] text-base"><i class="bx bx-calendar mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i> Saisonnalit&eacute; par cat&eacute;gorie</h2>
+            <p class="text-xs text-[#5a6f80] mt-0.5">Sert à : anticiper achats et entretien — top {{ category_month_matrix.categories|length }} cat&eacute;gories, nombre de r&eacute;servations par mois. Cliquez une cat&eacute;gorie pour filtrer.</p>
+        </div>
+        <div class="p-6">
+            {% if category_month_matrix.matrix %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <caption class="sr-only">R&eacute;servations par cat&eacute;gorie et par mois, {{ selected_year }}</caption>
+                    <thead><tr class="text-left text-xs font-semibold text-[#5a6f80] uppercase border-b border-[#dce3ef]"><th scope="col" class="py-2 pr-3">Cat&eacute;gorie</th>{% for m in monthly_rows %}<th scope="col" class="py-2 px-2 text-center">{{ m.label|slice:":4" }}</th>{% endfor %}<th scope="col" class="py-2 pl-2 text-right">Total</th></tr></thead>
+                    <tbody class="divide-y divide-[#dce3ef]/60">
+                        {% for row in category_month_matrix.matrix %}
+                        <tr class="hover:bg-[#f8f9fc]">
+                            <th scope="row" class="py-2 pr-3 text-left font-medium">
+                                <a href="?year={{ selected_year }}{% if structure_id %}&amp;structure={{ structure_id }}{% endif %}&amp;category={{ row.category_id }}" class="text-[#2f4d75] hover:text-[#4a6fa5] hover:underline">{{ row.category }}</a>
+                                <a href="{% url 'category_detail' row.category_id %}" title="Voir la catégorie" class="ml-1 text-[#5a6f80] hover:text-[#4a6fa5]"><i class="bx bx-external-link text-xs" aria-hidden="true"></i><span class="sr-only">Fiche {{ row.category }}</span></a>
+                            </th>
+                            {% for count in row.months %}
+                            <td class="py-2 px-2 text-center">{% if count %}<span class="inline-block min-w-7 px-1.5 py-0.5 rounded-md text-xs font-semibold {% if count >= 5 %}bg-[#4a6fa5] text-white{% elif count >= 3 %}bg-[#e8eef7] text-[#2f4d75]{% else %}bg-slate-100 text-slate-700{% endif %}">{{ count }}</span>{% else %}<span class="text-slate-300 text-xs">–</span>{% endif %}</td>
+                            {% endfor %}
+                            <td class="py-2 pl-2 text-right font-semibold text-[#1e293b]">{{ row.total }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-sm text-[#5a6f80] border border-dashed border-[#b0bedb] rounded-xl p-4" role="status">Aucune donn&eacute;e crois&eacute;e sur ce p&eacute;rim&egrave;tre.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="bloc-approbation" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h2 class="font-semibold text-[#1e293b] text-base"><i class="bx bx-check-shield mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i> Approbation par structure</h2>
+            <p class="text-xs text-[#5a6f80] mt-0.5">Sert à : repérer les structures dont les demandes sont souvent refusées, pour les accompagner. Taux les plus bas en premier — cliquez pour voir leurs demandes.</p>
+        </div>
+        <div class="p-6">
+            {% if approval_by_structure %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <caption class="sr-only">Taux d'approbation par structure, {{ selected_year }}</caption>
+                    <thead><tr class="text-left text-xs font-semibold text-[#5a6f80] uppercase border-b border-[#dce3ef]"><th scope="col" class="py-2 pr-3">Structure</th><th scope="col" class="py-2 px-2 text-center">Demandes</th><th scope="col" class="py-2 px-2 text-center">Approuv&eacute;es</th><th scope="col" class="py-2 pl-2 text-right">Taux</th></tr></thead>
+                    <tbody class="divide-y divide-[#dce3ef]/60">
+                        {% for s in approval_by_structure %}
+                        <tr class="hover:bg-[#f8f9fc]">
+                            <th scope="row" class="py-2 pr-3 text-left font-medium"><a href="{% url 'reservation_list' %}?year={{ selected_year }}&amp;structure={{ s.pk }}" class="text-[#2f4d75] hover:text-[#4a6fa5] hover:underline">{{ s.name }}</a></th>
+                            <td class="py-2 px-2 text-center text-[#5a6f80]">{{ s.approval_total }}</td>
+                            <td class="py-2 px-2 text-center text-[#5a6f80]">{{ s.approval_approved }}</td>
+                            <td class="py-2 pl-2 text-right font-semibold {% if s.approval_rate >= approval_rate_high %}text-emerald-700{% elif s.approval_rate >= approval_rate_medium %}text-amber-700{% else %}text-red-700{% endif %}">{{ s.approval_rate|floatformat:1 }}&nbsp;%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-sm text-[#5a6f80] border border-dashed border-[#b0bedb] rounded-xl p-4" role="status">Aucune demande sur ce p&eacute;rim&egrave;tre.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 
     <div id="bloc-produits" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-[#dce3ef] flex flex-wrap items-center gap-3 justify-between">
-            <h2 class="font-semibold text-[#1e293b] text-base"><i class="bx bx-package mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i> Ressources les plus r&eacute;serv&eacute;es <span id="productCount" class="ml-1 text-xs font-medium text-[#5a6f80]"></span></h2>
-            <div class="print:hidden">
-                <label for="productSearch" class="sr-only">Rechercher une ressource</label>
+            <h2 class="font-semibold text-[#1e293b] text-base"><i class="bx bx-package mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i> Ressources les plus r&eacute;serv&eacute;es <span id="productCount" class="ml-1 text-xs font-medium text-[#5a6f80]" aria-live="polite">({{ products_stats|length }})</span></h2>
+            <div class="print:hidden flex flex-wrap items-center gap-2">
+                <label for="productSort" class="sr-only">Trier les ressources</label>
+                <select id="productSort" class="border border-[#dce3ef] rounded-xl text-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5] min-h-[40px]">
+                    <option value="count">Tri : plus réservées</option>
+                    <option value="name">Tri : nom A-Z</option>
+                    <option value="units">Tri : unités empruntées</option>
+                </select>
                 <div class="relative">
+                    <label for="productSearch" class="sr-only">Rechercher une ressource</label>
                     <i class="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-[#5a6f80]" aria-hidden="true"></i>
                     <input id="productSearch" type="search" placeholder="Rechercher une ressource…" autocomplete="off"
                         class="pl-10 pr-3 py-2 border border-[#dce3ef] rounded-xl text-sm w-64 max-w-full focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5] min-h-[40px]" />
@@ -288,22 +460,75 @@
         {% if products_stats %}
         <div id="productList" class="divide-y divide-[#dce3ef]">
             {% for product in products_stats %}
-            <div class="product-row px-6 py-4 flex items-center justify-between gap-3 hover:bg-[#f8f9fc] transition-colors" data-name="{{ product.name|lower }}">
-                <a href="{% url 'product_detail' product.pk %}" class="product-link text-sm font-medium text-[#2f4d75] hover:text-[#4a6fa5] hover:underline focus:outline-none focus:ring-2 focus:ring-[#4a6fa5] rounded">{{ product.name }}</a>
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8eef7] text-[#2f4d75] shrink-0">{{ product.reservation_count }} r&eacute;servation{{ product.reservation_count|pluralize }}</span>
+            <div class="product-row px-6 py-4 flex items-center gap-3 hover:bg-[#f8f9fc] transition-colors{% if forloop.counter <= 3 %} product-podium{% endif %}{% if forloop.counter > products_initial_limit %} hidden product-extra{% endif %}" data-name="{{ product.name|lower }}" data-count="{{ product.reservation_count }}" data-units="{{ product.total_units }}">
+                <span class="product-rank text-xs font-bold text-[#5a6f80] w-7 shrink-0" aria-hidden="true">#{{ forloop.counter }}</span>
+                {% if product.image %}
+                <img src="{{ product.image.url }}" alt="" loading="lazy" class="h-10 w-10 rounded-lg object-cover shrink-0 border border-[#dce3ef]" />
+                {% else %}
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#e8eef7] border border-[#dce3ef]" aria-hidden="true"><i class="bx bx-package text-lg text-[#4a6fa5]"></i></span>
+                {% endif %}
+                <div class="min-w-0 flex-1">
+                    <a href="{% url 'product_detail' product.pk %}" class="product-link text-sm font-medium text-[#2f4d75] hover:text-[#4a6fa5] hover:underline focus:outline-none focus:ring-2 focus:ring-[#4a6fa5] rounded">{{ product.name }}</a>
+                    <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[#5a6f80]">
+                        {% if product.category %}<a href="?year={{ selected_year }}{% if structure_id %}&amp;structure={{ structure_id }}{% endif %}&amp;category={{ product.category_id }}" title="Filtrer les stats sur cette catégorie" class="hover:text-[#4a6fa5] hover:underline">{{ product.category.name }}</a><span aria-hidden="true">·</span>{% endif %}
+                        <span class="product-units">{{ product.total_units }} unit&eacute;{{ product.total_units|pluralize }}</span><span aria-hidden="true">·</span>
+                        <span title="Évolution vs N-1 même période" class="{% if product.trend_delta > 0 %}text-emerald-700{% elif product.trend_delta < 0 %}text-red-700{% else %}text-[#5a6f80]{% endif %} font-semibold">{% if product.trend_delta > 0 %}▲ +{{ product.trend_delta }}{% elif product.trend_delta < 0 %}▼ {{ product.trend_delta }}{% else %}● 0{% endif %}</span>
+                        {% if product.stock_alert == "tension" %}<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800">Forte demande</span>
+                        {% elif product.stock_alert == "rupture" %}<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-800">Rupture</span>
+                        {% endif %}
+                    </p>
+                    <div class="mt-1.5 h-1.5 w-full max-w-56 rounded-full bg-slate-100 overflow-hidden" role="img" aria-label="{{ product.reservation_count }} réservations sur {{ products_max_count }} pour la ressource la plus demandée">
+                        <div class="h-1.5 rounded-full bg-[#4a6fa5]" style="width: {% widthratio product.reservation_count products_max_count 100 %}%"></div>
+                    </div>
+                </div>
+                <span class="product-count-pill inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8eef7] text-[#2f4d75] shrink-0">{{ product.reservation_count }} r&eacute;servation{{ product.reservation_count|pluralize }}</span>
             </div>
             {% endfor %}
         </div>
+        {% if products_stats|length > products_initial_limit %}
+        <div class="px-6 py-4 text-center border-t border-[#dce3ef] print:hidden">
+            <button type="button" id="productShowAll" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#dce3ef] bg-white text-sm font-medium text-[#2f4d75] hover:border-[#4a6fa5] min-h-[40px]">
+                <i class="bx bx-chevrons-down" aria-hidden="true"></i> Tout afficher ({{ products_stats|length }} ressources)
+            </button>
+        </div>
+        {% endif %}
         <p id="productEmpty" class="hidden px-6 py-8 text-center text-sm text-[#5a6f80]" role="status">Aucune ressource ne correspond &agrave; cette recherche. <button type="button" id="productReset" class="underline text-[#2f4d75]">R&eacute;initialiser</button></p>
         {% else %}
         <p class="px-6 py-8 text-center text-sm text-[#5a6f80]" role="status">Aucune ressource r&eacute;serv&eacute;e en {{ selected_year }}.</p>
         {% endif %}
     </div>
+
+    <div id="bloc-synthese" class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6 mt-8 scroll-mt-24">
+        <div class="flex items-center gap-3 mb-1">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#4a6fa5] text-white" aria-hidden="true"><i class="bx bx-detail text-xl"></i></span>
+            <div class="flex flex-wrap items-center gap-2">
+                <h2 class="text-base font-bold text-slate-900">Synthèse {{ selected_year }}</h2>
+                <span class="rounded-full bg-[#e8eef7] px-2.5 py-0.5 text-xs font-semibold text-[#4a6fa5]">{{ synthese.phrases|length }} points clés</span>
+            </div>
+        </div>
+        <p class="text-xs text-slate-500 mb-4 ml-12">Sert à : résumer l'année pour le rapport d'activité et les élus.</p>
+        <div class="border-l-4 border-[#4a6fa5] bg-[#eef3f9] rounded-r-lg p-4 sm:p-5 text-slate-800">
+            {% if synthese.perimetre %}
+            <p class="mb-3 inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-600"><i class="bx bx-filter-alt" aria-hidden="true"></i>Périmètre : {{ synthese.perimetre }}</p>
+            {% endif %}
+            {% for phrase in synthese.phrases %}
+            {% if forloop.first %}
+            <p class="synthese-phrase text-[15px] font-medium leading-relaxed text-slate-900 first-letter:float-left first-letter:mr-1.5 first-letter:text-4xl first-letter:font-bold first-letter:leading-[0.9] first-letter:text-[#4a6fa5]">{{ phrase }}</p>
+            {% else %}
+            {% if forloop.counter == 2 %}<ol class="mt-4 space-y-2.5 text-sm leading-relaxed">{% endif %}
+                <li class="flex gap-2.5"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#4a6fa5] text-[11px] font-bold text-white" aria-hidden="true">{{ forloop.counter|add:"-1" }}</span><span class="synthese-phrase">{{ phrase }}</span></li>
+            {% if forloop.last %}</ol>{% endif %}
+            {% endif %}
+            {% empty %}
+            <p class="leading-relaxed">Aucune donnée pour rédiger la synthèse sur ce périmètre.</p>
+            {% endfor %}
+        </div>
+    </div>
 </section>
 {% endblock %}
 
 {% block javascripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js" integrity="sha384-YAshAm4KKjf8V01c4sdNbPYiwU0D0Q82fjMHhKw8VvP0ecY4fxXsZAHxC4r4Ei+T" crossorigin="anonymous"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -311,20 +536,6 @@ document.addEventListener('DOMContentLoaded', function() {
     var monthFull = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
     var monthly = [{% for r in reservations_by_month %}{{ r }},{% endfor %}];
     var maxIdx = {{ monthly_max_index }};
-    if (maxIdx >= 0) {
-        var peak = document.getElementById('peakMonthLabel');
-        if (peak) peak.textContent = monthFull[maxIdx] + ' (' + monthly[maxIdx] + ')';
-    }
-
-    // Table alternative mensuelle (remplie en JS pour rester synchro du graphique)
-    var mBody = document.getElementById('monthlyDataBody');
-    if (mBody) {
-        var html = '';
-        for (var i = 0; i < 12; i++) {
-            html += '<tr class="border-t border-[#dce3ef]/60"><th scope="row" class="px-3 py-2 text-left font-normal">' + monthFull[i] + '</th><td class="px-3 py-2 text-right">' + monthly[i] + '</td></tr>';
-        }
-        mBody.innerHTML = html;
-    }
 
     function drawValues(chart) {
         var ctx = chart.ctx;
@@ -405,8 +616,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         var found = null;
                         rows.forEach(function(r) {
                             var match = (r.getAttribute('data-structure') || '') === name;
-                            r.classList.toggle('bg-yellow-100', match);
-                            if (match && !found) found = r;
+                            r.classList.toggle('stat-row-match', match);
+                            if (match) { r.setAttribute('aria-current', 'true'); if (!found) found = r; }
+                            else { r.removeAttribute('aria-current'); }
                         });
                         if (found) found.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
                     }
@@ -446,10 +658,18 @@ document.addEventListener('DOMContentLoaded', function() {
     var comp = document.getElementById('comparisonTable');
     if (comp) {
         var dir = {};
+        var ths = comp.querySelectorAll('thead th');
+        function setAriaSort(activeCol, direction) {
+            ths.forEach(function(th, i) {
+                if (i === activeCol) th.setAttribute('aria-sort', direction === 1 ? 'ascending' : 'descending');
+                else th.setAttribute('aria-sort', 'none');
+            });
+        }
         comp.querySelectorAll('button[data-sort]').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var col = parseInt(btn.getAttribute('data-sort'), 10);
                 dir[col] = dir[col] === 1 ? -1 : 1;
+                setAriaSort(col, dir[col]);
                 var tbody = comp.querySelector('tbody');
                 var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
                 rows.sort(function(a, b) {
@@ -470,24 +690,54 @@ document.addEventListener('DOMContentLoaded', function() {
     var blocN1 = document.getElementById('bloc-n1');
     if (toggle && blocN1) toggle.addEventListener('change', function() { blocN1.classList.toggle('hidden', !toggle.checked); });
 
-    // Recherche produits
+    // Recherche produits (+ affichage progressif au-delà de la limite initiale)
     var search = document.getElementById('productSearch');
     var list = document.getElementById('productList');
     var emptyMsg = document.getElementById('productEmpty');
     var count = document.getElementById('productCount');
+    var showAll = false;
     function refreshProducts() {
         if (!list) return;
         var q = search ? search.value.trim().toLowerCase() : '';
         var visible = 0, total = 0;
         list.querySelectorAll('.product-row').forEach(function(row) {
             total++;
-            var show = !q || (row.getAttribute('data-name') || '').indexOf(q) !== -1;
+            var match = !q || (row.getAttribute('data-name') || '').indexOf(q) !== -1;
+            var extra = row.classList.contains('product-extra');
+            var show = match && (showAll || !extra);
             row.classList.toggle('hidden', !show);
             if (show) visible++;
         });
         if (emptyMsg) emptyMsg.classList.toggle('hidden', visible !== 0);
         if (count) count.textContent = total ? '(' + visible + '/' + total + ')' : '';
     }
+    var sortSel = document.getElementById('productSort');
+    function sortProducts() {
+        if (!list || !sortSel) return;
+        var mode = sortSel.value;
+        var rows = Array.prototype.slice.call(list.querySelectorAll('.product-row'));
+        rows.sort(function(a, b) {
+            if (mode === 'name') return (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || '');
+            if (mode === 'units') return (parseFloat(b.getAttribute('data-units')) || 0) - (parseFloat(a.getAttribute('data-units')) || 0);
+            return (parseFloat(b.getAttribute('data-count')) || 0) - (parseFloat(a.getAttribute('data-count')) || 0);
+        });
+        rows.forEach(function(r, i) {
+            list.appendChild(r);
+            var rank = r.querySelector('.product-rank');
+            if (rank) rank.textContent = '#' + (i + 1);
+            r.classList.toggle('product-podium', mode === 'count' && i < 3);
+        });
+        refreshProducts();
+    }
+    if (sortSel) sortSel.addEventListener('change', sortProducts);
+    var showAllBtn = document.getElementById('productShowAll');
+    if (showAllBtn) showAllBtn.addEventListener('click', function() {
+        showAll = true;
+        var wrap = showAllBtn.closest('div');
+        if (wrap) wrap.classList.add('hidden');
+        refreshProducts();
+        if (search) search.focus();
+    });
     if (search) search.addEventListener('input', refreshProducts);
     var resetBtn = document.getElementById('productReset');
     if (resetBtn) resetBtn.addEventListener('click', function() { if (search) { search.value = ''; refreshProducts(); search.focus(); } });
@@ -497,6 +747,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var btnCsv = document.getElementById('btnExportCsv');
     if (btnCsv) btnCsv.addEventListener('click', function() {
         var lines = ['sep=;', 'Statistiques {{ selected_year }};export du ' + new Date().toLocaleDateString('fr-FR')];
+        lines.push('Filtres;Structure;Categorie');
+        lines.push(';\"{{ active_structure_name|default:'Toutes'|escapejs }}\";\"{{ active_category_name|default:'Toutes'|escapejs }}\"');
         lines.push('');
         lines.push('Pilotage;En attente;Approuvées;Refusées;Taux approbation %');
         lines.push('{{ selected_year }};{{ funnel.pending }};{{ funnel.approved }};{{ funnel.rejected }};{{ funnel.approval_rate|floatformat:1 }}');
@@ -530,11 +782,22 @@ document.addEventListener('DOMContentLoaded', function() {
         var prodRows = document.querySelectorAll('#productList .product-row:not(.hidden)');
         if (prodRows.length) {
             lines.push('');
-            lines.push('Ressource;Réservations');
+            lines.push('Ressource;Réservations;Unités');
             prodRows.forEach(function(r) {
                 var name = r.querySelector('.product-link').textContent.trim().replace(/"/g, '""');
-                var nb = r.querySelector('span').textContent.trim().replace(/"/g, '""');
-                lines.push('"' + name + '";"' + nb + '"');
+                var nbEl = r.querySelector('.product-count-pill');
+                var unitsEl = r.querySelector('.product-units');
+                var nb = nbEl ? nbEl.textContent.trim().replace(/"/g, '""') : '';
+                var units = unitsEl ? unitsEl.textContent.trim().replace(/"/g, '""') : '';
+                lines.push('"' + name + '";"' + nb + '";"' + units + '"');
+            });
+        }
+        var synRows = document.querySelectorAll('#bloc-synthese .synthese-phrase');
+        if (synRows.length) {
+            lines.push('');
+            lines.push('Synthèse');
+            synRows.forEach(function(el) {
+                lines.push('"' + el.textContent.trim().replace(/"/g, '""') + '"');
             });
         }
         var blob = new Blob(["\uFEFF" + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });

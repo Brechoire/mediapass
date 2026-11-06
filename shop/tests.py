@@ -1099,6 +1099,70 @@ class StatisticsViewTests(TestCase):
         self.assertEqual(response.context["total_reservations"], 0)
         self.assertEqual(response.context["monthly_average"], 0.0)
 
+    def test_invalid_year_shows_warning(self):
+        self.login()
+        response = self.client.get(reverse("statistics") + "?year=abc")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "invalide")
+
+    def test_monthly_table_rendered_server_side(self):
+        from django.utils import timezone
+
+        year = timezone.now().year
+        self._make_stats_setup(year)
+        self.login()
+        response = self.client.get(reverse("statistics") + f"?year={year}")
+        self.assertEqual(response.status_code, 200)
+        # Lignes serveur (pas de JS requis) + pic du mois.
+        self.assertContains(response, "Mars")
+        self.assertContains(response, "pic")
+        self.assertEqual(response.context["monthly_max_label"], "Mars")
+        self.assertEqual(len(response.context["monthly_rows"]), 12)
+        self.assertEqual(response.context["monthly_rows"][2]["count"], 3)
+
+    def test_structure_and_category_filters(self):
+        from django.utils import timezone
+
+        year = timezone.now().year
+        self._make_stats_setup(year)
+        other_structure = Structure.objects.create(
+            name="Autre Structure",
+            address="2 rue",
+            city="Ville",
+            email="a@t.fr",
+            zip_code="59",
+            country="FR",
+        )
+        self.login()
+        base = reverse("statistics") + f"?year={year}"
+        # Filtre structure inconnue de la période : ignoré sans 500.
+        response = self.client.get(base + f"&structure={other_structure.pk}")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_reservations"], 0)
+        # Filtre valeur invalide : ignoré, périmètre inchangé.
+        response = self.client.get(base + "&structure=999999&category=abc")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_reservations"], 3)
+        self.assertIsNone(response.context["structure_id"])
+        self.assertIsNone(response.context["category_id"])
+
+    def test_dormant_links_and_full_structures_table(self):
+        from django.urls import reverse as url_reverse
+        from django.utils import timezone
+
+        year = timezone.now().year
+        _, dormant = self._make_stats_setup(year)
+        self.login()
+        response = self.client.get(reverse("statistics") + f"?year={year}")
+        self.assertEqual(response.status_code, 200)
+        # Stock dormant : liens vers les fiches produits.
+        self.assertContains(
+            response, url_reverse("product_detail", args=[dormant.pk])
+        )
+        # Tableau complet des structures (au-delà du top 8).
+        self.assertContains(response, "Toutes les structures")
+        self.assertContains(response, "Structure Phase A")
+
     def test_counts_and_top_context(self):
         from django.utils import timezone
 
@@ -1138,7 +1202,13 @@ class StatisticsViewTests(TestCase):
         response = self.client.get(reverse("statistics") + f"?year={year}")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["total_reservations"], 2)
-        self.assertEqual(response.context["monthly_average"], round(2 / 12, 1))
+        from datetime import datetime as _dt
+
+        elapsed = _dt.now().month
+        self.assertEqual(
+            response.context["monthly_average"], round(2 / elapsed, 1)
+        )
+        self.assertEqual(response.context["average_months"], elapsed)
         self.assertEqual(response.context["reservations_by_month"][2], 2)
         self.assertEqual(response.context["monthly_max_index"], 2)
         self.assertEqual(response.context["top_structure"].name, "Structure Top")
@@ -1233,6 +1303,161 @@ class StatisticsViewTests(TestCase):
         self.assertEqual(response.context["dormant_count"], 1)
         self.assertEqual(response.context["dormant_sample"][0].name, "Produit Dormant")
         self.assertContains(response, "jamais r")
+
+    def test_stock_value_and_trend(self):
+        from django.utils import timezone
+
+        year = timezone.now().year
+        self._make_stats_setup(year)
+        self.login()
+        response = self.client.get(reverse("statistics") + f"?year={year}")
+        # Valeur mobilisée : 10 € x 7 unités.
+        self.assertEqual(float(response.context["stock_value"]), 70.0)
+        self.assertContains(response, "Valeur mobilis")
+        # Tendance N-1 : 3 réservations cette année, 0 l'an passé.
+        prods = [p for p in response.context["products_stats"]]
+        phase_a = next(p for p in prods if p.name == "Produit Phase A")
+        self.assertEqual(phase_a.trend_delta, 3)
+
+    def test_refusal_reasons(self):
+        from django.utils import timezone
+
+        year = timezone.now().year
+        self._make_stats_setup(year)
+        self.login()
+        response = self.client.get(reverse("statistics") + f"?year={year}")
+        refusal = {r["code"]: r["count"] for r in response.context["refusal_stats"]}
+        self.assertEqual(refusal.get("unavailable"), 1)
+        self.assertEqual(refusal.get("error"), 0)
+        self.assertContains(response, "Produit non disponible")
+        self.assertContains(response, "Motifs de refus")
+
+    def test_inactive_structures(self):
+        from django.utils import timezone
+
+        year = timezone.now().year
+        self._make_stats_setup(year)
+        Structure.objects.create(
+            name="Structure Dormante",
+            address="3 rue",
+            city="Ville",
+            email="d@t.fr",
+            zip_code="59",
+            country="FR",
+        )
+        self.login()
+        response = self.client.get(reverse("statistics") + f"?year={year}")
+        inactive = response.context["inactive_structures"]
+        self.assertTrue(any(s.name == "Structure Dormante" for s in inactive))
+        self.assertContains(response, "sans r")
+
+    def test_category_month_matrix_and_approval(self):
+        from django.utils import timezone
+
+        year = timezone.now().year
+        self._make_stats_setup(year)
+        self.login()
+        response = self.client.get(reverse("statistics") + f"?year={year}")
+        matrix = response.context["category_month_matrix"]
+        self.assertEqual(len(matrix["matrix"]), 1)
+        self.assertEqual(len(matrix["matrix"][0]["months"]), 12)
+        self.assertEqual(matrix["matrix"][0]["months"][2], 3)
+        self.assertContains(response, "Saisonnalit")
+        approval = response.context["approval_by_structure"]
+        self.assertEqual(len(approval), 1)
+        self.assertAlmostEqual(approval[0].approval_rate, round(1 / 3 * 100, 1))
+        self.assertContains(response, "Approbation par structure")
+
+    def test_products_row_enrichment(self):
+        from django.utils import timezone
+
+        year = timezone.now().year
+        self._make_stats_setup(year)
+        self.login()
+        response = self.client.get(reverse("statistics") + f"?year={year}")
+        content = response.content.decode()
+        self.assertIn('id="productSort"', content)
+        self.assertIn('aria-live="polite"', content)
+        self.assertIn("product-rank", content)
+        self.assertIn("category=", content)
+
+    def test_synthese_content(self):
+        from django.utils import timezone
+
+        year = timezone.now().year
+        self._make_stats_setup(year)
+        self.login()
+        response = self.client.get(reverse("statistics") + f"?year={year}")
+        synthese = response.context["synthese"]
+        self.assertIsNone(synthese["perimetre"])
+        phrases = synthese["phrases"]
+        self.assertGreaterEqual(len(phrases), 8)
+        self.assertLessEqual(len(phrases), 12)
+        full = " ".join(phrases)
+        self.assertIn(str(year), full)
+        self.assertIn("3 réservations", full)
+        self.assertContains(response, "Synthèse")
+        self.assertContains(response, "synthese-phrase")
+
+    def test_synthese_with_filters(self):
+        from django.utils import timezone
+
+        year = timezone.now().year
+        self._make_stats_setup(year)
+        structure = Structure.objects.get(name="Structure Phase A")
+        self.login()
+        response = self.client.get(
+            reverse("statistics") + f"?year={year}&structure={structure.pk}"
+        )
+        synthese = response.context["synthese"]
+        self.assertIn("Structure Phase A", synthese["perimetre"])
+        self.assertContains(response, "Périmètre :")
+
+    def test_products_cap_and_show_all(self):
+        from django.utils import timezone
+
+        year = timezone.now().year
+        category = Category.objects.create(name="Cat Volume")
+        structure = Structure.objects.create(
+            name="Structure Volume",
+            address="1 rue",
+            city="Ville",
+            email="v@t.fr",
+            zip_code="59",
+            country="FR",
+        )
+        products = Product.objects.bulk_create(
+            [
+                Product(
+                    name=f"Produit {i:03d}",
+                    quantity=10,
+                    description="x",
+                    category=category,
+                    price=1,
+                    status=True,
+                )
+                for i in range(105)
+            ]
+        )
+        Reservation.objects.bulk_create(
+            [
+                Reservation(
+                    product=p,
+                    start_date=timezone.make_aware(timezone.datetime(year, 3, 5)),
+                    end_date=timezone.make_aware(timezone.datetime(year, 3, 6)),
+                    structure=structure,
+                    quantity=1,
+                )
+                for p in products
+            ]
+        )
+        self.login()
+        response = self.client.get(reverse("statistics") + f"?year={year}")
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("Tout afficher", content)
+        self.assertIn("product-extra", content)
+        self.assertEqual(response.context["products_initial_limit"], 100)
 
     def test_duration_stats(self):
         from django.utils import timezone
