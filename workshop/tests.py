@@ -189,6 +189,102 @@ class WorkshopListViewTests(TestCase):
         response = self.client.get(reverse("workshop_list"))
         self.assertContains(response, "Aucun atelier")
 
+    def test_delete_requires_post(self):
+        """La suppression exige POST : le lien GET historique répond 405."""
+        self.login()
+        response = self.client.get(
+            reverse("workshop_delete", args=[self.workshop.pk])
+        )
+        self.assertEqual(response.status_code, 405)
+        self.assertTrue(
+            Workshop.objects.filter(pk=self.workshop.pk).exists()
+        )
+
+    def test_delete_post_removes_workshop(self):
+        self.login()
+        response = self.client.post(
+            reverse("workshop_delete", args=[self.workshop.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(
+            Workshop.objects.filter(pk=self.workshop.pk).exists()
+        )
+
+    def test_delete_button_is_post_form_with_csrf(self):
+        from django.urls import reverse as url_reverse
+
+        self.login()
+        response = self.client.get(reverse("workshop_list"))
+        delete_url = url_reverse(
+            "workshop_delete", args=[self.workshop.pk]
+        )
+        self.assertContains(response, f'action="{delete_url}"')
+        self.assertContains(response, 'method="post"')
+        self.assertContains(response, "csrfmiddlewaretoken")
+        self.assertNotContains(response, "onclick=\"return confirm")
+
+    def test_comm_group_hides_admin_actions(self):
+        from django.contrib.auth.models import Group
+        from django.urls import reverse as url_reverse
+
+        group, _ = Group.objects.get_or_create(name="communication")
+        basic = User.objects.create_user(username="comm", password="pass")
+        basic.groups.add(group)
+        self.client.login(username="comm", password="pass")
+        response = self.client.get(reverse("workshop_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Ajouter un atelier")
+        self.assertNotContains(
+            response, url_reverse("workshop_create")
+        )
+        self.assertNotContains(
+            response, url_reverse("workshop_update", args=[self.workshop.pk])
+        )
+        self.assertNotContains(
+            response, url_reverse("workshop_delete", args=[self.workshop.pk])
+        )
+        # La consultation reste possible.
+        self.assertContains(response, "Test Workshop")
+
+    def test_chips_show_location_name_and_hide_sort(self):
+        self.login()
+        response = self.client.get(
+            reverse("workshop_list"),
+            {"location": self.location.pk, "sort": "-date"},
+        )
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("Loc", content)
+        self.assertNotIn("Lieu #", content)
+        self.assertNotIn("sort:", content)
+
+    def test_year_switch_preserves_filters(self):
+        self.login()
+        response = self.client.get(
+            reverse("workshop_list"), {"location": self.location.pk}
+        )
+        self.assertEqual(response.status_code, 200)
+        # Les pastilles d'années conservent le filtre lieu.
+        # (le & littéral du template n'est pas échappé, comme le reste de la page)
+        self.assertContains(
+            response,
+            f"?year={date.today().year}&location={self.location.pk}",
+        )
+
+    def test_table_accessibility_and_native_details(self):
+        self.login()
+        response = self.client.get(reverse("workshop_list"))
+        content = response.content.decode()
+        self.assertIn("<details", content)
+        self.assertNotIn('id="filterPanel"', content)
+        self.assertIn("<caption", content)
+        self.assertIn('scope="col"', content)
+        self.assertIn('aria-sort="descending"', content)
+        self.assertIn(
+            'class="w-full bg-white border border-slate-300 rounded-lg',
+            content,
+        )
+
 
 class WorkshopCreateViewTests(TestCase):
     """Tests pour la vue workshop_create."""

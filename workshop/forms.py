@@ -271,11 +271,21 @@ class WorkshopFilterForm(forms.Form):
     le bookmarking et le partage des URLs filtrées.
     """
 
+    # Classes du design system du site (cf. workshop_stats.html) : la
+    # classe Bootstrap "form-control" n'est définie nulle part.
+    WIDGET_ATTRS = {
+        "class": (
+            "w-full bg-white border border-slate-300 rounded-lg px-3 py-2 "
+            "text-sm text-slate-900 focus:outline-none focus:ring-2 "
+            "focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5]"
+        )
+    }
+
     q = forms.CharField(
         required=False,
         widget=forms.TextInput(
             attrs={
-                "class": "form-control",
+                **WIDGET_ATTRS,
                 "placeholder": "Rechercher par nom…",
             }
         ),
@@ -284,78 +294,78 @@ class WorkshopFilterForm(forms.Form):
     location = forms.ModelChoiceField(
         required=False,
         queryset=Location.objects.all(),
-        widget=forms.Select(attrs={"class": "form-control"}),
+        widget=forms.Select(attrs=dict(WIDGET_ATTRS)),
         label="Lieu",
         empty_label="Tous",
     )
     city = forms.ChoiceField(
         required=False,
-        widget=forms.Select(attrs={"class": "form-control"}),
+        widget=forms.Select(attrs=dict(WIDGET_ATTRS)),
         label="Ville",
     )
     date_from = forms.DateField(
         required=False,
         widget=forms.DateInput(
-            attrs={"type": "date", "class": "form-control"}
+            attrs={"type": "date", **WIDGET_ATTRS}
         ),
         label="Date du",
     )
     date_to = forms.DateField(
         required=False,
         widget=forms.DateInput(
-            attrs={"type": "date", "class": "form-control"}
+            attrs={"type": "date", **WIDGET_ATTRS}
         ),
         label="Date au",
     )
     class_welcome = forms.ChoiceField(
         required=False,
         choices=[("", "Tous"), ("yes", "Oui"), ("no", "Non")],
-        widget=forms.Select(attrs={"class": "form-control"}),
+        widget=forms.Select(attrs=dict(WIDGET_ATTRS)),
         label="Accueil classe",
     )
     poster_required = forms.ChoiceField(
         required=False,
         choices=[("", "Tous"), ("yes", "Oui"), ("no", "Non")],
-        widget=forms.Select(attrs={"class": "form-control"}),
+        widget=forms.Select(attrs=dict(WIDGET_ATTRS)),
         label="Affiche requise",
     )
     has_image = forms.ChoiceField(
         required=False,
         choices=[("", "Tous"), ("yes", "Oui"), ("no", "Non")],
-        widget=forms.Select(attrs={"class": "form-control"}),
+        widget=forms.Select(attrs=dict(WIDGET_ATTRS)),
         label="Affiche présente",
     )
     poster_valide = forms.ChoiceField(
         required=False,
         choices=[("", "Tous"), ("yes", "Oui"), ("no", "Non")],
-        widget=forms.Select(attrs={"class": "form-control"}),
+        widget=forms.Select(attrs=dict(WIDGET_ATTRS)),
         label="Affiche validée",
     )
     number_registered_min = forms.IntegerField(
         required=False,
         widget=forms.NumberInput(
-            attrs={"class": "form-control", "placeholder": "Min"}
+            attrs={**WIDGET_ATTRS, "placeholder": "Min"}
         ),
         label="Inscrits (min)",
     )
     number_registered_max = forms.IntegerField(
         required=False,
         widget=forms.NumberInput(
-            attrs={"class": "form-control", "placeholder": "Max"}
+            attrs={**WIDGET_ATTRS, "placeholder": "Max"}
         ),
         label="Inscrits (max)",
     )
     number_attendees_min = forms.IntegerField(
         required=False,
         widget=forms.NumberInput(
-            attrs={"class": "form-control", "placeholder": "Min"}
+            attrs={**WIDGET_ATTRS, "placeholder": "Min"}
         ),
         label="Présents (min)",
     )
     number_attendees_max = forms.IntegerField(
         required=False,
         widget=forms.NumberInput(
-            attrs={"class": "form-control", "placeholder": "Max"}
+            attrs={**WIDGET_ATTRS, "placeholder": "Max"}
         ),
         label="Présents (max)",
     )

@@ -1034,21 +1034,99 @@ def workshop_list(request):
     page_number = request.GET.get("page", 1)
     workshops_page = paginator.get_page(page_number)
 
-    # URL de base sans le paramètre page (pour les liens de pagination)
+    # URL de base sans le paramètre page (pour les liens de pagination,
+    # qui conservent tri + filtres).
     filter_params = request.GET.copy()
     if "page" in filter_params:
         del filter_params["page"]
     filter_params = filter_params.urlencode()
 
-    # Déterminer la direction du tri pour chaque colonne
-    sort_direction = {}
-    for field_name in sortable_fields:
-        if sort_field == field_name:
-            sort_direction[field_name] = "asc"
-        elif sort_field == f"-{field_name}":
-            sort_direction[field_name] = "desc"
-        else:
-            sort_direction[field_name] = ""
+    # Bases d'URL sans tri (liens de tri, évite les ?sort=..&sort=..)
+    # et sans année (pastilles d'années, qui conservent les autres filtres).
+    sort_base_qs = request.GET.copy()
+    sort_base_qs.pop("page", None)
+    sort_base_qs.pop("sort", None)
+    sort_base = sort_base_qs.urlencode()
+
+    year_base_qs = request.GET.copy()
+    year_base_qs.pop("page", None)
+    year_base_qs.pop("year", None)
+    year_base = year_base_qs.urlencode()
+
+    # Chips de filtres actifs : libellés lisibles (nom du lieu, pas son id),
+    # URLs de retrait construites côté serveur (urlencode correct).
+    # Le tri n'est pas un filtre : exclu des chips.
+    def _chip_remove_url(drop_key):
+        q = request.GET.copy()
+        q.pop(drop_key, None)
+        q.pop("page", None)
+        base = q.urlencode()
+        return f"?{base}" if base else "?"
+
+    filter_chips = []
+    if filter_form.is_valid():
+        cd = filter_form.cleaned_data
+        if cd.get("q"):
+            filter_chips.append({
+                "icon": "bx-search",
+                "text": f'"{cd["q"]}"',
+                "remove_url": _chip_remove_url("q"),
+            })
+        loc = cd.get("location")
+        if loc:
+            filter_chips.append({
+                "icon": "bx-map-pin",
+                "text": loc.name,
+                "remove_url": _chip_remove_url("location"),
+            })
+        if cd.get("city"):
+            filter_chips.append({
+                "icon": "bx-map",
+                "text": cd["city"],
+                "remove_url": _chip_remove_url("city"),
+            })
+        if cd.get("date_from"):
+            filter_chips.append({
+                "icon": "bx-calendar",
+                "text": f'Du {cd["date_from"]:%d/%m/%Y}',
+                "remove_url": _chip_remove_url("date_from"),
+            })
+        if cd.get("date_to"):
+            filter_chips.append({
+                "icon": "bx-calendar",
+                "text": f'Au {cd["date_to"]:%d/%m/%Y}',
+                "remove_url": _chip_remove_url("date_to"),
+            })
+        yes_no_labels = {
+            "class_welcome": ("bx-chalkboard", "Accueil classe", "Sans accueil classe"),
+            "poster_required": ("bx-image", "Affiche requise", "Sans affiche requise"),
+            "has_image": ("bx-check-circle", "Avec affiche", "Sans affiche"),
+            "poster_valide": ("bx-check-shield", "Affiche validée", "Affiche non validée"),
+        }
+        for key, (icon, label_yes, label_no) in yes_no_labels.items():
+            if cd.get(key) == "yes":
+                filter_chips.append({
+                    "icon": icon, "text": label_yes,
+                    "remove_url": _chip_remove_url(key),
+                })
+            elif cd.get(key) == "no":
+                filter_chips.append({
+                    "icon": icon, "text": label_no,
+                    "remove_url": _chip_remove_url(key),
+                })
+        range_labels = [
+            ("number_registered_min", "Inscrits ≥"),
+            ("number_registered_max", "Inscrits ≤"),
+            ("number_attendees_min", "Présents ≥"),
+            ("number_attendees_max", "Présents ≤"),
+        ]
+        for key, prefix in range_labels:
+            if cd.get(key) is not None:
+                filter_chips.append({
+                    "icon": "bx-user" if "registered" in key else "bx-user-check",
+                    "text": f"{prefix} {cd[key]}",
+                    "remove_url": _chip_remove_url(key),
+                })
 
     context = {
         "workshops": workshops_page,
@@ -1059,8 +1137,10 @@ def workshop_list(request):
         "page_obj": workshops_page,
         "paginator": paginator,
         "filter_params": filter_params,
+        "sort_base": sort_base,
+        "year_base": year_base,
+        "filter_chips": filter_chips,
         "sort_field": sort_field,
-        "sort_direction": sort_direction,
     }
     return render(request, "workshop/workshop_list.html", context)
 
