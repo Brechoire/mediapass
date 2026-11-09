@@ -41,6 +41,8 @@ from .models import Location, Workshop
 from .services import (
     generate_random_filename,
     CACHE_TIMEOUT,
+    HAS_IMAGE_Q,
+    NO_IMAGE_Q,
     apply_stats_filters,
     attendance_rate_value,
     get_presence_by_group,
@@ -975,9 +977,9 @@ def workshop_list(request):
             workshops = workshops.filter(poster_required=False)
 
         if cd.get("has_image") == "yes":
-            workshops = workshops.filter(image__isnull=False)
+            workshops = workshops.filter(HAS_IMAGE_Q)
         elif cd.get("has_image") == "no":
-            workshops = workshops.filter(image__isnull=True)
+            workshops = workshops.filter(NO_IMAGE_Q)
 
         if cd.get("poster_valide") == "yes":
             workshops = workshops.filter(poster_valide=True)
@@ -1008,7 +1010,7 @@ def workshop_list(request):
     workshops = workshops.annotate(
         poster_sort=Case(
             When(class_welcome=True, then=Value(0)),
-            When(image__isnull=False, then=Value(1)),
+            When(HAS_IMAGE_Q, then=Value(1)),
             When(poster_required=True, then=Value(2)),
             default=Value(3),
             output_field=IntegerField(),
@@ -1404,8 +1406,8 @@ def workshops_with_poster(request):
     """
     base_qs = Workshop.objects.filter(Q(poster_required=True)).select_related("location")
 
-    demandes = base_qs.filter(image__isnull=True).order_by('date')
-    workshops = base_qs.exclude(image__isnull=True).order_by('date')
+    demandes = base_qs.filter(NO_IMAGE_Q).order_by('date')
+    workshops = base_qs.filter(HAS_IMAGE_Q).order_by('date')
 
     paginator = Paginator(workshops, 20)
     page_number = request.GET.get("page")
@@ -1701,8 +1703,8 @@ def workshop_list_validate_poster_admin(request):
         HttpResponse: La page de validation des affiches.
     """
     workshops = Workshop.objects.filter(
-        poster_required=True, poster_valide=False, image__isnull=False
-    ).exclude(image="").select_related("location")
+        poster_required=True, poster_valide=False
+    ).filter(HAS_IMAGE_Q).select_related("location")
     return render(
         request,
         "workshop/workshop_validate_poster_admin.html",

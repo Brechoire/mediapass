@@ -348,6 +348,87 @@ class LocationDetailViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
 
 
+class WorkshopPosterViewsTests(TestCase):
+    """Les observations de l'atelier sont visibles côté affiches."""
+
+    LONG_OBS = (
+        "Prévoir des feutres effaçables et du papier A3 en quantité suffisante "
+        "pour tous les participants inscrits, ainsi qu'une nappe de protection "
+        "pour les tables de la salle polyvalente et de quoi nettoyer après."
+    )
+
+    def setUp(self):
+        from django.contrib.auth.models import Group
+
+        group, _ = Group.objects.get_or_create(name="communication")
+        self.user = User.objects.create_user(username="comm", password="pass")
+        self.user.groups.add(group)
+        self.location = Location.objects.create(
+            name="Loc", address="1 Rue", city="Paris", zip_code="75"
+        )
+        self.with_obs = Workshop.objects.create(
+            name="Atelier Obs",
+            location=self.location,
+            date=date.today(),
+            start_time=datetime.now().time(),
+            end_time=(datetime.now() + timedelta(hours=2)).time(),
+            poster_required=True,
+            observations=self.LONG_OBS,
+        )
+        self.without_obs = Workshop.objects.create(
+            name="Atelier Sans Obs",
+            location=self.location,
+            date=date.today(),
+            start_time=datetime.now().time(),
+            end_time=(datetime.now() + timedelta(hours=2)).time(),
+            poster_required=True,
+            observations="",
+        )
+
+    def login(self):
+        self.client.login(username="comm", password="pass")
+
+    def test_demandes_shows_truncated_observations(self):
+        self.login()
+        response = self.client.get(reverse("workshops_with_poster"))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        # Début du texte présent, fin coupée à ~120 caractères.
+        self.assertIn("Prévoir des feutres", content)
+        self.assertNotIn("nettoyer après.", content)
+        self.assertIn("Voir la suite", content)
+
+    def test_demandes_shows_block_only_when_present(self):
+        self.login()
+        response = self.client.get(reverse("workshops_with_poster"))
+        # Un seul encadré : l'atelier sans observations n'en a pas.
+        self.assertContains(response, "Observations :", count=1)
+
+    def test_valide_poster_shows_full_observations(self):
+        self.login()
+        response = self.client.get(
+            reverse("workshop_valide_poster", args=[self.with_obs.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Observations de la demande")
+        # Texte intégral, pas de troncature ici.
+        self.assertContains(response, "nettoyer après.")
+
+    def test_valide_poster_hides_block_when_empty(self):
+        self.login()
+        response = self.client.get(
+            reverse("workshop_valide_poster", args=[self.without_obs.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Observations de la demande")
+
+    def test_requires_communication_group(self):
+        User.objects.create_user(username="basic", password="pass")
+        self.client.login(username="basic", password="pass")
+        response = self.client.get(reverse("workshops_with_poster"))
+        self.assertNotEqual(response.status_code, 200)
+
+
 class WorkshopCreateViewTests(TestCase):
     """Tests pour la vue workshop_create."""
 

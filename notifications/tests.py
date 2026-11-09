@@ -254,3 +254,71 @@ class NewReservationEmailTests(TestCase):
                 _absolute_url("/reservations/140/"),
                 "https://www.mediapass.ccsudavesnois.fr/reservations/140/",
             )
+
+
+class PosterRequestEmailTests(TestCase):
+    """Le mail de demande d'affiche reprend les observations de l'atelier."""
+
+    def setUp(self):
+        EmailTemplate.objects.filter(notification_type="poster_request").delete()
+        NotificationRecipient.objects.filter(
+            notification_type="poster_request"
+        ).delete()
+        create_default_templates()
+        NotificationRecipient.objects.create(
+            email="admin@example.com",
+            notification_type="poster_request",
+        )
+        from datetime import date, datetime, timedelta
+
+        from workshop.models import Location, Workshop
+
+        self.location = Location.objects.create(
+            name="Lieu Mail",
+            address="1 rue",
+            city="Ville",
+            zip_code="59000",
+        )
+        self.workshop = Workshop.objects.create(
+            name="Atelier Mail",
+            location=self.location,
+            date=date.today(),
+            start_time=datetime.now().time(),
+            end_time=(datetime.now() + timedelta(hours=2)).time(),
+            poster_required=True,
+            observations="Prévoir des feutres.\nEt des ciseaux.",
+        )
+
+    def _send(self):
+        self.assertTrue(send_notification("poster_request", {"workshop": self.workshop}))
+        self.assertEqual(len(mail.outbox), 1)
+        return mail.outbox[0]
+
+    def test_default_template_contains_observations_block(self):
+        tpl = EmailTemplate.objects.get(notification_type="poster_request")
+        self.assertIn("workshop.observations", tpl.body_html)
+
+    def test_observations_included_with_line_breaks(self):
+        email = self._send()
+        html = email.alternatives[0][0]
+        self.assertIn("Observations", html)
+        self.assertIn("Pr\u00e9voir des feutres.", html)
+        # Sauts de ligne préservés en HTML.
+        self.assertIn("<br", html)
+        # Version texte également renseignée.
+        self.assertIn("Pr\u00e9voir des feutres.", email.body)
+
+    def test_no_observations_block_when_empty(self):
+        self.workshop.observations = ""
+        self.workshop.save(update_fields=["observations"])
+        email = self._send()
+        html = email.alternatives[0][0]
+        self.assertNotIn("Observations", html)
+
+    def test_observations_html_is_escaped(self):
+        self.workshop.observations = "<script>alert(1)</script>"
+        self.workshop.save(update_fields=["observations"])
+        email = self._send()
+        html = email.alternatives[0][0]
+        self.assertNotIn("<script>alert(1)</script>", html)
+        self.assertIn("&lt;script&gt;", html)

@@ -55,6 +55,15 @@
                             <span>{{ workshop.start_time|time:"H:i" }} — {{ workshop.end_time|time:"H:i" }}</span>
                         </div>
                     </div>
+                    {% if workshop.observations %}
+                        <div class="flex items-start gap-2 rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-2">
+                            <i class="bx bx-message-detail text-[#4a6fa5] mt-0.5"></i>
+                            <p class="text-xs text-slate-600 leading-snug">
+                                <span class="font-semibold text-slate-700">Observations : </span>{{ workshop.observations|truncatechars:120 }}{% if workshop.observations|length > 120 %} <a href="{% url 'workshop_valide_poster' workshop.pk %}" class="text-[#4a6fa5] hover:underline whitespace-nowrap">Voir la suite</a>{% endif %}
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
                     <a href="{% url 'workshop_valide_poster' workshop.pk %}"
                        class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-all shadow-sm">
                         <i class="bx bx-cloud-upload"></i> Ajouter l'affiche

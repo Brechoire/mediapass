@@ -248,6 +248,7 @@ def create_default_templates():
 <p><strong>Date :</strong> {{ workshop.date }}</p>
 <p><strong>Lieu :</strong> {{ workshop.location.name }}</p>
 <p><strong>Horaire :</strong> {{ workshop.start_time }} — {{ workshop.end_time }}</p>
+{% if workshop.observations %}<p><strong>Observations :</strong><br>{{ workshop.observations|linebreaksbr }}</p>{% endif %}
 <p>Une affiche est requise pour cet atelier. Merci de la préparer.</p>""",
         },
         "poster_validated": {

@@ -15,6 +15,12 @@ from django.db.models import Avg, Count, Q, Sum
 from django.db.models.functions import Coalesce
 
 
+# Présence d'un visuel : Django enregistre "" (pas NULL) quand aucun
+# fichier n'est fourni, donc NULL seul ne suffit pas comme test.
+HAS_IMAGE_Q = ~Q(image="") & Q(image__isnull=False)
+NO_IMAGE_Q = Q(image__isnull=True) | Q(image="")
+
+
 def clean_filename(filename):
     """Nettoie le nom de fichier en remplaçant les caractères spéciaux.
 
@@ -211,7 +217,7 @@ def get_poster_and_channel_stats(workshops, total):
     agg = workshops.aggregate(
         poster_required=Count("id", filter=Q(poster_required=True)),
         poster_valide=Count("id", filter=Q(poster_valide=True)),
-        with_image=Count("id", filter=Q(image__isnull=False)),
+        with_image=Count("id", filter=HAS_IMAGE_Q),
         instagram=Count("id", filter=Q(instagram=True)),
         facebook=Count("id", filter=Q(facebook=True)),
         mail=Count("id", filter=Q(mail=True)),

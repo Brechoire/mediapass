@@ -79,6 +79,16 @@
     </div>
     {% endif %}
 
+    {% if workshop.observations %}
+    <div class="mb-6 bg-slate-50 border border-slate-200 rounded-2xl p-5 text-slate-700 text-sm flex items-start gap-3">
+        <i class="bx bx-message-detail mt-0.5 shrink-0 text-lg text-[#4a6fa5]"></i>
+        <div>
+            <span class="font-medium text-slate-900">Observations de la demande</span>
+            <p class="mt-0.5 whitespace-pre-line">{{ workshop.observations }}</p>
+        </div>
+    </div>
+    {% endif %}
+
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
