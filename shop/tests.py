@@ -1799,3 +1799,104 @@ class ReservationListViewTests(TestCase):
         )
         self.assertEqual(response2.status_code, 200)
         self.assertEqual(len(list(response2.context["reservations"])), 1)
+
+    def _make_pending(self, year, **kwargs):
+        from django.utils import timezone
+
+        category, _ = Category.objects.get_or_create(name="Cat Attente")
+        product, _ = Product.objects.get_or_create(
+            name="Produit Attente",
+            defaults={
+                "quantity": 50,
+                "description": "x",
+                "category": category,
+                "price": 10,
+                "status": True,
+            },
+        )
+        structure, _ = Structure.objects.get_or_create(
+            name="Structure Attente",
+            defaults={
+                "address": "1 rue",
+                "city": "Ville",
+                "email": "a@t.fr",
+                "zip_code": "59",
+                "country": "FR",
+            },
+        )
+        params = {
+            "product": product,
+            "start_date": timezone.make_aware(timezone.datetime(year, 3, 10, 10, 0)),
+            "end_date": timezone.make_aware(timezone.datetime(year, 3, 12, 10, 0)),
+            "structure": structure,
+            "quantity": 1,
+            "is_approved": False,
+            "is_rejected": False,
+            "disapproval_reason": None,
+        }
+        params.update(kwargs)
+        return Reservation.objects.create(**params)
+
+    def test_year_all_shows_pending_across_years(self):
+        """La pastille (toutes années) et ?status=pending&year=all concordent."""
+        from django.utils import timezone
+
+        current_year = timezone.now().year
+        self._make_pending(current_year - 1)
+        self.login()
+        # Vue par défaut (année courante) : le pending d'une autre année est invisible.
+        response = self.client.get(reverse("reservation_list") + "?status=pending")
+        self.assertEqual(response.context["total_results"], 0)
+        self.assertEqual(response.context["pending_reservations"], 0)
+        # Toutes années : on retrouve la demande.
+        response_all = self.client.get(
+            reverse("reservation_list") + "?status=pending&year=all"
+        )
+        self.assertEqual(response_all.status_code, 200)
+        self.assertEqual(response_all.context["selected_year"], "all")
+        self.assertEqual(response_all.context["total_results"], 1)
+        self.assertEqual(response_all.context["pending_reservations"], 1)
+        self.assertContains(response_all, "Toutes années")
+
+    def test_badge_count_matches_year_all_queue(self):
+        """Le context processor donne le même chiffre que la file toutes années."""
+        from django.test import RequestFactory
+
+        from shop.context_processors import reservation_count
+
+        self._make_pending(2024)
+        self._make_pending(2025)
+        factory = RequestFactory()
+        request = factory.get("/")
+        request.user = User.objects.get(username="admin")
+        # Sans login client au préalable, crée l'utilisateur via setUp + login.
+        self.client.login(username="admin", password="pass")
+        request.user = User.objects.get(username="admin")
+        count = reservation_count(request)["pending_reservations_count"]
+        self.login()
+        response_all = self.client.get(
+            reverse("reservation_list") + "?status=pending&year=all"
+        )
+        self.assertEqual(count, response_all.context["pending_reservations"])
+        self.assertEqual(count, 2)
+
+    def test_badge_updates_immediately_after_approval(self):
+        """Pas de cache périmé : après approbation la pastille tombe à 0."""
+        from django.test import RequestFactory
+
+        from shop.context_processors import reservation_count
+
+        from django.utils import timezone
+
+        resa = self._make_pending(timezone.now().year)
+        factory = RequestFactory()
+        request = factory.get("/")
+        request.user = User.objects.get(username="admin")
+        self.assertEqual(
+            reservation_count(request)["pending_reservations_count"], 1
+        )
+        resa.is_approved = True
+        resa.save()
+        self.assertEqual(
+            reservation_count(request)["pending_reservations_count"], 0
+        )

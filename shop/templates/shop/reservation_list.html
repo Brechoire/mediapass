@@ -13,7 +13,7 @@
                     <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0" aria-hidden="true"><i class="bx bx-calendar-check text-2xl text-white"></i></div>
                     <h1 class="text-3xl sm:text-4xl font-bold text-white">Liste des réservations</h1>
                 </div>
-                <p class="text-white/80 text-sm">Gestion des r&eacute;servations de ressources &middot; {{ total_results }} r&eacute;sultat{{ total_results|pluralize }} (ann&eacute;e {{ selected_year }})</p>
+                <p class="text-white/80 text-sm">Gestion des r&eacute;servations de ressources &middot; {{ total_results }} r&eacute;sultat{{ total_results|pluralize }} {% if selected_year == "all" %}(toutes ann&eacute;es){% else %}(ann&eacute;e {{ selected_year }}){% endif %}</p>
             </div>
             <a href="{% url 'reservation_calendar' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors shrink-0 min-h-[40px]">
                 <i class="bx bx-calendar text-sm" aria-hidden="true"></i> Calendrier
@@ -25,7 +25,7 @@
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" role="list" aria-label="Indicateurs sur le périmètre filtré">
         <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4" role="listitem">
-            <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Total {{ selected_year }}</p>
+            <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Total {% if selected_year != "all" %}{{ selected_year }}{% endif %}</p>
             <p class="text-2xl font-bold text-[#2f4d75] mt-1">{{ total_reservations }}</p>
         </div>
         <a href="?year={{ selected_year }}&status=approved&structure={{ selected_structure }}&product={{ selected_product }}&q={{ search_query|urlencode }}" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4 block hover:border-emerald-400 transition focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]" role="listitem" title="Filtrer les approuvées">
@@ -53,6 +53,7 @@
             <div>
                 <label for="fYear" class="block text-xs font-medium text-[#5a6f80] uppercase tracking-wider mb-1.5">Ann&eacute;e</label>
                 <select id="fYear" name="year" class="w-full px-4 py-2.5 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 min-h-[40px]">
+                    <option value="all" {% if selected_year == "all" %}selected{% endif %}>Toutes années</option>
                     {% for year in available_years %}
                     <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
                     {% endfor %}
@@ -97,7 +98,7 @@
         {% if reservations %}
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-[#dce3ef]">
-                <caption class="sr-only">R&eacute;servations {{ selected_year }}, tri&eacute;es par d&eacute;but d&eacute;croissant</caption>
+                <caption class="sr-only">R&eacute;servations {% if selected_year == "all" %}toutes années{% else %}{{ selected_year }}{% endif %}, tri&eacute;es par d&eacute;but d&eacute;croissant</caption>
                 <thead class="bg-[#f8f9fc]">
                     <tr>
                         <th scope="col" class="px-6 py-3.5 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Structure</th>

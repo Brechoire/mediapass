@@ -67,17 +67,22 @@ def reservation_details(request, pk):
 
 @user_passes_test(is_staff_or_superuser)
 def reservation_list(request):
-    selected_year = request.GET.get("year", datetime.now().year)
+    raw_year = request.GET.get("year", "")
     selected_status = request.GET.get("status", "")
     selected_structure = request.GET.get("structure", "")
 
     selected_product = request.GET.get("product", "")
     search_query = request.GET.get("q", "").strip()
 
-    try:
-        selected_year = int(selected_year)
-    except (ValueError, TypeError):
-        selected_year = datetime.now().year
+    # "all" = toutes années (même périmètre que la pastille). Sans paramètre,
+    # on garde l'année courante par défaut pour ne pas changer l'accueil.
+    if raw_year == "all":
+        selected_year = "all"
+    else:
+        try:
+            selected_year = int(raw_year) if raw_year else datetime.now().year
+        except (ValueError, TypeError):
+            selected_year = datetime.now().year
 
     try:
         structure_id = int(selected_structure) if selected_structure else None
@@ -90,7 +95,7 @@ def reservation_list(request):
 
     base = Reservation.objects.select_related("product", "structure").all()
 
-    if selected_year:
+    if selected_year != "all":
         base = base.filter(start_date__year=selected_year)
     if structure_id:
         base = base.filter(structure_id=structure_id)
