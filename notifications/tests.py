@@ -1,7 +1,12 @@
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.core import mail
+from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
+from shop.models import Category, Product, Reservation, Structure
+
+from .email_service import _absolute_url, create_default_templates, send_notification
 from .models import EmailTemplate, NotificationRecipient, NotificationSettings
 
 
@@ -167,3 +172,85 @@ class DefaultEmailTemplatesMigrationTests(TestCase):
         tpl = EmailTemplate.objects.get(notification_type="new_reservation")
         self.assertTrue(tpl.is_active)
         self.assertIn("{{ product.name }}", tpl.subject)
+
+
+@override_settings(SITE_URL="https://www.mediapass.ccsudavesnois.fr")
+class NewReservationEmailTests(TestCase):
+    """Le mail de demande contient un lien absolu vers la réservation."""
+
+    def setUp(self):
+        EmailTemplate.objects.filter(notification_type="new_reservation").delete()
+        NotificationRecipient.objects.filter(
+            notification_type="new_reservation"
+        ).delete()
+        create_default_templates()
+        NotificationRecipient.objects.create(
+            email="admin@example.com",
+            notification_type="new_reservation",
+        )
+        category = Category.objects.create(name="Cat Mail")
+        self.product = Product.objects.create(
+            name="Produit Mail",
+            quantity=10,
+            description="x",
+            category=category,
+            price=10,
+            status=True,
+        )
+        self.structure = Structure.objects.create(
+            name="Structure Mail",
+            address="1 rue",
+            city="Ville",
+            email="s@t.fr",
+            zip_code="59000",
+            country="FR",
+        )
+        now = timezone.now()
+        self.reservation = Reservation.objects.create(
+            product=self.product,
+            start_date=now + timezone.timedelta(days=1),
+            end_date=now + timezone.timedelta(days=2),
+            structure=self.structure,
+            quantity=2,
+        )
+
+    def _send(self, **context):
+        base = {"product": self.product, "reservation": self.reservation}
+        base.update(context)
+        self.assertTrue(send_notification("new_reservation", base))
+        self.assertEqual(len(mail.outbox), 1)
+        return mail.outbox[0]
+
+    def test_link_to_reservation_details(self):
+        email = self._send()
+        expected = (
+            "https://www.mediapass.ccsudavesnois.fr"
+            + reverse("reservation_details", args=[self.reservation.pk])
+        )
+        html = email.alternatives[0][0]
+        self.assertIn('href="%s"' % expected, html)
+        # Lien recopié en clair pour les clients qui bloquent les boutons.
+        self.assertIn(expected, html.replace('href="%s"' % expected, ""))
+        self.assertIn(expected, email.body)
+
+    def test_reminder_style_layout(self):
+        email = self._send()
+        html = email.alternatives[0][0]
+        self.assertIn("#4a6fa5", html)
+        self.assertIn("D&eacute;tails de la demande", html)
+        self.assertIn("Structure Mail", html)
+
+    def test_explicit_reservation_url_is_kept(self):
+        email = self._send(reservation_url="https://example.com/r/1/")
+        html = email.alternatives[0][0]
+        self.assertIn("https://example.com/r/1/", html)
+
+    def test_absolute_url_falls_back_to_allowed_host(self):
+        with override_settings(
+            SITE_URL="http://127.0.0.1:8000",
+            ALLOWED_HOSTS=["www.mediapass.ccsudavesnois.fr", "localhost"],
+        ):
+            self.assertEqual(
+                _absolute_url("/reservations/140/"),
+                "https://www.mediapass.ccsudavesnois.fr/reservations/140/",
+            )

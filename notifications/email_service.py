@@ -8,12 +8,30 @@ import logging
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils.html import strip_tags
 from django.utils import timezone
 
 from .models import EmailTemplate, NotificationRecipient
 
 logger = logging.getLogger(__name__)
+
+
+def _absolute_url(path):
+    """Construit une URL absolue vers la plateforme.
+
+    Utilise SITE_URL s'il désigne un hôte réel, sinon le premier hôte
+    non local de ALLOWED_HOSTS (ex. www.mediapass.ccsudavesnois.fr).
+    """
+    base = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
+    if not base or "127.0.0.1" in base or "localhost" in base:
+        hosts = [
+            h
+            for h in settings.ALLOWED_HOSTS
+            if h not in ("localhost", "127.0.0.1", "[::1]", "testserver")
+        ]
+        base = "https://" + (hosts[0] if hosts else "localhost")
+    return base + path
 
 
 def get_recipients(notification_type):
@@ -56,6 +74,12 @@ def send_notification(notification_type, context, extra_recipients=None):
         return False
 
     context.setdefault("site_url", settings.ALLOWED_HOSTS[0] if settings.ALLOWED_HOSTS else "localhost")
+    if "reservation_url" not in context:
+        reservation = context.get("reservation")
+        if reservation is not None and getattr(reservation, "pk", None):
+            context["reservation_url"] = _absolute_url(
+                reverse("reservation_details", args=[reservation.pk])
+            )
 
     subject = _render_template_string(template.subject, context)
     html_content = _render_template_string(template.body_html, context)
@@ -88,12 +112,106 @@ def create_default_templates():
     defaults = {
         "new_reservation": {
             "subject": "Nouvelle demande de réservation — {{ product.name }}",
-            "body_html": """<h2>Nouvelle demande de réservation</h2>
-<p><strong>Produit :</strong> {{ product.name }}</p>
-<p><strong>Structure :</strong> {{ reservation.structure.name }}</p>
-<p><strong>Dates :</strong> du {{ reservation.start_date }} au {{ reservation.end_date }}</p>
-<p><strong>Quantité :</strong> {{ reservation.quantity }}</p>
-<p>Connectez-vous à l'interface d'administration pour gérer cette réservation.</p>""",
+            "body_html": """<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ecf0f1;">
+<tr>
+<td align="center" style="padding: 20px 10px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 8px; max-width: 600px; width: 100%;">
+<tr>
+<td align="center" bgcolor="#4a6fa5" style="background-color: #4a6fa5; padding: 30px 20px; border-radius: 8px 8px 0 0;">
+<p style="margin: 0 0 10px; font-size: 28px; line-height: 1;">&#128203;</p>
+<h1 style="margin: 0; font-size: 26px; font-weight: bold; color: #ffffff; font-family: Arial, Helvetica, sans-serif;">Nouvelle demande de r&eacute;servation</h1>
+<p style="margin: 8px 0 0; font-size: 16px; color: #ffffff; font-family: Arial, Helvetica, sans-serif;">Une demande est en attente de traitement</p>
+</td>
+</tr>
+<tr>
+<td align="center" style="padding: 30px 30px 10px;">
+<h2 style="margin: 0 0 10px; font-size: 20px; font-weight: bold; color: #2c3e50; font-family: Arial, Helvetica, sans-serif;">{{ product.name }}</h2>
+<p style="margin: 0; font-size: 15px; color: #555555; font-family: Arial, Helvetica, sans-serif;">Demand&eacute;e par {{ reservation.structure.name }}</p>
+</td>
+</tr>
+<tr>
+<td style="padding: 10px 30px 10px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #e8eef7; border-radius: 6px;">
+<tr>
+<td style="padding: 20px; border-left: 4px solid #4a6fa5;">
+<h3 style="margin: 0 0 15px; font-size: 17px; font-weight: bold; color: #2c3e50; font-family: Arial, Helvetica, sans-serif;">D&eacute;tails de la demande</h3>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td style="padding: 8px 10px; background-color: #ffffff; border-radius: 4px; font-family: Arial, Helvetica, sans-serif;">
+<span style="font-size: 12px; color: #6c757d;">PRODUIT</span><br>
+<strong style="font-size: 16px; color: #2c3e50;">{{ product.name }}</strong>
+</td>
+</tr>
+<tr><td style="height: 8px; line-height: 8px;">&nbsp;</td></tr>
+<tr>
+<td style="padding: 8px 10px; background-color: #ffffff; border-radius: 4px; font-family: Arial, Helvetica, sans-serif;">
+<span style="font-size: 12px; color: #6c757d;">STRUCTURE</span><br>
+<strong style="font-size: 16px; color: #2c3e50;">{{ reservation.structure.name }}</strong>
+</td>
+</tr>
+<tr><td style="height: 8px; line-height: 8px;">&nbsp;</td></tr>
+<tr>
+<td style="padding: 8px 10px; background-color: #ffffff; border-radius: 4px; font-family: Arial, Helvetica, sans-serif;">
+<span style="font-size: 12px; color: #6c757d;">P&Eacute;RIODE</span><br>
+<strong style="font-size: 15px; color: #2c3e50;">Du {{ reservation.start_date|date:"d/m/Y à H:i" }}<br>Au {{ reservation.end_date|date:"d/m/Y à H:i" }}</strong>
+</td>
+</tr>
+<tr><td style="height: 8px; line-height: 8px;">&nbsp;</td></tr>
+<tr>
+<td style="padding: 8px 10px; background-color: #ffffff; border-radius: 4px; font-family: Arial, Helvetica, sans-serif;">
+<span style="font-size: 12px; color: #6c757d;">QUANTIT&Eacute;</span><br>
+<strong style="font-size: 16px; color: #2c3e50;">{{ reservation.quantity }}</strong>
+</td>
+</tr>
+{% if reservation.description %}
+<tr><td style="height: 8px; line-height: 8px;">&nbsp;</td></tr>
+<tr>
+<td style="padding: 8px 10px; background-color: #ffffff; border-radius: 4px; font-family: Arial, Helvetica, sans-serif;">
+<span style="font-size: 12px; color: #6c757d;">DESCRIPTION</span><br>
+<span style="font-size: 14px; color: #2c3e50;">{{ reservation.description }}</span>
+</td>
+</tr>
+{% endif %}
+</table>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td style="padding: 10px 30px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #e8eef7; border-radius: 6px;">
+<tr>
+<td style="padding: 14px; border-left: 4px solid #4a6fa5; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #2f4d75;">
+<strong>&#9888;</strong> Cette demande est en attente. Approuvez-la ou d&eacute;sapprouvez-la depuis la file d'attente.
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td align="center" style="padding: 25px 30px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+<tr>
+<td align="center" bgcolor="#4a6fa5" style="background-color: #4a6fa5; border-radius: 6px; padding: 14px 28px;">
+<a href="{{ reservation_url }}" style="font-family: Arial, Helvetica, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none; display: inline-block;">&#128065; Voir la demande de r&eacute;servation</a>
+</td>
+</tr>
+</table>
+<p style="margin: 12px 0 0; font-size: 13px; color: #6c757d; font-family: Arial, Helvetica, sans-serif;">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>{{ reservation_url }}</p>
+</td>
+</tr>
+<tr>
+<td align="center" style="background-color: #f8f9fa; padding: 20px; border-top: 1px solid #e9ecef; border-radius: 0 0 8px 8px; font-family: Arial, Helvetica, sans-serif;">
+<p style="margin: 0 0 10px; font-size: 13px; color: #6c757d;">Ceci est un message automatique, merci de ne pas y r&eacute;pondre.</p>
+<p style="margin: 0; font-size: 12px; color: #6c757d;">&copy; {% now "Y" %} Mediapass - Tous droits r&eacute;serv&eacute;s</p>
+<p style="margin: 5px 0 0; font-size: 11px; color: #adb5bd;">Plateforme de gestion des r&eacute;servations</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>""",
         },
         "reservation_approved": {
             "subject": "Réservation approuvée — {{ product.name }}",
