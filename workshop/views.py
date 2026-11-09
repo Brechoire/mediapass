@@ -1517,7 +1517,7 @@ def location_detail(request, pk):
         registered=Coalesce(Sum("number_registered"), 0),
         attendees=Coalesce(Sum("number_attendees"), 0),
         classic=Count("id", filter=Q(class_welcome=False)),
-        class_welcome=Count("id", filter=Q(class_welcome=True)),
+        class_welcome_count=Count("id", filter=Q(class_welcome=True)),
         poster_required=Count("id", filter=Q(poster_required=True)),
         classic_registered=Coalesce(Sum("number_registered", filter=Q(class_welcome=False)), 0),
         class_welcome_registered=Coalesce(Sum("number_registered", filter=Q(class_welcome=True)), 0),
@@ -1533,7 +1533,7 @@ def location_detail(request, pk):
     total_attendees = stats["attendees"]
     attendance_rate = round((total_attendees / total_registered * 100), 1) if total_registered > 0 else 0
     classic_count = stats["classic"]
-    class_welcome_count = stats["class_welcome"]
+    class_welcome_count = stats["class_welcome_count"]
     poster_required_count = stats["poster_required"]
     classic_registered = stats["classic_registered"]
     class_welcome_registered = stats["class_welcome_registered"]

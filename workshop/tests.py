@@ -286,6 +286,68 @@ class WorkshopListViewTests(TestCase):
         )
 
 
+class LocationDetailViewTests(TestCase):
+    """Tests pour la vue location_detail (régression : FieldError 500
+    quand l'alias d'agrégat masquait le champ class_welcome)."""
+
+    def setUp(self):
+        self.location = Location.objects.create(
+            name="Loc", address="1 Rue", city="Paris", zip_code="75"
+        )
+        Workshop.objects.create(
+            name="Atelier classique",
+            location=self.location,
+            date=date.today(),
+            start_time=datetime.now().time(),
+            end_time=(datetime.now() + timedelta(hours=2)).time(),
+            poster_required=False,
+            number_registered=10,
+            number_attendees=8,
+            class_welcome=False,
+        )
+        Workshop.objects.create(
+            name="Accueil classe",
+            location=self.location,
+            date=date.today(),
+            start_time=datetime.now().time(),
+            end_time=(datetime.now() + timedelta(hours=2)).time(),
+            poster_required=False,
+            number_registered=25,
+            number_attendees=20,
+            class_welcome=True,
+        )
+        self.user = User.objects.create_user(
+            username="admin", password="pass", is_staff=True
+        )
+
+    def login(self):
+        self.client.login(username="admin", password="pass")
+
+    def test_returns_200(self):
+        self.login()
+        response = self.client.get(
+            reverse("location_detail", args=[self.location.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_aggregate_counts(self):
+        self.login()
+        response = self.client.get(
+            reverse("location_detail", args=[self.location.pk])
+        )
+        self.assertEqual(response.context["total_workshops"], 2)
+        self.assertEqual(response.context["classic_count"], 1)
+        self.assertEqual(response.context["class_welcome_count"], 1)
+        self.assertEqual(response.context["total_registered"], 35)
+        self.assertEqual(response.context["total_attendees"], 28)
+
+    def test_redirects_when_not_logged_in(self):
+        response = self.client.get(
+            reverse("location_detail", args=[self.location.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+
+
 class WorkshopCreateViewTests(TestCase):
     """Tests pour la vue workshop_create."""
 
