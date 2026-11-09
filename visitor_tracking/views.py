@@ -1,8 +1,10 @@
 import csv
+import hashlib
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.core.cache import cache
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
@@ -1050,6 +1052,44 @@ def superadmin_heatmap(request, year=None):
     )
     SuperadminStatisticsService.attach_tooltips(months, breakdown, not commune)
 
+    # Carte des infobulles riches : {date_iso: {label, total, lines[]}}.
+    _days_fr = [
+        "lundi", "mardi", "mercredi", "jeudi",
+        "vendredi", "samedi", "dimanche",
+    ]
+    _months_fr = [
+        "janvier", "février", "mars", "avril", "mai", "juin",
+        "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+    ]
+    tooltip_map = {}
+    for _month in months:
+        for _week in _month["weeks"]:
+            for _cell in _week:
+                if not _cell:
+                    continue
+                _d = _cell["date"]
+                _label = (
+                    f"{_days_fr[_d.weekday()]} {_d.day} "
+                    f"{_months_fr[_d.month - 1]} {_d.year}"
+                )
+                _cell["label_fr"] = _label
+                _entries = breakdown.get(_d, [])
+                _lines = []
+                for _e in _entries[:6]:
+                    _where = (
+                        f"{_e['commune'].capitalize()} — {_e['espace']}"
+                        if not commune
+                        else _e["espace"]
+                    )
+                    _lines.append({"label": _where, "count": _e["count"] or 0})
+                _extra = len(_entries) - len(_lines)
+                tooltip_map[_d.isoformat()] = {
+                    "label": _label,
+                    "total": _cell["count"] or 0,
+                    "lines": _lines,
+                    "extra": _extra if _extra > 0 else 0,
+                }
+
     locations = Location.objects.filter(is_active=True).select_related("user")
     if commune:
         locations = locations.filter(user__username=commune)
@@ -1072,6 +1112,7 @@ def superadmin_heatmap(request, year=None):
         "show_commune_prefix": not commune,
         "today": timezone.now().date(),
         "title": f"Calendrier {year}",
+        "heatmap_tooltips": tooltip_map,
     }
 
     return render(request, "visitor_tracking/superadmin_heatmap.html", context)
@@ -1174,6 +1215,60 @@ def annual_report(request, year=None):
         "T4": sum(m["total"] for m in monthly_list[9:12]),
     }
 
+    # Synthèse narrative (même ton que la page statistiques).
+    _months_lc = [m.lower() for m in month_names]
+    _days_lc = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+    _top_lieu = yearly_top[0] if yearly_top else None
+    _best = best_days[0] if best_days else None
+    _peak_month = max(monthly_list, key=lambda m: m["total"]) if monthly_list else None
+    _best_wd = max(weekday_avg, key=lambda w: w["avg"]) if weekday_avg else None
+    _days_in_year = date(year, 12, 31).timetuple().tm_yday
+    synthese = SuperadminStatisticsService.build_synthese(
+        {
+            "start_label": f"01/01/{year}",
+            "end_label": f"31/12/{year}",
+            "total": total_year,
+            "avg_per_day": avg_per_day,
+            "days_with_data": days_count,
+            "period_length": _days_in_year,
+            "variation": None,
+            "n1_total": n1_total,
+            "n1_variation": variation,
+            "top_commune": (
+                (
+                    _top_lieu["location__name"],
+                    _top_lieu["total"],
+                    round(_top_lieu["total"] / total_year * 100, 1)
+                    if total_year
+                    else 0,
+                )
+                if _top_lieu and total_year
+                else None
+            ),
+            "best_day": (
+                (
+                    f"{_days_lc[_best['date'].weekday()]} "
+                    f"{_best['date'].day} {_months_lc[_best['date'].month - 1]} "
+                    f"({_best['location__name']})",
+                    _best["total"],
+                )
+                if _best
+                else None
+            ),
+            "best_weekday": (
+                _best_wd["name"] if _best_wd and _best_wd["avg"] > 0 else None
+            ),
+            "best_week": None,
+            "peak_month": (
+                (_peak_month["month"], _peak_month["total"])
+                if _peak_month and _peak_month["total"]
+                else None
+            ),
+            "projection": None,
+            "perimetre": None,
+        }
+    )
+
     context = {
         "year": year,
         "prev_year": year - 1,
@@ -1189,6 +1284,7 @@ def annual_report(request, year=None):
         "weekday_avg": weekday_avg,
         "quarterly": quarterly,
         "title": f"Rapport annuel {year}",
+        "synthese": synthese,
     }
 
     return render(request, "visitor_tracking/annual_report.html", context)
@@ -1382,33 +1478,17 @@ def superadmin_statistics(request):
     available_users = []
     selected_usernames = None
     users_comparison = []
-    duel = None
     if not commune:
         # Utilisateurs disponibles pour le filtre
         available_users = SuperadminStatisticsService.get_available_users(
             start_date, end_date
         )
 
-        # Comparaison par utilisateur
+        # Comparaison par utilisateur (N médiathèques, sans mode duel)
         selected_usernames = request.GET.getlist("users") or None
         users_comparison = SuperadminStatisticsService.get_users_comparison(
             start_date, end_date, selected_usernames
         )
-
-        # Mode duel: si 2 users sélectionnés, ajouter % de différence
-        if len(users_comparison) == 2:
-            u1, u2 = users_comparison[0], users_comparison[1]
-
-            def pct_diff(a, b):
-                if b == 0:
-                    return 100 if a > 0 else 0
-                return round(((a - b) / b) * 100, 1)
-
-            duel = {
-                "total_diff": pct_diff(u1["total"], u2["total"]),
-                "avg_diff": pct_diff(u1["avg_per_day"], u2["avg_per_day"]),
-                "max_diff": pct_diff(u1["max_count"], u2["max_count"]),
-            }
 
     # Données journalières par utilisateur (graphique multi-lignes)
     daily_by_user_qs = VisitorCount.objects.filter(
@@ -1424,22 +1504,23 @@ def superadmin_statistics(request):
 
     all_dates_set = set()
     user_date_totals = {}
-    user_colors = {
-        "trelon": "#8B5CF6",
-        "fourmies": "#22C55E",
-        "anor": "#F97316",
-        "testd": "#3B82F6",
-    }
     palette = [
         "#4F46E5",
         "#7C3AED",
         "#EC4899",
         "#EF4444",
+        "#F97316",
+        "#22C55E",
         "#14B8A6",
-        "#6366F1",
         "#06B6D4",
-        "#84CC16",
+        "#8B5CF6",
+        "#3B82F6",
     ]
+
+    def _user_color(username):
+        """Couleur stable par utilisateur (déterministe, sans mapping en dur)."""
+        h = int(hashlib.md5(username.encode("utf-8")).hexdigest(), 16)
+        return palette[h % len(palette)]
 
     for row in daily_by_user:
         ds = row["date"].isoformat()
@@ -1454,15 +1535,12 @@ def superadmin_statistics(request):
     all_dates = sorted(all_dates_set)
     chart_labels = all_dates
     chart_datasets = []
-    color_idx = 0
     for uname in sorted(user_date_totals.keys()):
-        c = user_colors.get(uname, palette[color_idx % len(palette)])
-        color_idx += 1
         data_vals = [user_date_totals[uname].get(d, 0) for d in all_dates]
         chart_datasets.append(
             {
                 "label": uname,
-                "color": c,
+                "color": _user_color(uname),
                 "data": data_vals,
             }
         )
@@ -1566,6 +1644,101 @@ def superadmin_statistics(request):
             else round(total_so_far)
         )
 
+    # Libellés courts FR sur longues périodes (même longueur, alignement intact).
+    if len(all_dates) > 60:
+        chart_labels = [f"{d[8:10]}/{d[5:7]}" for d in all_dates]
+
+    # Croisements mis en cache (contexte conservé quand un filtre est actif).
+    cache_key = (
+        f"superadmin_stats:{period}:{start_date.isoformat()}:"
+        f"{end_date.isoformat()}:{commune or '-'}:v1"
+    )
+    cached_extra = cache.get(cache_key)
+    if cached_extra is None:
+        cached_extra = {
+            "weekday_overview": SuperadminStatisticsService.get_weekday_overview(
+                start_date, end_date, commune=commune or None
+            ),
+            "commune_month_matrix": SuperadminStatisticsService.get_commune_month_matrix(
+                start_date, end_date, commune=commune or None
+            ),
+        }
+        cache.set(cache_key, cached_extra, 300)
+
+    # Synthèse narrative (données live, jamais cachée).
+    _months_fr = [
+        "janvier", "février", "mars", "avril", "mai", "juin",
+        "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+    ]
+    _days_fr = [
+        "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche",
+    ]
+
+    def _date_fr(d):
+        return f"{_days_fr[d.weekday()]} {d.day} {_months_fr[d.month - 1]}" if d else None
+
+    _perimetre_parts = []
+    if commune:
+        _perimetre_parts.append(f"commune {commune.capitalize()}")
+    if selected_usernames:
+        _perimetre_parts.append(
+            f"médiathèques : {', '.join(selected_usernames)}"
+        )
+    _best = global_stats.get("best_day") or {}
+    _best_week = best_week or {}
+    _top_loc = next((loc for loc in locations if loc["total"]), None)
+    _mm = cached_extra.get("commune_month_matrix", {})
+    _col_totals = [
+        sum(row["months"][i] for row in _mm.get("matrix", []))
+        for i in range(len(_mm.get("months", [])))
+    ]
+    _peak_month = None
+    if _col_totals and any(_col_totals):
+        _bi = _col_totals.index(max(_col_totals))
+        _peak_month = (_mm["months"][_bi]["label"], _col_totals[_bi])
+    synthese = SuperadminStatisticsService.build_synthese(
+        {
+            "start_label": start_date.strftime("%d/%m/%Y"),
+            "end_label": end_date.strftime("%d/%m/%Y"),
+            "total": global_stats["total"],
+            "avg_per_day": global_stats["avg_per_day"],
+            "days_with_data": global_stats["days_with_data"],
+            "period_length": global_stats["period_length"],
+            "variation": global_stats.get("variation"),
+            "n1_total": n1_total,
+            "n1_variation": n1_variation,
+            "top_commune": (
+                (
+                    _top_loc["user"].capitalize(),
+                    _top_loc["total"],
+                    _top_loc["pct"],
+                )
+                if _top_loc
+                else None
+            ),
+            "best_day": (
+                (_date_fr(_best.get("date")), _best.get("total"))
+                if _best.get("date")
+                else None
+            ),
+            "best_weekday": (
+                (global_stats.get("best_weekday") or {}).get("name")
+            ),
+            "best_week": (
+                (
+                    f"du {_best_week['start'].strftime('%d/%m')} "
+                    f"au {_best_week['end'].strftime('%d/%m')}",
+                    _best_week["total"],
+                )
+                if _best_week.get("start")
+                else None
+            ),
+            "peak_month": _peak_month,
+            "projection": projection,
+            "perimetre": ", ".join(_perimetre_parts) or None,
+        }
+    )
+
     context = {
         "period": period,
         "start_date": start_date,
@@ -1589,10 +1762,13 @@ def superadmin_statistics(request):
         "n1_total": n1_total,
         "n1_variation": n1_variation,
         "projection": projection,
+        "weekday_overview": cached_extra["weekday_overview"],
+        "commune_month_matrix": cached_extra["commune_month_matrix"],
+        "synthese": synthese,
         "available_users": available_users,
         "selected_usernames": selected_usernames or [],
         "users_comparison": users_comparison,
-        "duel": duel,
+        "has_active_filters": bool(commune or selected_usernames),
         "current_year": timezone.now().year,
     }
     return render(request, "visitor_tracking/superadmin_statistics.html", context)

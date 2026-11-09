@@ -3,10 +3,18 @@ from datetime import date, timedelta
 
 from django.contrib.auth.models import User
 from django.db.models import Sum, Count, Max, Min
+from django.db.models.functions import ExtractMonth, ExtractYear
 from django.utils import timezone
 from .models import VisitorCount
 
 WEEKDAY_NAMES = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
+
+CACHE_TIMEOUT = 300
+
+MONTH_NAMES_SHORT = [
+    "Jan", "Fév", "Mar", "Avr", "Mai", "Juin",
+    "Juil", "Août", "Sep", "Oct", "Nov", "Déc",
+]
 
 
 class SuperadminStatisticsService:
@@ -567,3 +575,231 @@ class SuperadminStatisticsService:
             )
 
         return users_data
+
+    @staticmethod
+    def get_weekday_overview(start_date, end_date, commune=None):
+        """Totaux et moyennes par jour de semaine (lun-sam, dimanches exclus).
+
+        Retourne une liste [{name, total, avg}] pour Lun..Sam.
+        """
+        qs = VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date)
+        if commune:
+            qs = qs.filter(location__user__username=commune)
+        qs = qs.exclude(date__week_day=1)
+        rows = list(qs.values("date").annotate(total=Sum("count")))
+        sums = {i: 0 for i in range(6)}
+        counts = {i: 0 for i in range(6)}
+        for row in rows:
+            wd = row["date"].weekday()
+            if wd < 6:
+                sums[wd] += row["total"] or 0
+                counts[wd] += 1
+        return [
+            {
+                "name": WEEKDAY_NAMES[i],
+                "total": sums[i],
+                "avg": round(sums[i] / counts[i], 1) if counts[i] else 0,
+            }
+            for i in range(6)
+        ]
+
+    @staticmethod
+    def get_commune_month_matrix(start_date, end_date, commune=None, top_n=8):
+        """Matrice communes (top N) x mois : nombre de visiteurs par case.
+
+        Les mois couvrent [start_date, end_date] (max 12). Les dimanches
+        sont exclus, comme le reste de la page.
+        """
+        qs = VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date)
+        if commune:
+            qs = qs.filter(location__user__username=commune)
+        qs = qs.exclude(date__week_day=1)
+
+        top = list(
+            qs.values("location__user__username")
+            .annotate(total=Sum("count"))
+            .order_by("-total")[:top_n]
+        )
+        communes = [r["location__user__username"] or "Inconnu" for r in top]
+        if not communes:
+            return {"months": [], "matrix": []}
+
+        months = []
+        cur = date(start_date.year, start_date.month, 1)
+        last = date(end_date.year, end_date.month, 1)
+        while cur <= last and len(months) < 12:
+            if cur.month == 12:
+                nxt = date(cur.year + 1, 1, 1)
+            else:
+                nxt = date(cur.year, cur.month + 1, 1)
+            months.append(
+                {
+                    "key": f"{cur.year}-{cur.month:02d}",
+                    "label": MONTH_NAMES_SHORT[cur.month - 1],
+                    "start": cur,
+                    "end": min(nxt - timedelta(days=1), end_date),
+                }
+            )
+            cur = nxt
+
+        detail = qs.filter(
+            location__user__username__in=[
+                c for c in communes if c != "Inconnu"
+            ]
+            or ["__none__"]
+        ).values("location__user__username").annotate(
+            year=ExtractYear("date"),
+            month=ExtractMonth("date"),
+            total=Sum("count"),
+        )
+        grid = {(c or "Inconnu", m["key"]): 0 for c in communes for m in months}
+        for row in detail:
+            key = (
+                row["location__user__username"] or "Inconnu",
+                f"{row['year']}-{row['month']:02d}",
+            )
+            if key in grid:
+                grid[key] = row["total"] or 0
+
+        matrix = [
+            {
+                "commune": commune,
+                "months": [grid[(commune, m["key"])] for m in months],
+                "cells": [
+                    {
+                        "count": grid[(commune, m["key"])],
+                        "start": m["start"].isoformat(),
+                        "end": m["end"].isoformat(),
+                    }
+                    for m in months
+                ],
+                "total": sum(grid[(commune, m["key"])] for m in months),
+            }
+            for commune in communes
+        ]
+        return {"months": months, "matrix": matrix}
+
+    @staticmethod
+    def _plural(n, singular, plural=None):
+        if n == 1:
+            return singular
+        return plural if plural is not None else singular + "s"
+
+    @staticmethod
+    def _variation_wording(variation):
+        try:
+            value = float(variation)
+        except (TypeError, ValueError):
+            return None
+        if value > 0.5:
+            return f"en hausse de {value:.1f} %"
+        if value < -0.5:
+            return f"en baisse de {abs(value):.1f} %"
+        return "stables"
+
+    @staticmethod
+    def build_synthese(data):
+        """Construit la synthèse narrative (~10 lignes, ton naturel).
+
+        Args:
+            data (dict): start_label, end_label, total, avg_per_day,
+                days_with_data, period_length, variation (vs période
+                précédente), n1_total, n1_variation, top_commune (tuple
+                nom/total/pct|None), best_day (tuple libellé/total|None),
+                best_weekday (str|None), best_week (tuple libellé/total|None),
+                projection (int|None), dormant (int), perimetre (str|None).
+
+        Returns:
+            dict: {"perimetre": str|None, "phrases": list[str]}.
+        """
+        phrases = []
+        total = data.get("total", 0) or 0
+        days_with_data = data.get("days_with_data", 0) or 0
+        phrases.append(
+            f"Du {data.get('start_label', '')} au {data.get('end_label', '')}, "
+            f"{total} {SuperadminStatisticsService._plural(total, 'visiteur')} "
+            f"ont été comptés sur {days_with_data} "
+            f"{SuperadminStatisticsService._plural(days_with_data, 'jour')} "
+            f"({data.get('avg_per_day', 0) or 0} par jour en moyenne)."
+        )
+
+        var_wording = SuperadminStatisticsService._variation_wording(
+            data.get("variation")
+        )
+        if var_wording:
+            phrases.append(
+                f"La fréquentation est {var_wording} "
+                f"par rapport à la période précédente."
+            )
+
+        n1_total = data.get("n1_total")
+        if n1_total:
+            n1_wording = SuperadminStatisticsService._variation_wording(
+                data.get("n1_variation")
+            )
+            phrases.append(
+                f"Même période l'an dernier : {n1_total} "
+                f"{SuperadminStatisticsService._plural(n1_total, 'visiteur')}"
+                + (f" ({n1_wording})." if n1_wording else ".")
+            )
+
+        top = data.get("top_commune")
+        if top:
+            _pct_part = f", {top[2]} % du total" if len(top) > 2 and top[2] else ""
+            phrases.append(
+                f"La médiathèque la plus fréquentée est {top[0]} "
+                f"({top[1]} {SuperadminStatisticsService._plural(top[1], 'visiteur')}"
+                f"{_pct_part})."
+            )
+
+        best_day = data.get("best_day")
+        if best_day:
+            phrases.append(
+                f"Le meilleur jour est le {best_day[0]} "
+                f"avec {best_day[1]} "
+                f"{SuperadminStatisticsService._plural(best_day[1], 'visiteur')}."
+            )
+
+        best_weekday = data.get("best_weekday")
+        if best_weekday:
+            phrases.append(
+                f"Le {best_weekday} est le jour le plus fréquenté en moyenne."
+            )
+
+        peak_month = data.get("peak_month")
+        if peak_month and peak_month[1]:
+            phrases.append(
+                f"Le mois le plus actif est {peak_month[0]} "
+                f"({peak_month[1]} {SuperadminStatisticsService._plural(peak_month[1], 'visiteur')})."
+            )
+
+        best_week = data.get("best_week")
+        if best_week:
+            phrases.append(
+                f"La meilleure semaine va {best_week[0]} "
+                f"({best_week[1]} "
+                f"{SuperadminStatisticsService._plural(best_week[1], 'visiteur')})."
+            )
+
+        projection = data.get("projection")
+        if projection:
+            phrases.append(
+                f"Projection fin de mois : {projection} visiteurs "
+                f"si la tendance se maintient."
+            )
+
+        missing_days = data.get("missing_days")
+        if missing_days is None:
+            _period_length = data.get("period_length", 0) or 0
+            _days_with = data.get("days_with_data", 0) or 0
+            missing_days = max(_period_length - _days_with, 0)
+        if missing_days > 0:
+            phrases.append(
+                f"Attention : {missing_days} "
+                f"{SuperadminStatisticsService._plural(missing_days, 'jour')} "
+                f"sans pointage sur la période."
+            )
+        else:
+            phrases.append("Pointage complet sur toute la période.")
+
+        return {"perimetre": data.get("perimetre"), "phrases": phrases}

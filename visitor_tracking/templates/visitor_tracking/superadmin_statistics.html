@@ -4,43 +4,44 @@
 {% block title %}Stats visiteurs — Superadmin{% endblock %}
 
 {% block content %}
-<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
-    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
-    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+<div class="bg-white border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <nav aria-label="Fil d’Ariane" class="text-xs text-slate-500 mb-2">
+            <a href="{% url 'visitor_tracking:index' %}" class="hover:text-[#4a6fa5]">Visiteurs</a>
+            <span aria-hidden="true" class="mx-1">/</span>
+            <span aria-current="page" class="text-slate-700 font-medium">Statistiques — Superadmin</span>
+        </nav>
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div>
-                <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                        <i class="bx bx-bar-chart-alt-2 text-2xl text-white"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-3xl sm:text-4xl font-bold text-white">Statistiques — Superadmin</h1>
-                        <p class="text-white/70 text-sm">
-                            Du {{ start_date|date:"d/m/Y" }} au {{ end_date|date:"d/m/Y" }} · {{ global_stats.period_length }} jours
-                            {% if commune %}
-                            · <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/20 text-white text-xs font-medium align-middle"><i class="bx bx-map"></i> {{ commune|capfirst }}</span>
-                            {% endif %}
-                        </p>
-                    </div>
-                </div>
+                <h1 class="text-2xl font-bold text-slate-900">Statistiques des visiteurs</h1>
+                <p class="text-sm text-slate-600 mt-1">
+                    Du {{ start_date|date:"d/m/Y" }} au {{ end_date|date:"d/m/Y" }} · {{ global_stats.period_length }} jours
+                    {% if commune %} · Commune : {{ commune|capfirst }}{% endif %}
+                </p>
             </div>
             <div class="flex flex-wrap gap-2">
+                <button type="button" id="btnExportCsv" title="Exporter les lignes visibles en CSV" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    <i class="bx bx-download" aria-hidden="true"></i> Exporter CSV
+                </button>
                 <a href="{% url 'visitor_tracking:superadmin_heatmap_year' current_year %}"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
-                    <i class="bx bx-calendar-heart"></i> Heatmap
+                    class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    <i class="bx bx-calendar-heart" aria-hidden="true"></i> Heatmap
                 </a>
                 <a href="{% url 'visitor_tracking:annual_report_year' current_year %}"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
-                    <i class="bx bx-bar-chart-alt-2"></i> Rapport
+                    class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f]">
+                    <i class="bx bx-bar-chart-alt-2" aria-hidden="true"></i> Rapport
                 </a>
             </div>
         </div>
     </div>
-</section>
+</div>
 
-<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
     <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4 mb-6">
-        <form method="get" class="flex flex-wrap gap-4 items-end">
+        <form method="get">
+            <fieldset>
+                <legend class="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Filtres — combinables et partageables par URL</legend>
+                <div class="flex flex-wrap gap-4 items-end">
             <div>
                 <label class="block text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Période</label>
                 <select name="period" id="periodSelect"
@@ -80,23 +81,44 @@
             </div>
             {% endif %}
             {% if commune %}
-            <a href="?period={{ period }}" class="text-xs text-[#7a8fa0] hover:text-[#d46a78] transition-colors pb-2.5">
-                <i class="bx bx-x align-middle"></i> Effacer le filtre commune
+            <a href="?period={{ period }}{% for u in selected_usernames %}&users={{ u }}{% endfor %}" class="text-xs text-[#7a8fa0] hover:text-[#d46a78] transition-colors pb-2.5">
+                <i class="bx bx-x align-middle" aria-hidden="true"></i> Effacer le filtre commune
             </a>
             {% endif %}
+            <div>
+                <button type="submit" class="px-4 py-2.5 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-colors">
+                    <i class="bx bx-check" aria-hidden="true"></i> Filtrer
+                </button>
+            </div>
+                </div>
+            </fieldset>
         </form>
     </div>
 
+    <nav aria-label="Sections de la page" class="flex flex-wrap gap-2 text-sm mb-6">
+        <a href="#vue-ensemble" class="px-3 py-1.5 rounded-lg border border-[#dce3ef] bg-white text-[#5a6f80] hover:border-[#4a6fa5] hover:text-[#4a6fa5]">Vue d’ensemble</a>
+        <a href="#bloc-temps-forts" class="px-3 py-1.5 rounded-lg border border-[#dce3ef] bg-white text-[#5a6f80] hover:border-[#4a6fa5] hover:text-[#4a6fa5]">Temps forts</a>
+        <a href="#bloc-journalier" class="px-3 py-1.5 rounded-lg border border-[#dce3ef] bg-white text-[#5a6f80] hover:border-[#4a6fa5] hover:text-[#4a6fa5]">Évolution</a>
+        <a href="#bloc-structures" class="px-3 py-1.5 rounded-lg border border-[#dce3ef] bg-white text-[#5a6f80] hover:border-[#4a6fa5] hover:text-[#4a6fa5]">Répartition</a>
+        <a href="#bloc-comparatif" class="px-3 py-1.5 rounded-lg border border-[#dce3ef] bg-white text-[#5a6f80] hover:border-[#4a6fa5] hover:text-[#4a6fa5]">Comparatif</a>
+        <a href="#bloc-detail" class="px-3 py-1.5 rounded-lg border border-[#dce3ef] bg-white text-[#5a6f80] hover:border-[#4a6fa5] hover:text-[#4a6fa5]">Détail</a>
+        <a href="#bloc-top" class="px-3 py-1.5 rounded-lg border border-[#dce3ef] bg-white text-[#5a6f80] hover:border-[#4a6fa5] hover:text-[#4a6fa5]">Top jours</a>
+        <a href="#bloc-saisonnalite" class="px-3 py-1.5 rounded-lg border border-[#dce3ef] bg-white text-[#5a6f80] hover:border-[#4a6fa5] hover:text-[#4a6fa5]">Saisonnalité</a>
+        <a href="#bloc-synthese" class="px-3 py-1.5 rounded-lg border border-[#dce3ef] bg-white text-[#5a6f80] hover:border-[#4a6fa5] hover:text-[#4a6fa5]">Synthèse</a>
+        <a href="#bloc-saisonnalite" class="px-3 py-1.5 rounded-lg border border-[#dce3ef] bg-white text-[#5a6f80] hover:border-[#4a6fa5] hover:text-[#4a6fa5]">Saisonnalité</a>
+        <a href="#bloc-synthese" class="px-3 py-1.5 rounded-lg border border-[#dce3ef] bg-white text-[#5a6f80] hover:border-[#4a6fa5] hover:text-[#4a6fa5]">Synthèse</a>
+    </nav>
+
     {% if global_stats.total > 0 %}
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 mb-8">
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+    <div id="vue-ensemble" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 mb-8 scroll-mt-24" role="list" aria-label="Indicateurs clés">
+        <a href="#bloc-detail" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 block hover:border-[#4a6fa5] hover:shadow-sm transition-shadow" role="listitem" title="Aller au détail par espace">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Total visiteurs</p>
                     <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ global_stats.total }}</p>
                 </div>
-                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-user text-2xl text-[#4a6fa5]"></i></div>
+                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-user text-2xl text-[#4a6fa5]" aria-hidden="true"></i></div>
             </div>
             <div class="mt-2">
                 <span class="inline-flex items-center gap-1 text-xs font-medium {% if global_stats.variation > 0 %}text-emerald-600{% elif global_stats.variation < 0 %}text-red-600{% else %}text-[#b0bedb]{% endif %}">
@@ -104,27 +126,28 @@
                     vs période précédente : {% if global_stats.variation > 0 %}+{% endif %}{{ global_stats.variation }}%
                 </span>
             </div>
-        </div>
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        </a>
+        <a href="#bloc-journalier" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 block hover:border-[#4a6fa5] hover:shadow-sm transition-shadow" role="listitem" title="Aller à l’évolution journalière">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Moyenne / jour</p>
                     <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ global_stats.avg_per_day }}</p>
                 </div>
-                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-trending-up text-2xl text-[#4a6fa5]"></i></div>
+                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-trending-up text-2xl text-[#4a6fa5]" aria-hidden="true"></i></div>
             </div>
-        </div>
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="mt-2"><span class="text-xs text-[#4a6fa5] font-medium">Voir le graphique →</span></div>
+        </a>
+        <a href="#bloc-semaines" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 block hover:border-[#4a6fa5] hover:shadow-sm transition-shadow" role="listitem" title="Aller aux totaux par semaine">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Jours avec données</p>
                     <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ global_stats.days_with_data }}</p>
                 </div>
-                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-calendar-check text-2xl text-[#4a6fa5]"></i></div>
+                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-calendar-check text-2xl text-[#4a6fa5]" aria-hidden="true"></i></div>
             </div>
-            <div class="mt-2"><span class="text-xs text-[#b0bedb]">sur {{ global_stats.period_length }} jours</span></div>
-        </div>
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="mt-2"><span class="text-xs text-[#b0bedb]">sur {{ global_stats.period_length }} jours · voir le détail →</span></div>
+        </a>
+        <a href="#bloc-top" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 block hover:border-[#4a6fa5] hover:shadow-sm transition-shadow" role="listitem" title="Aller au top des jours">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Record</p>
@@ -134,90 +157,72 @@
                     <p class="text-3xl font-bold text-[#b0bedb] mt-1">-</p>
                     {% endif %}
                 </div>
-                <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center"><i class="bx bx-trophy text-2xl text-amber-600"></i></div>
+                <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center"><i class="bx bx-trophy text-2xl text-amber-600" aria-hidden="true"></i></div>
             </div>
             {% if global_stats.record_day %}
             <div class="mt-2"><span class="text-xs text-[#b0bedb]">le {{ global_stats.record_day.date|date:"d/m/Y" }}</span></div>
             {% endif %}
-        </div>
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        </a>
+        <a href="#bloc-comparatif" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 block hover:border-[#4a6fa5] hover:shadow-sm transition-shadow" role="listitem" title="Aller au comparatif des médiathèques">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">vs Année N-1</p>
                     <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ n1_total }}</p>
                     <p class="text-[10px] text-[#b0bedb] mt-0.5">même période</p>
                 </div>
-                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-calendar-alt text-2xl text-[#4a6fa5]"></i></div>
+                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-calendar-alt text-2xl text-[#4a6fa5]" aria-hidden="true"></i></div>
             </div>
             {% if global_stats.total > 0 and n1_total > 0 %}
             <div class="mt-2">
                 <span class="inline-flex items-center gap-1 text-xs font-medium {% if n1_variation > 0 %}text-emerald-600{% elif n1_variation < 0 %}text-red-600{% else %}text-[#b0bedb]{% endif %}">
-                    <i class="bx {% if n1_variation > 0 %}bx-trending-up{% elif n1_variation < 0 %}bx-trending-down{% else %}bx-minus{% endif %}"></i>
+                    <i class="bx {% if n1_variation > 0 %}bx-trending-up{% elif n1_variation < 0 %}bx-trending-down{% else %}bx-minus{% endif %}" aria-hidden="true"></i>
                     {% if n1_variation > 0 %}+{% endif %}{{ n1_variation }}%
                 </span>
             </div>
             {% elif n1_total == 0 %}
             <div class="mt-2"><span class="text-xs text-[#b0bedb]">Aucune donnée N-1</span></div>
             {% endif %}
-        </div>
+        </a>
         {% if projection %}
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <a href="#bloc-journalier" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5 block hover:border-[#4a6fa5] hover:shadow-sm transition-shadow" role="listitem" title="Aller à l’évolution journalière">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Projection fin de mois</p>
                     <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ projection }}</p>
                 </div>
-                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-line-chart text-2xl text-[#4a6fa5]"></i></div>
+                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-line-chart text-2xl text-[#4a6fa5]" aria-hidden="true"></i></div>
             </div>
             <div class="mt-2"><span class="text-xs text-[#b0bedb]">si la tendance actuelle se maintient</span></div>
-        </div>
+        </a>
         {% endif %}
     </div>
 
     {% if global_stats.best_day and global_stats.worst_day %}
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-        <div class="bg-emerald-50 rounded-2xl border border-emerald-200 p-5">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center"><i class="bx bx-up-arrow-alt text-xl text-emerald-600"></i></div>
-                <div>
-                    <p class="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Meilleur jour</p>
-                    <p class="text-lg font-bold text-emerald-800">{{ global_stats.best_day.date|date:"l d F Y" }} · <span class="text-2xl">{{ global_stats.best_day.total }}</span> visiteurs</p>
-                </div>
-            </div>
+    <section id="bloc-temps-forts" aria-labelledby="titre-temps-forts" class="scroll-mt-24 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+        <h2 id="titre-temps-forts" class="sr-only">Temps forts de la période</h2>
+        <div class="bg-emerald-50 rounded-2xl border border-emerald-200 p-4">
+            <p class="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Meilleur jour</p>
+            <p class="text-lg font-bold text-emerald-800 mt-1">{{ global_stats.best_day.date|date:"l d F Y" }}</p>
+            <p class="text-2xl font-bold text-emerald-800">{{ global_stats.best_day.total }} <span class="text-sm font-medium">visiteurs</span></p>
         </div>
-        <div class="bg-red-50 rounded-2xl border border-red-200 p-5">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center"><i class="bx bx-down-arrow-alt text-xl text-red-600"></i></div>
-                <div>
-                    <p class="text-xs font-semibold text-red-700 uppercase tracking-wider">Pire jour</p>
-                    <p class="text-lg font-bold text-red-800">{{ global_stats.worst_day.date|date:"l d F Y" }} · <span class="text-2xl">{{ global_stats.worst_day.total }}</span> visiteurs</p>
-                </div>
-            </div>
+        <div class="bg-red-50 rounded-2xl border border-red-200 p-4">
+            <p class="text-xs font-semibold text-red-700 uppercase tracking-wider">Pire jour</p>
+            <p class="text-lg font-bold text-red-800 mt-1">{{ global_stats.worst_day.date|date:"l d F Y" }}</p>
+            <p class="text-2xl font-bold text-red-800">{{ global_stats.worst_day.total }} <span class="text-sm font-medium">visiteurs</span></p>
         </div>
-    </div>
-    {% endif %}
-
-    {% if best_week %}
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-        <div class="bg-emerald-50 rounded-2xl border border-emerald-200 p-5">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center"><i class="bx bx-calendar-week text-xl text-emerald-600"></i></div>
-                <div>
-                    <p class="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Meilleure semaine</p>
-                    <p class="text-lg font-bold text-emerald-800">du {{ best_week.start|date:"d/m" }} au {{ best_week.end|date:"d/m" }} · <span class="text-2xl">{{ best_week.total }}</span> visiteurs</p>
-                </div>
-            </div>
+        {% if best_week %}
+        <div class="bg-emerald-50 rounded-2xl border border-emerald-200 p-4">
+            <p class="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Meilleure semaine</p>
+            <p class="text-lg font-bold text-emerald-800 mt-1">du {{ best_week.start|date:"d/m" }} au {{ best_week.end|date:"d/m" }}</p>
+            <p class="text-2xl font-bold text-emerald-800">{{ best_week.total }} <span class="text-sm font-medium">visiteurs</span></p>
         </div>
-        <div class="bg-red-50 rounded-2xl border border-red-200 p-5">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center"><i class="bx bx-calendar-week text-xl text-red-600"></i></div>
-                <div>
-                    <p class="text-xs font-semibold text-red-700 uppercase tracking-wider">Pire semaine</p>
-                    <p class="text-lg font-bold text-red-800">du {{ worst_week.start|date:"d/m" }} au {{ worst_week.end|date:"d/m" }} · <span class="text-2xl">{{ worst_week.total }}</span> visiteurs</p>
-                </div>
-            </div>
+        <div class="bg-red-50 rounded-2xl border border-red-200 p-4">
+            <p class="text-xs font-semibold text-red-700 uppercase tracking-wider">Pire semaine</p>
+            <p class="text-lg font-bold text-red-800 mt-1">du {{ worst_week.start|date:"d/m" }} au {{ worst_week.end|date:"d/m" }}</p>
+            <p class="text-2xl font-bold text-red-800">{{ worst_week.total }} <span class="text-sm font-medium">visiteurs</span></p>
         </div>
-    </div>
+        {% endif %}
+    </section>
     {% endif %}
 
     {% if global_stats.best_weekday %}
@@ -246,100 +251,181 @@
     </div>
     {% endif %}
 
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-6">
+    <div id="bloc-journalier" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-6 scroll-mt-24">
         <div class="px-6 py-4 border-b border-[#dce3ef]">
-            <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-line-chart mr-1.5 text-[#4a6fa5]"></i> Évolution journalière par médiathèque</h5>
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-line-chart mr-1.5 text-[#4a6fa5]"></i> Évolution journalière par médiathèque</h2>
+            <p class="text-xs text-[#5a6f80] mt-0.5">Cliquez sur une courbe pour filtrer par commune · survolez pour le détail jour par jour</p>
         </div>
         <div class="p-6">
-            <div class="h-96"><canvas id="dailyChart"></canvas></div>
+            <div class="h-96"><canvas id="dailyChart" role="img" aria-label="Évolution journalière des visiteurs par médiathèque, cliquez sur une courbe pour filtrer"></canvas></div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+    <div class="mb-8">
+        <div id="bloc-structures" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden scroll-mt-24">
             <div class="px-6 py-4 border-b border-[#dce3ef]">
-                <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-bar-chart-alt-2 mr-1.5 text-[#4a6fa5]"></i> Répartition par médiathèque</h5>
+                <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-bar-chart-alt-2 mr-1.5 text-[#4a6fa5]"></i> Répartition par médiathèque</h2>
+                <p class="text-xs text-[#5a6f80] mt-0.5">Volumes empilés jour par jour, par lieu</p>
             </div>
             <div class="p-6">
-                <div class="h-72"><canvas id="stackedChart"></canvas></div>
+                <div class="h-72"><canvas id="stackedChart" role="img" aria-label="Répartition empilée des visites par médiathèque"></canvas></div>
             </div>
         </div>
     </div>
 
     {% if cumulative|length > 1 %}
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
+    <div id="bloc-cumul" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8 scroll-mt-24">
         <div class="px-6 py-4 border-b border-[#dce3ef]">
-            <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-trending-up mr-1.5 text-[#4a6fa5]"></i> Évolution cumulative</h5>
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-trending-up mr-1.5 text-[#4a6fa5]"></i> Évolution cumulative</h2>
+            <p class="text-xs text-[#5a6f80] mt-0.5">Total cumulé sur la période</p>
+        </div>
         </div>
         <div class="p-6">
-            <div class="h-48"><canvas id="cumulChart"></canvas></div>
+            <div class="h-48"><canvas id="cumulChart" role="img" aria-label="Évolution cumulative des visites"></canvas></div>
         </div>
     </div>
     {% endif %}
 
     {% if week_labels %}
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
+    <div id="bloc-semaines" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8 scroll-mt-24">
         <div class="px-6 py-4 border-b border-[#dce3ef]">
-            <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-bar-chart-alt-2 mr-1.5 text-[#4a6fa5]"></i> Totaux par semaine</h5>
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-bar-chart-alt-2 mr-1.5 text-[#4a6fa5]"></i> Totaux par semaine</h2>
+            <p class="text-xs text-[#5a6f80] mt-0.5">Semaines ISO de la période</p>
         </div>
         <div class="p-6">
-            <div class="h-64"><canvas id="weeklyChart"></canvas></div>
+            <div class="h-64"><canvas id="weeklyChart" role="img" aria-label="Totaux de visites par semaine"></canvas></div>
+        </div>
+        <div class="px-6 pb-6">
+            <h3 class="text-sm font-semibold text-[#1e293b] mb-1">Moyennes par jour de semaine</h3>
+            <p class="text-xs text-[#5a6f80] mb-3">Sert à : voir quels jours portent la fréquentation et caler les ouvertures</p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <caption class="sr-only">Visites totales et moyennes par jour de semaine</caption>
+                    <thead class="sticky top-0">
+                        <tr class="border-b border-[#dce3ef] bg-white">
+                            <th scope="col" class="text-left px-3 py-2 font-semibold text-[#1e293b]">Jour</th>
+                            {% for d in weekday_overview %}
+                            <th scope="col" class="text-center px-3 py-2 font-semibold text-[#b0bedb] text-xs">{{ d.name }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-[#dce3ef]">
+                            <th scope="row" class="text-left px-3 py-2 font-medium text-[#1e293b]">Visites</th>
+                            {% for d in weekday_overview %}
+                            <td class="px-3 py-2 text-center font-semibold text-[#1e293b]">{{ d.total }}</td>
+                            {% endfor %}
+                        </tr>
+                        <tr class="hover:bg-[#f8f9fc]">
+                            <th scope="row" class="text-left px-3 py-2 font-medium text-[#1e293b]">Moy./jour</th>
+                            {% for d in weekday_overview %}
+                            <td class="px-3 py-2 text-center"><span class="inline-flex items-center justify-center min-w-10 px-2 h-7 rounded-md text-xs font-semibold {% if d.avg > 0 %}bg-[#e8eef7] text-[#4a6fa5]{% else %}text-[#b0bedb]{% endif %}">{{ d.avg }}</span></td>
+                            {% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     {% endif %}
 
+    <div id="bloc-saisonnalite" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8 scroll-mt-24">
+        <div class="px-6 py-4 border-b border-[#dce3ef]">
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-calendar mr-1.5 text-[#4a6fa5]"></i> Communes × mois</h2>
+            <p class="text-xs text-[#5a6f80] mt-0.5">Sert à : repérer où et quand agir. Cliquez sur un nombre pour voir le mois de la commune, sur son nom pour filtrer toute la page.</p>
+        </div>
+        <div class="p-6">
+            {% if commune_month_matrix.matrix %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <caption class="sr-only">Nombre de visiteurs par commune et par mois</caption>
+                    <thead class="sticky top-0">
+                        <tr class="border-b border-[#dce3ef] bg-white">
+                            <th scope="col" class="text-left px-3 py-2 font-semibold text-[#1e293b]">Commune</th>
+                            {% for m in commune_month_matrix.months %}
+                            <th scope="col" class="text-center px-2 py-2 font-semibold text-[#b0bedb] text-xs">{{ m.label }}</th>
+                            {% endfor %}
+                            <th scope="col" class="text-right px-3 py-2 font-semibold text-[#1e293b]">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#dce3ef]/60">
+                        {% for row in commune_month_matrix.matrix %}
+                        <tr class="hover:bg-[#f8f9fc]">
+                            <th scope="row" class="py-2 pr-3 font-medium text-[#1e293b] text-left">
+                                <a href="?period={{ period }}&amp;commune={{ row.commune|urlencode }}" class="hover:text-[#4a6fa5] hover:underline">{{ row.commune|capfirst }}</a>
+                            </th>
+                            {% for cell in row.cells %}
+                            <td class="py-2 px-2 text-center">
+                                {% if cell.count > 0 %}
+                                <a href="?period=custom&amp;start_date={{ cell.start }}&amp;end_date={{ cell.end }}&amp;commune={{ row.commune|urlencode }}" title="Voir {{ row.commune|capfirst }} sur ce mois" class="inline-block min-w-7 px-1.5 py-0.5 rounded-md text-xs font-semibold {% if cell.count >= 200 %}bg-[#4a6fa5] text-white{% elif cell.count >= 100 %}bg-[#e8eef7] text-[#4a6fa5]{% else %}bg-slate-100 text-slate-700{% endif %} hover:ring-2 hover:ring-[#4a6fa5]/40">{{ cell.count }}</a>
+                                {% else %}
+                                <span class="text-slate-300 text-xs">–</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                            <td class="py-2 pl-3 text-right font-semibold text-[#1e293b]">{{ row.total }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-sm text-[#5a6f80] border border-dashed border-[#b0bedb] rounded-xl p-4" role="status">Aucune donnée croisée sur la période.</p>
+            {% endif %}
+        </div>
+    </div>
+
     {% if available_users %}
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4 mb-6">
+    <div id="bloc-comparer" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-4 mb-6 scroll-mt-24">
         <form method="get" class="flex flex-wrap items-end gap-4">
             <input type="hidden" name="period" value="{{ period }}">
             <div>
                 <label class="block text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-2">Comparer les médiathèques</label>
                 <div class="flex flex-wrap gap-2">
                     {% for user in available_users %}
-                    <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer transition-colors text-sm
-                        {% if user.username in selected_usernames %}bg-[#4a6fa5] text-white border-[#4a6fa5]{% else %}border-[#dce3ef] text-[#5a6f80] hover:border-[#4a6fa5]{% endif %}">
+                    <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer transition-colors text-sm focus-within:ring-2 focus-within:ring-[#4a6fa5]/40 {% if user.username in selected_usernames %}bg-[#4a6fa5] text-white border-[#4a6fa5]{% else %}border-[#dce3ef] text-[#5a6f80] hover:border-[#4a6fa5]{% endif %}">
                         <input type="checkbox" name="users" value="{{ user.username }}"
-                               {% if user.username in selected_usernames %}checked{% endif %}
-                               onchange="this.closest('form').submit()"
-                               class="sr-only">
-                        <i class="bx bx-user-circle text-sm"></i>
+                            {% if user.username in selected_usernames %}checked{% endif %}
+                            class="sr-only">
+                        <i class="bx bx-user-circle text-sm" aria-hidden="true"></i>
                         {{ user.username }}
                     </label>
                     {% endfor %}
                 </div>
             </div>
+            <button type="submit" class="px-4 py-2 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-colors">
+                <i class="bx bx-check" aria-hidden="true"></i> Comparer
+            </button>
             {% if selected_usernames %}
-            <a href="?period={{ period }}" class="text-xs text-[#7a8fa0] hover:text-[#d46a78] transition-colors">Effacer le filtre</a>
+            <a href="?period={{ period }}" class="text-xs text-[#7a8fa0] hover:text-[#d46a78] transition-colors">Effacer la sélection</a>
             {% endif %}
         </form>
     </div>
     {% endif %}
 
     {% if users_comparison %}
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
+    <div id="bloc-comparatif" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8 scroll-mt-24">
         <div class="px-6 py-4 border-b border-[#dce3ef] bg-[#f8f9fc]">
-            <h5 class="font-semibold text-[#1e293b] flex items-center gap-2">
+            <h2 class="font-semibold text-[#1e293b] flex items-center gap-2">
                 <i class="bx bx-bar-chart-alt-2 text-[#4a6fa5]"></i>
                 Comparatif médiathèques
-                {% if duel %}<span class="text-xs font-normal text-[#7a8fa0] ml-2">· Mode duel actif</span>{% endif %}
-            </h5>
+            </h2>
+            <p class="text-xs text-[#5a6f80] mt-0.5">Sert à : comparer les lieux entre eux et repérer les écarts à accompagner</p>
         </div>
 
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
-                <thead>
+                <caption class="sr-only">Comparaison des médiathèques sur la période : totaux, moyennes et records</caption>
+                <thead class="sticky top-0">
                     <tr class="border-b border-[#dce3ef] bg-[#f8f9fc]">
-                        <th class="text-left px-6 py-3 font-semibold text-[#1e293b]">Médiathèque</th>
-                        <th class="text-right px-6 py-3 font-semibold text-[#1e293b]">Total</th>
-                        <th class="text-right px-6 py-3 font-semibold text-[#1e293b]">Moy./jour</th>
-                        <th class="text-right px-6 py-3 font-semibold text-[#1e293b]">Record</th>
-                        <th class="text-center px-6 py-3 font-semibold text-[#1e293b]">Meilleur jour</th>
-                        <th class="text-center px-6 py-3 font-semibold text-[#1e293b]">Pire jour</th>
-                        <th class="text-center px-6 py-3 font-semibold text-[#1e293b]">Meil. jour sem.</th>
-                        <th class="text-center px-6 py-3 font-semibold text-[#1e293b]">Pire jour sem.</th>
-                        {% if duel %}
-                        <th class="text-right px-6 py-3 font-semibold text-[#1e293b] border-l-2 border-[#dce3ef]">Différence (1 vs 2)</th>
-                        {% endif %}
+                        <th scope="col" class="text-left px-6 py-3 font-semibold text-[#1e293b]">Médiathèque</th>
+                        <th scope="col" class="text-right px-6 py-3 font-semibold text-[#1e293b]">Total</th>
+                        <th scope="col" class="text-right px-6 py-3 font-semibold text-[#1e293b]">Moy./jour</th>
+                        <th scope="col" class="text-right px-6 py-3 font-semibold text-[#1e293b]">Record</th>
+                        <th scope="col" class="text-center px-6 py-3 font-semibold text-[#1e293b]">Meilleur jour</th>
+                        <th scope="col" class="text-center px-6 py-3 font-semibold text-[#1e293b]">Pire jour</th>
+                        <th scope="col" class="text-center px-6 py-3 font-semibold text-[#1e293b]">Meil. jour sem.</th>
+                        <th scope="col" class="text-center px-6 py-3 font-semibold text-[#1e293b]">Pire jour sem.</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -374,25 +460,6 @@
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">{{ uc.worst_weekday.name }} {{ uc.worst_weekday.avg }}</span>
                             {% else %}<span class="text-[#b0bedb]">-</span>{% endif %}
                         </td>
-                        {% if duel %}
-                        <td class="px-6 py-4 text-right border-l-2 border-[#dce3ef]">
-                            {% if forloop.first %}
-                            <span class="text-xs font-semibold text-[#b0bedb]">—</span>
-                            {% else %}
-                            <div class="space-y-1">
-                                <span class="block text-xs {% if duel.total_diff > 0 %}text-emerald-600{% elif duel.total_diff < 0 %}text-red-600{% else %}text-[#b0bedb]{% endif %}">
-                                    Total {% if duel.total_diff > 0 %}+{% endif %}{{ duel.total_diff }}%
-                                </span>
-                                <span class="block text-xs {% if duel.avg_diff > 0 %}text-emerald-600{% elif duel.avg_diff < 0 %}text-red-600{% else %}text-[#b0bedb]{% endif %}">
-                                    Moy {% if duel.avg_diff > 0 %}+{% endif %}{{ duel.avg_diff }}%
-                                </span>
-                                <span class="block text-xs {% if duel.max_diff > 0 %}text-emerald-600{% elif duel.max_diff < 0 %}text-red-600{% else %}text-[#b0bedb]{% endif %}">
-                                    Record {% if duel.max_diff > 0 %}+{% endif %}{{ duel.max_diff }}%
-                                </span>
-                            </div>
-                            {% endif %}
-                        </td>
-                        {% endif %}
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -401,18 +468,20 @@
     </div>
 
     {% if users_comparison|length > 1 %}
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6 mb-8">
-        <h3 class="text-sm font-semibold text-[#1e293b] mb-4 flex items-center gap-2">
+    <div id="bloc-jours-semaine" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-6 mb-8 scroll-mt-24">
+        <h3 class="text-sm font-semibold text-[#1e293b] mb-1 flex items-center gap-2">
             <i class="bx bx-calendar-week text-[#4a6fa5]"></i>
             Comparaison des moyennes par jour de semaine
         </h3>
+        <p class="text-xs text-[#5a6f80] mb-4">Sert à : voir quels jours portent chaque médiathèque et harmoniser les ouvertures</p>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
-                <thead>
-                    <tr class="border-b border-[#dce3ef]">
-                        <th class="text-left px-4 py-2 font-semibold text-[#1e293b]">Médiathèque</th>
+                <caption class="sr-only">Moyennes de visiteurs par jour de semaine et par médiathèque</caption>
+                <thead class="sticky top-0">
+                    <tr class="border-b border-[#dce3ef] bg-white">
+                        <th scope="col" class="text-left px-4 py-2 font-semibold text-[#1e293b]">Médiathèque</th>
                         {% for wd in users_comparison.0.weekday_avgs %}
-                        <th class="text-center px-4 py-2 font-semibold text-[#b0bedb] text-xs">{{ wd.name }}</th>
+                        <th scope="col" class="text-center px-4 py-2 font-semibold text-[#b0bedb] text-xs">{{ wd.name }}</th>
                         {% endfor %}
                     </tr>
                 </thead>
@@ -434,25 +503,26 @@
     {% endif %}
     {% endif %}
 
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8">
+    <div id="bloc-detail" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden mb-8 scroll-mt-24">
         <div class="px-6 py-4 border-b border-[#dce3ef] bg-[#f8f9fc]">
-            <h5 class="font-semibold text-[#1e293b] flex items-center gap-2">
+            <h2 class="font-semibold text-[#1e293b] flex items-center gap-2">
                 <i class="bx bx-list-ul text-[#4a6fa5]"></i>
                 Détail par espace
-            </h5>
+            </h2>
+            <p class="text-xs text-[#5a6f80] mt-0.5">Sert à : voir la contribution de chaque lieu au total</p>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
-                <thead>
+                <caption class="sr-only">Détail des visites par espace sur la période</caption>
+                <thead class="sticky top-0">
                     <tr class="border-b border-[#dce3ef] bg-[#f8f9fc]">
-                        <th class="text-left px-6 py-3 font-semibold text-[#1e293b]">Médiathèque</th>
-                        <th class="text-right px-6 py-3 font-semibold text-[#1e293b]">Total</th>
-                        <th class="text-right px-6 py-3 font-semibold text-[#1e293b]">%</th>
-                        <th class="text-right px-6 py-3 font-semibold text-[#1e293b]">Moy./jour</th>
-                        <th class="text-right px-6 py-3 font-semibold text-[#1e293b]">Record</th>
-                        <th class="text-center px-6 py-3 font-semibold text-[#1e293b]">Meilleur jour</th>
-                        <th class="text-center px-6 py-3 font-semibold text-[#1e293b]">Jours</th>
-                        <th class="text-left px-6 py-3 font-semibold text-[#1e293b]">Utilisateur</th>
+                        <th scope="col" class="text-left px-6 py-3 font-semibold text-[#1e293b]">Médiathèque</th>
+                        <th scope="col" class="text-right px-6 py-3 font-semibold text-[#1e293b]">Total</th>
+                        <th scope="col" class="text-right px-6 py-3 font-semibold text-[#1e293b]">%</th>
+                        <th scope="col" class="text-right px-6 py-3 font-semibold text-[#1e293b]">Moy./jour</th>
+                        <th scope="col" class="text-right px-6 py-3 font-semibold text-[#1e293b]">Record</th>
+                        <th scope="col" class="text-center px-6 py-3 font-semibold text-[#1e293b]">Meilleur jour</th>
+                        <th scope="col" class="text-center px-6 py-3 font-semibold text-[#1e293b]">Jours</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -478,7 +548,6 @@
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#e8eef7] text-[#4a6fa5]">{{ loc.best_weekday }}</span>
                         </td>
                         <td class="px-6 py-4 text-center text-[#7a8fa0]">{{ loc.days_count }}</td>
-                        <td class="px-6 py-4 text-[#7a8fa0]">{{ loc.user }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -487,16 +556,18 @@
     </div>
 
     {% if global_stats.top_days %}
-    <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
+    <div id="bloc-top" class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden scroll-mt-24">
         <div class="px-6 py-4 border-b border-[#dce3ef]">
-            <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-trophy mr-1.5 text-amber-500"></i> Top 5 des meilleurs jours</h5>
+            <h2 class="font-semibold text-[#1e293b]"><i class="bx bx-trophy mr-1.5 text-amber-500"></i> Top 5 des meilleurs jours</h2>
+            <p class="text-xs text-[#5a6f80] mt-0.5">Sert à : identifier les pics pour comprendre ce qui a bien fonctionné</p>
         </div>
         <table class="min-w-full divide-y divide-[#dce3ef]">
-            <thead class="bg-[#f8f9fc]">
+            <caption class="sr-only">Les 5 jours les plus fréquentés de la période</caption>
+            <thead class="bg-[#f8f9fc] sticky top-0">
                 <tr>
-                    <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">#</th>
-                    <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Date</th>
-                    <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Visiteurs</th>
+                    <th scope="col" class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">#</th>
+                    <th scope="col" class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Date</th>
+                    <th scope="col" class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Visiteurs</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-[#dce3ef]">
@@ -513,6 +584,33 @@
         </table>
     </div>
     {% endif %}
+
+    <div id="bloc-synthese" class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6 scroll-mt-24">
+        <div class="flex items-center gap-3 mb-1">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#4a6fa5] text-white" aria-hidden="true"><i class="bx bx-detail text-xl"></i></span>
+            <div class="flex flex-wrap items-center gap-2">
+                <h2 class="text-base font-bold text-slate-900">Synthèse de la période</h2>
+                <span class="rounded-full bg-[#e8eef7] px-2.5 py-0.5 text-xs font-semibold text-[#4a6fa5]">{{ synthese.phrases|length }} points clés</span>
+            </div>
+        </div>
+        <p class="text-xs text-slate-500 mb-4 ml-12">Sert à : résumer la fréquentation pour le rapport d'activité</p>
+        <div class="border-l-4 border-[#4a6fa5] bg-[#eef3f9] rounded-r-lg p-4 sm:p-5 text-slate-800">
+            {% if synthese.perimetre %}
+            <p class="mb-3 inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-600"><i class="bx bx-filter-alt" aria-hidden="true"></i>Périmètre : {{ synthese.perimetre }}</p>
+            {% endif %}
+            {% for phrase in synthese.phrases %}
+            {% if forloop.first %}
+            <p class="synthese-phrase text-[15px] font-medium leading-relaxed text-slate-900 first-letter:float-left first-letter:mr-1.5 first-letter:text-4xl first-letter:font-bold first-letter:leading-[0.9] first-letter:text-[#4a6fa5]">{{ phrase }}</p>
+            {% else %}
+            {% if forloop.counter == 2 %}<ol class="mt-4 space-y-2.5 text-sm leading-relaxed">{% endif %}
+                <li class="flex gap-2.5"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#4a6fa5] text-[11px] font-bold text-white" aria-hidden="true">{{ forloop.counter|add:"-1" }}</span><span class="synthese-phrase">{{ phrase }}</span></li>
+            {% if forloop.last %}</ol>{% endif %}
+            {% endif %}
+            {% empty %}
+            <p class="leading-relaxed">Aucune donnée pour rédiger la synthèse sur ce périmètre.</p>
+            {% endfor %}
+        </div>
+    </div>
 
     {% else %}
     <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-12 text-center">
@@ -533,7 +631,7 @@
 {% endblock %}
 
 {% block javascripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js" integrity="sha384-YAshAm4KKjf8V01c4sdNbPYiwU0D0Q82fjMHhKw8VvP0ecY4fxXsZAHxC4r4Ei+T" crossorigin="anonymous"></script>
 
 {{ chart_labels|json_script:"chart-labels" }}
 {{ chart_weekdays|json_script:"chart-weekdays" }}
@@ -652,7 +750,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     scales: {
                         x: { ticks: { maxTicksLimit: 15, font: { size: 10 } } },
                         y: { beginAtZero: true, ticks: { precision: 0 } }
-                    }
+                    },
+                    onClick: function(evt, els) {
+                        if (!els.length) return;
+                        var uname = this.data.datasets[els[0].datasetIndex].label;
+                        if (!uname || uname === 'Moy. mobile 7j' || uname === 'Période précédente') return;
+                        var url = new URL(window.location.href);
+                        url.searchParams.set('commune', uname);
+                        url.searchParams.delete('users');
+                        window.location.href = url.toString();
+                    },
+                    onHover: function(e, el) { if (e && e.native) e.native.target.style.cursor = el && el.length ? 'pointer' : 'default'; }
                 }
             });
         } else {
@@ -742,6 +850,54 @@ document.addEventListener('DOMContentLoaded', function() {
             wc.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-[#b0bedb] text-sm">Aucune donnée pour cette période</div>';
         }
     }
+
+    // Export CSV du visible (séries + comparatif + synthèse)
+    var btnCsv = document.getElementById('btnExportCsv');
+    if (btnCsv) btnCsv.addEventListener('click', function() {
+        var lines = ['sep=;', 'Statistiques visiteurs;export du ' + new Date().toLocaleDateString('fr-FR')];
+        lines.push('Filtres;Période;Commune');
+        lines.push(';"{{ period|escapejs }}";"{{ commune|default:'Toutes'|escapejs }}"');
+        var labEl = document.getElementById('chart-labels');
+        var totEl = document.getElementById('daily-totals');
+        if (labEl && totEl) {
+            var labs = JSON.parse(labEl.textContent || '[]');
+            var tots = JSON.parse(totEl.textContent || '[]');
+            if (labs.length) {
+                lines.push('');
+                lines.push('Date;Visiteurs');
+                for (var i = 0; i < labs.length; i++) {
+                    lines.push('"' + String(labs[i]) + '";' + (tots[i] || 0));
+                }
+            }
+        }
+        var compRows = document.querySelectorAll('#bloc-comparatif tbody tr');
+        if (compRows.length) {
+            lines.push('');
+            lines.push('Médiathèque;Total;Moy/Jour;Record');
+            compRows.forEach(function(r) {
+                var cells = r.querySelectorAll('th, td');
+                var vals = Array.prototype.map.call(cells, function(c) {
+                    return '"' + c.textContent.trim().replace(/"/g, '""') + '"';
+                });
+                lines.push(vals.slice(0, 4).join(';'));
+            });
+        }
+        var synRows = document.querySelectorAll('#bloc-synthese .synthese-phrase');
+        if (synRows.length) {
+            lines.push('');
+            lines.push('Synthèse');
+            synRows.forEach(function(el) {
+                lines.push('"' + el.textContent.trim().replace(/"/g, '""') + '"');
+            });
+        }
+        var blob = new Blob(["\uFEFF" + lines.join('\r\n'), { type: 'text/csv;charset=utf-8' }]);
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'statistiques-visiteurs.csv';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    });
 });
 </script>
 {% endblock %}

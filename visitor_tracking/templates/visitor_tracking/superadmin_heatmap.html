@@ -12,6 +12,19 @@
   .day-header { font-size: 0.625rem; color: #b0bedb; text-transform: uppercase; font-weight: 600; text-align: center; padding-bottom: 0.25rem; letter-spacing: 0.05em; }
   .heatmap-legend { display: flex; align-items: center; gap: 0.25rem; }
   .heatmap-legend-item { width: 0.75rem; height: 0.75rem; border-radius: 0.125rem; }
+  #heatmap-tip {
+    position: fixed; z-index: 60; display: none; max-width: 16rem;
+    background: #1e293b; color: #fff; border-radius: 0.75rem;
+    box-shadow: 0 10px 25px rgba(0,0,0,.25); padding: 0.625rem 0.75rem;
+    font-size: 0.75rem; line-height: 1.4; pointer-events: none;
+  }
+  #heatmap-tip .tip-date { font-weight: 700; text-transform: capitalize; margin-bottom: 0.125rem; }
+  #heatmap-tip .tip-total { font-size: 1rem; font-weight: 800; color: #fff; }
+  #heatmap-tip .tip-total small { font-weight: 400; color: #cbd5e1; }
+  #heatmap-tip ul { margin: 0.375rem 0 0; padding: 0; list-style: none; border-top: 1px solid rgba(255,255,255,.15); padding-top: 0.375rem; }
+  #heatmap-tip li { display: flex; justify-content: space-between; gap: 0.75rem; color: #e2e8f0; }
+  #heatmap-tip li span:last-child { font-weight: 700; }
+  #heatmap-tip .tip-more { color: #94a3b8; font-style: italic; }
 </style>
 {% endblock %}
 
@@ -116,7 +129,8 @@
                           {% if cell.opacity > 0.55 and cell.opacity <= 0.78 %}bg-[#355478] text-white{% endif %}
                           {% if cell.opacity > 0.78 %}bg-[#243b58] text-white{% endif %}
                           {% if cell.date == today %}ring-2 ring-offset-1 ring-[#d46a78] font-bold{% endif %}"
-                   title="{{ cell.date|date:'l d F Y' }} — {{ cell.count }} visiteur{{ cell.count|pluralize }}{% if cell.details %}&#10;{{ cell.details }}{% endif %}">
+                   data-date="{{ cell.date|date:'Y-m-d' }}" tabindex="0"
+                   aria-label="{{ cell.label_fr|capfirst }} : {{ cell.count }} visiteur{{ cell.count|pluralize }}">
                 {{ cell.day }}
               </div>
               {% else %}
@@ -140,7 +154,77 @@
         <div class="heatmap-legend-item bg-[#243b58]"></div>
       </div>
       <span>Plus</span>
+      <span class="ml-2 hidden sm:inline">Survolez ou touchez un jour pour le détail.</span>
     </div>
   </div>
 </div>
+<div id="heatmap-tip" role="tooltip" aria-hidden="true"></div>
+{{ heatmap_tooltips|json_script:"heatmap-tooltips" }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var tip = document.getElementById('heatmap-tip');
+  var dataEl = document.getElementById('heatmap-tooltips');
+  var tips = {};
+  try { tips = JSON.parse(dataEl ? dataEl.textContent : '{}'); } catch (e) { tips = {}; }
+  if (!tip) return;
+
+  function plural(n, one, many) { return n > 1 ? many : one; }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function showTip(cell, x, y) {
+    var info = tips[cell.getAttribute('data-date')];
+    if (!info) return;
+    var html = '<div class="tip-date">' + esc(info.label) + '</div>'
+      + '<div class="tip-total">' + info.total + ' <small>visiteur' + (info.total > 1 ? 's' : '') + '</small></div>';
+    if (info.lines && info.lines.length) {
+      html += '<ul>';
+      info.lines.forEach(function(l) {
+        html += '<li><span>' + esc(l.label) + '</span><span>' + l.count + '</span></li>';
+      });
+      if (info.extra) html += '<li class="tip-more"><span>et ' + info.extra + ' autre' + (info.extra > 1 ? 's' : '') + '…</span><span></span></li>';
+      html += '</ul>';
+    }
+    tip.innerHTML = html;
+    tip.style.display = 'block';
+    tip.setAttribute('aria-hidden', 'false');
+    moveTip(x, y);
+  }
+
+  function moveTip(x, y) {
+    var pad = 12;
+    var r = tip.getBoundingClientRect();
+    var left = x + 14;
+    var top = y + 16;
+    if (left + r.width > window.innerWidth - pad) left = x - r.width - 14;
+    if (top + r.height > window.innerHeight - pad) top = y - r.height - 16;
+    tip.style.left = Math.max(pad, left) + 'px';
+    tip.style.top = Math.max(pad, top) + 'px';
+  }
+
+  function hideTip() {
+    tip.style.display = 'none';
+    tip.setAttribute('aria-hidden', 'true');
+  }
+
+  document.querySelectorAll('.heatmap-cell[data-date]').forEach(function(cell) {
+    cell.addEventListener('mouseenter', function(e) { showTip(cell, e.clientX, e.clientY); });
+    cell.addEventListener('mousemove', function(e) { moveTip(e.clientX, e.clientY); });
+    cell.addEventListener('mouseleave', hideTip);
+    cell.addEventListener('focus', function() {
+      var r = cell.getBoundingClientRect();
+      showTip(cell, r.left + r.width / 2, r.top);
+    });
+    cell.addEventListener('blur', hideTip);
+    cell.addEventListener('click', function(e) {
+      if (tip.style.display === 'block') { hideTip(); }
+      else { showTip(cell, e.clientX || 0, e.clientY || 0); }
+    });
+  });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') hideTip(); });
+});
+</script>
 {% endblock %}

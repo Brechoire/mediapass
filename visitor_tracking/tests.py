@@ -532,6 +532,36 @@ class SuperadminHeatmapViewTests(TestCase):
         self.assertTrue(cell["details"].startswith("Médiathèque Anor - "))
         self.assertNotIn(" - Médiathèque Anor", cell["details"])
 
+    def test_rich_tooltip_map(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/admin-heatmap/{self.year}/")
+        tips = response.context["heatmap_tooltips"]
+        # 1er déc. : 120 + 12 = 132 visiteurs, 2 lignes de détail.
+        key = f"{self.year}-12-01"
+        self.assertIn(key, tips)
+        self.assertEqual(tips[key]["total"], 132)
+        self.assertIn("décembre", tips[key]["label"])
+        self.assertEqual(len(tips[key]["lines"]), 2)
+        self.assertGreaterEqual(tips[key]["lines"][0]["count"], 0)
+
+    def test_rich_tooltip_markup(self):
+        import re
+
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/admin-heatmap/{self.year}/")
+        content = response.content.decode()
+        self.assertIn('id="heatmap-tooltips"', content)
+        self.assertIn('id="heatmap-tip"', content)
+        self.assertContains(response, "Survolez ou touchez un jour")
+        m = re.search(r'<div class="heatmap-cell[^>]*>', content)
+        self.assertIsNotNone(m)
+        cell_tag = m.group(0)
+        self.assertIn("data-date=", cell_tag)
+        self.assertIn("aria-label=", cell_tag)
+        self.assertIn('tabindex="0"', cell_tag)
+        # Plus de title natif sur les cellules (infobulle custom à la place).
+        self.assertNotIn("title=", cell_tag)
+
 
 class AnnualReportViewTests(TestCase):
     """Tests pour la vue rapport annuel."""
@@ -617,6 +647,14 @@ class AnnualReportViewTests(TestCase):
 class SuperadminStatisticsViewTests(TestCase):
     """Tests pour la vue superadmin_statistics avec filtre par commune."""
 
+    @staticmethod
+    def last_open_day(reference=None):
+        """Date la plus récente (< reference) qui n'est pas un dimanche."""
+        d = (reference or timezone.now().date()) - timedelta(days=1)
+        while d.weekday() == 6:
+            d -= timedelta(days=1)
+        return d
+
     def setUp(self):
         self.superuser = User.objects.create_superuser(
             username="admin", password="pass", email="admin@example.com"
@@ -641,16 +679,17 @@ class SuperadminStatisticsViewTests(TestCase):
             user=self.trelon,
         )
 
-        today = timezone.now().date()
+        # Jour ouvré (pas un dimanche : les dimanches sont exclus des stats).
+        day = self.last_open_day()
         VisitorCount.objects.create(
             location=self.loc_anor,
-            date=today - timedelta(days=1),
+            date=day,
             count=30,
             created_by=self.anor,
         )
         VisitorCount.objects.create(
             location=self.loc_trelon,
-            date=today - timedelta(days=1),
+            date=day,
             count=50,
             created_by=self.trelon,
         )
@@ -712,15 +751,85 @@ class SuperadminStatisticsViewTests(TestCase):
         )
         users_comparison = response.context["users_comparison"]
         self.assertEqual(len(users_comparison), 2)
-        self.assertIsNotNone(response.context["duel"])
+        # Décision produit : plus de mode duel, comparaisons à N.
+        self.assertNotIn("duel", response.context)
+        content = response.content.decode()
+        self.assertNotIn("Mode duel", content)
+        self.assertNotIn("Différence (1 vs 2)", content)
 
-    @staticmethod
-    def last_open_day(reference=None):
-        """Date la plus récente (< reference) qui n'est pas un dimanche."""
-        d = (reference or timezone.now().date()) - timedelta(days=1)
-        while d.weekday() == 6:
-            d -= timedelta(days=1)
-        return d
+    def test_layout_refonte_lot1(self):
+        self.login()
+        response = self.client.get("/mediatheque/visiteurs/admin-statistics/")
+        content = response.content.decode()
+        # En-tête clair (plus de dégradé), fieldset, bouton Comparer.
+        self.assertNotIn("from-[#4a6fa5]", content)
+        self.assertIn("Filtres — combinables", content)
+        self.assertIn("Filtrer", content)
+        self.assertIn("Comparer", content)
+        self.assertIn('href="#bloc-detail"', content)
+        # Accessibilité tableaux et canvas.
+        self.assertIn('scope="col"', content)
+        self.assertIn("<caption", content)
+        self.assertIn('role="img"', content)
+        self.assertIn("integrity=", content)
+
+    def test_commune_month_matrix(self):
+        self.login()
+        response = self.client.get("/mediatheque/visiteurs/admin-statistics/")
+        matrix = response.context["commune_month_matrix"]
+        self.assertTrue(len(matrix["matrix"]) >= 2)
+        for row in matrix["matrix"]:
+            self.assertEqual(len(row["months"]), len(matrix["months"]))
+            self.assertEqual(row["total"], sum(row["months"]))
+            for cell in row["cells"]:
+                self.assertIn("start", cell)
+                self.assertIn("end", cell)
+        content = response.content.decode()
+        self.assertIn("Saisonnalité", content)
+        self.assertIn("bloc-saisonnalite", content)
+
+    def test_weekday_overview(self):
+        self.login()
+        response = self.client.get("/mediatheque/visiteurs/admin-statistics/")
+        overview = response.context["weekday_overview"]
+        self.assertEqual(len(overview), 6)
+        self.assertEqual(overview[0]["name"], "Lundi")
+        self.assertTrue(all("total" in d and "avg" in d for d in overview))
+        self.assertContains(response, "Moyennes par jour de semaine")
+
+    def test_synthese_content(self):
+        self.login()
+        response = self.client.get("/mediatheque/visiteurs/admin-statistics/")
+        synthese = response.context["synthese"]
+        self.assertIsNone(synthese["perimetre"])
+        phrases = synthese["phrases"]
+        self.assertGreaterEqual(len(phrases), 8)
+        self.assertLessEqual(len(phrases), 12)
+        full = " ".join(phrases)
+        self.assertIn("80", full)
+        content = response.content.decode()
+        self.assertIn("Synthèse", content)
+        self.assertIn("synthese-phrase", content)
+        self.assertIn("Exporter CSV", content)
+
+    def test_synthese_with_commune_filter(self):
+        self.login()
+        response = self.client.get(
+            "/mediatheque/visiteurs/admin-statistics/?commune=anor"
+        )
+        synthese = response.context["synthese"]
+        self.assertIn("anor", (synthese["perimetre"] or "").lower())
+        self.assertContains(response, "Périmètre :")
+
+    def test_annual_report_synthese(self):
+        self.superuser.groups.add(create_mediatheque_group())
+        self.login()
+        response = self.client.get("/mediatheque/visiteurs/report/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("synthese", response.context)
+        phrases = response.context["synthese"]["phrases"]
+        self.assertGreaterEqual(len(phrases), 6)
+        self.assertIn("Synthèse", response.content.decode())
 
     def test_custom_period(self):
         self.login()

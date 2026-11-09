@@ -85,6 +85,31 @@
       </div>
     </div>
 
+    <!-- Synthèse -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6 mb-8">
+      <div class="flex items-center gap-3 mb-1">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#4a6fa5] text-white" aria-hidden="true"><i class="bx bx-detail text-xl"></i></span>
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="text-base font-bold text-slate-900">Synthèse {{ year }}</h2>
+          <span class="rounded-full bg-[#e8eef7] px-2.5 py-0.5 text-xs font-semibold text-[#4a6fa5]">{{ synthese.phrases|length }} points clés</span>
+        </div>
+      </div>
+      <p class="text-xs text-[#7a8fa0] mb-4 ml-12">Sert à : résumer l'année pour le rapport d'activité et les élus.</p>
+      <div class="border-l-4 border-[#4a6fa5] bg-[#eef3f9] rounded-r-lg p-4 sm:p-5 text-slate-800">
+        {% for phrase in synthese.phrases %}
+        {% if forloop.first %}
+        <p class="synthese-phrase text-[15px] font-medium leading-relaxed text-slate-900 first-letter:float-left first-letter:mr-1.5 first-letter:text-4xl first-letter:font-bold first-letter:leading-[0.9] first-letter:text-[#4a6fa5]">{{ phrase }}</p>
+        {% else %}
+        {% if forloop.counter == 2 %}<ol class="mt-4 space-y-2 text-sm leading-relaxed">{% endif %}
+          <li class="flex gap-2.5"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#4a6fa5] text-[11px] font-bold text-white" aria-hidden="true">{{ forloop.counter|add:"-1" }}</span><span class="synthese-phrase">{{ phrase }}</span></li>
+        {% if forloop.last %}</ol>{% endif %}
+        {% endif %}
+        {% empty %}
+        <p class="leading-relaxed">Aucune donnée pour rédiger la synthèse sur {{ year }}.</p>
+        {% endfor %}
+      </div>
+    </div>
+
     <!-- Mensuel + Trimestriel -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
       <div class="lg:col-span-2 bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
