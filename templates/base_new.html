@@ -59,47 +59,70 @@
                         <a href="{% url 'kakemono:list' %}" class="px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors">Kakemonos</a>
                         {% endif %}
                         {% if user.is_superuser %}
-                        <div class="relative group">
-                            <button class="flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer">Admin <i class="bx bx-chevron-down text-base"></i></button>
-                            <div class="absolute left-0 top-full z-50 hidden group-hover:block bg-white border border-[#dce3ef] rounded-xl shadow-lg py-2 min-w-[230px]">
-                                <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Gestion</p>
-                                <a href="{% url 'product_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-package text-[#b0bedb]"></i> Produits</a>
-                                <a href="{% url 'structure_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-building text-[#b0bedb]"></i> Structures</a>
-                                <a href="{% url 'category_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-tag text-[#b0bedb]"></i> Catégories</a>
-                                <a href="{% url 'documents:document_manage' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-file text-[#b0bedb]"></i> Documents</a>
-                                <a href="{% url 'documents:document_manage' %}#categories" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-category text-[#b0bedb]"></i> Catégories de documents</a>
-                                <a href="{% url 'workshop_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-wrench text-[#b0bedb]"></i> Ateliers</a>
-                                <hr class="border-[#dce3ef] my-1">
-                                <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Réservations</p>
-                                <a href="{% url 'reservation_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
-                                    <i class="bx bx-calendar text-[#b0bedb]"></i> Toutes
-                                    {% if pending_reservations_count > 0 %}
-                                    <span class="ml-auto inline-flex items-center justify-center rounded-full bg-[#d46a78] text-white text-xs px-2 py-0.5">{{ pending_reservations_count }}</span>
-                                    {% endif %}
-                                </a>
-                                <a href="{% url 'reservation_calendar' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-calendar-alt text-[#b0bedb]"></i> Calendrier</a>
-                                <hr class="border-[#dce3ef] my-1">
-                                <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Statistiques</p>
-                                <a href="{% url 'statistics' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-line-chart text-[#b0bedb]"></i> Réservations</a>
-                                <a href="{% url 'workshop_stats' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-bar-chart text-[#b0bedb]"></i> Ateliers</a>
-                                <a href="{% url 'visitor_tracking:superadmin_statistics' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-group text-[#b0bedb]"></i> Visiteurs</a>
-                                <hr class="border-[#dce3ef] my-1">
-                                <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Communication</p>
-                                <a href="{% url 'notifications:email_admin' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-envelope text-[#b0bedb]"></i> Emails</a>
-                                <hr class="border-[#dce3ef] my-1">
-                                <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Système</p>
-                                <a href="#" id="open-backup-modal" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-download text-[#b0bedb]"></i> Sauvegardes</a>
-                            </div>
-                        </div>
-                        <div class="relative group">
-                            <button class="flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer">Médiathèques <i class="bx bx-chevron-down text-base"></i></button>
-                            <div class="absolute left-0 top-full z-50 hidden group-hover:block bg-white border border-[#dce3ef] rounded-xl shadow-lg py-2 min-w-[230px]">
-                                <p class="px-4 py-1 text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Voir une médiathèque</p>
-                                {% for prof in library_profiles %}
-                                <a href="{% url 'mediatheque_public' prof.pk %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-library text-[#b0bedb]"></i> {{ prof.name }}</a>
-                                {% endfor %}
-                                <hr class="border-[#dce3ef] my-1">
-                                <a href="{% url 'newsletter:fiche_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-edit text-[#b0bedb]"></i> Éditer les fiches</a>
+                        <div class="relative" data-admin-menu>
+                            <button id="admin-menu-button" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="admin-menu-panel" class="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer">
+                                Administration <i class="bx bx-chevron-down text-base" aria-hidden="true"></i>
+                                {% if pending_reservations_count > 0 %}
+                                <span class="inline-flex items-center justify-center rounded-full bg-[#d46a78] text-white text-xs px-2 py-0.5" title="{{ pending_reservations_count }} réservation(s) en attente">{{ pending_reservations_count }}</span>
+                                {% endif %}
+                            </button>
+                            <div id="admin-menu-panel" aria-labelledby="admin-menu-button" class="hidden absolute left-0 top-full z-50 w-[640px] max-w-[90vw] bg-white border border-[#dce3ef] rounded-xl shadow-lg overflow-hidden">
+                                <div class="p-3 border-b border-[#dce3ef]">
+                                    <label for="admin-menu-search" class="sr-only">Rechercher une action d'administration</label>
+                                    <div class="relative">
+                                        <i class="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-[#7a8fa0]" aria-hidden="true"></i>
+                                        <input id="admin-menu-search" type="search" placeholder="Rechercher : réservation, produit, sauvegarde…" autocomplete="off" class="w-full pl-10 pr-3 py-2 border border-[#dce3ef] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5]" />
+                                    </div>
+                                    <p id="admin-menu-no-result" class="hidden px-1 pt-2 text-sm text-[#7a8fa0]">Aucune action ne correspond à cette recherche.</p>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-0 max-h-[60vh] overflow-auto">
+                                    <div class="py-2" data-admin-section>
+                                        <p class="px-4 py-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wider">À traiter</p>
+                                        <ul>
+                                            <li data-admin-item><a href="{% url 'reservation_list' %}?status=pending" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-calendar text-[#6b8ab0]" aria-hidden="true"></i> File d'attente{% if pending_reservations_count > 0 %} <span class="ml-auto inline-flex items-center justify-center rounded-full bg-[#d46a78] text-white text-xs px-2 py-0.5">{{ pending_reservations_count }}</span>{% endif %}</a></li>
+                                            <li data-admin-item><a href="{% url 'reservation_calendar' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-calendar-alt text-[#6b8ab0]" aria-hidden="true"></i> Calendrier réservations</a></li>
+                                            <li data-admin-item><a href="{% url 'structure_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-building text-[#6b8ab0]" aria-hidden="true"></i> Structures{% if pending_count > 0 %} <span class="ml-auto inline-flex items-center justify-center rounded-full bg-amber-500 text-white text-xs px-2 py-0.5" title="{{ pending_count }} structure(s) en attente">{{ pending_count }}</span>{% endif %}</a></li>
+                                        </ul>
+                                        <p class="px-4 py-1.5 mt-2 text-xs font-semibold text-[#475569] uppercase tracking-wider">Statistiques</p>
+                                        <ul>
+                                            <li data-admin-item><a href="{% url 'statistics' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-line-chart text-[#6b8ab0]" aria-hidden="true"></i> Stats réservations</a></li>
+                                            <li data-admin-item><a href="{% url 'workshop_stats' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-bar-chart text-[#6b8ab0]" aria-hidden="true"></i> Stats ateliers</a></li>
+                                            <li data-admin-item><a href="{% url 'visitor_tracking:superadmin_statistics' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-group text-[#6b8ab0]" aria-hidden="true"></i> Stats visiteurs</a></li>
+                                        </ul>
+                                    </div>
+                                    <div class="py-2 sm:border-l border-[#dce3ef]" data-admin-section>
+                                        <p class="px-4 py-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wider">Catalogue</p>
+                                        <ul>
+                                            <li data-admin-item><a href="{% url 'product_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-package text-[#6b8ab0]" aria-hidden="true"></i> Produits réservables</a></li>
+                                            <li data-admin-item><a href="{% url 'category_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-tag text-[#6b8ab0]" aria-hidden="true"></i> Catégories catalogue</a></li>
+                                            <li data-admin-item><a href="{% url 'documents:document_manage' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-file text-[#6b8ab0]" aria-hidden="true"></i> Documents à télécharger</a></li>
+                                            <li data-admin-item><a href="{% url 'documents:document_manage' %}#categories" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-category text-[#6b8ab0]" aria-hidden="true"></i> Catégories de documents</a></li>
+                                            <li data-admin-item><a href="{% url 'workshop_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-wrench text-[#6b8ab0]" aria-hidden="true"></i> Ateliers catalogue</a></li>
+                                            <li data-admin-item><a href="{% url 'location_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-map text-[#6b8ab0]" aria-hidden="true"></i> Lieux d'ateliers</a></li>
+                                        </ul>
+                                        <p class="px-4 py-1.5 mt-2 text-xs font-semibold text-[#475569] uppercase tracking-wider">Communication</p>
+                                        <ul>
+                                            <li data-admin-item><a href="{% url 'notifications:email_admin' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-envelope text-[#6b8ab0]" aria-hidden="true"></i> Modèles d'emails</a></li>
+                                        </ul>
+                                    </div>
+                                    <div class="py-2 sm:border-l border-[#dce3ef]" data-admin-section>
+                                        <p class="px-4 py-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wider">Médiathèques</p>
+                                        <ul>
+                                            <li data-admin-item><a href="{% url 'newsletter:fiche_list' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm font-medium text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-edit text-[#6b8ab0]" aria-hidden="true"></i> Éditer les fiches</a></li>
+                                        </ul>
+                                        <ul class="max-h-48 overflow-auto mt-1" aria-label="Voir une médiathèque">
+                                            {% for prof in library_profiles %}
+                                            <li data-admin-item><a href="{% url 'mediatheque_public' prof.pk %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-library text-[#6b8ab0]" aria-hidden="true"></i> {{ prof.name }}</a></li>
+                                            {% empty %}
+                                            <li class="px-4 py-2 text-sm text-[#7a8fa0]">Aucune médiathèque.</li>
+                                            {% endfor %}
+                                        </ul>
+                                        <p class="px-4 py-1.5 mt-2 text-xs font-semibold text-[#475569] uppercase tracking-wider">Système</p>
+                                        <ul>
+                                            <li data-admin-item><button type="button" data-open-backup-modal class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors w-full text-left cursor-pointer"><i class="bx bx-download text-[#6b8ab0]" aria-hidden="true"></i> Sauvegardes</button></li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         {% endif %}
@@ -178,40 +201,42 @@
                     <a href="{% url 'kakemono:list' %}" class="block px-3 py-2.5 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Réservations kakemonos</a>
                     {% endif %}
                     {% if user.is_superuser %}
-                    <div class="px-3 py-2">
-                        <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Gestion</p>
-                        <a href="{% url 'product_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-package text-[#b0bedb]"></i> Produits</a>
-                        <a href="{% url 'structure_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-building text-[#b0bedb]"></i> Structures</a>
-                        <a href="{% url 'category_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-tag text-[#b0bedb]"></i> Catégories</a>
-                        <a href="{% url 'documents:document_manage' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-file text-[#b0bedb]"></i> Documents</a>
-                        <a href="{% url 'documents:document_manage' %}#categories" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-category text-[#b0bedb]"></i> Catégories de documents</a>
-                        <a href="{% url 'workshop_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-wrench text-[#b0bedb]"></i> Ateliers</a>
-                    </div>
-                    <div class="px-3 py-2">
-                        <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Réservations</p>
-                        <a href="{% url 'reservation_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-calendar text-[#b0bedb]"></i> Toutes{% if pending_reservations_count > 0 %} <span class="ml-auto inline-flex items-center justify-center rounded-full bg-[#d46a78] text-white text-xs px-2 py-0.5">{{ pending_reservations_count }}</span>{% endif %}</a>
-                        <a href="{% url 'reservation_calendar' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-calendar-alt text-[#b0bedb]"></i> Calendrier</a>
-                    </div>
-                    <div class="px-3 py-2">
-                        <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Statistiques</p>
-                        <a href="{% url 'statistics' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-line-chart text-[#b0bedb]"></i> Réservations</a>
-                        <a href="{% url 'workshop_stats' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-bar-chart text-[#b0bedb]"></i> Ateliers</a>
-                        <a href="{% url 'visitor_tracking:superadmin_statistics' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-group text-[#b0bedb]"></i> Visiteurs</a>
-                    </div>
-                    <div class="px-3 py-2">
-                        <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Communication</p>
-                        <a href="{% url 'notifications:email_admin' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-envelope text-[#b0bedb]"></i> Emails</a>
-                    </div>
-                    <div class="px-3 py-2">
-                        <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Médiathèques</p>
-                        {% for prof in library_profiles %}
-                        <a href="{% url 'mediatheque_public' prof.pk %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-library text-[#b0bedb]"></i> {{ prof.name }}</a>
-                        {% endfor %}
-                        <a href="{% url 'newsletter:fiche_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-edit text-[#b0bedb]"></i> Éditer les fiches</a>
-                    </div>
-                    <div class="px-3 py-2">
-                        <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Système</p>
-                        <a href="#" id="open-backup-modal-mobile" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2"><i class="bx bx-download text-[#b0bedb]"></i> Sauvegardes</a>
+                    <div class="px-3 py-2 border-t border-[#dce3ef] mt-2">
+                        <p class="text-xs font-semibold text-[#475569] uppercase tracking-wider mb-1.5 px-3 pt-2">Administration{% if pending_reservations_count > 0 %} <span class="ml-1 inline-flex items-center justify-center rounded-full bg-[#d46a78] text-white text-xs px-2 py-0.5">{{ pending_reservations_count }}</span>{% endif %}</p>
+                        <details class="group/detail">
+                            <summary class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors cursor-pointer list-none font-medium">À traiter et statistiques <i class="bx bx-chevron-down ml-auto transition-transform group-open/detail:rotate-180" aria-hidden="true"></i></summary>
+                            <div class="ml-2 mt-1 space-y-0.5">
+                                <a href="{% url 'reservation_list' %}?status=pending" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-calendar text-[#6b8ab0]" aria-hidden="true"></i> File d'attente{% if pending_reservations_count > 0 %} <span class="ml-auto inline-flex items-center justify-center rounded-full bg-[#d46a78] text-white text-xs px-2 py-0.5">{{ pending_reservations_count }}</span>{% endif %}</a>
+                                <a href="{% url 'reservation_calendar' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-calendar-alt text-[#6b8ab0]" aria-hidden="true"></i> Calendrier réservations</a>
+                                <a href="{% url 'structure_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-building text-[#6b8ab0]" aria-hidden="true"></i> Structures{% if pending_count > 0 %} <span class="ml-auto inline-flex items-center justify-center rounded-full bg-amber-500 text-white text-xs px-2 py-0.5">{{ pending_count }}</span>{% endif %}</a>
+                                <a href="{% url 'statistics' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-line-chart text-[#6b8ab0]" aria-hidden="true"></i> Stats réservations</a>
+                                <a href="{% url 'workshop_stats' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-bar-chart text-[#6b8ab0]" aria-hidden="true"></i> Stats ateliers</a>
+                                <a href="{% url 'visitor_tracking:superadmin_statistics' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-group text-[#6b8ab0]" aria-hidden="true"></i> Stats visiteurs</a>
+                            </div>
+                        </details>
+                        <details class="group/detail">
+                            <summary class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors cursor-pointer list-none font-medium">Catalogue <i class="bx bx-chevron-down ml-auto transition-transform group-open/detail:rotate-180" aria-hidden="true"></i></summary>
+                            <div class="ml-2 mt-1 space-y-0.5">
+                                <a href="{% url 'product_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-package text-[#6b8ab0]" aria-hidden="true"></i> Produits réservables</a>
+                                <a href="{% url 'structure_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-building text-[#6b8ab0]" aria-hidden="true"></i> Structures</a>
+                                <a href="{% url 'category_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-tag text-[#6b8ab0]" aria-hidden="true"></i> Catégories catalogue</a>
+                                <a href="{% url 'documents:document_manage' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-file text-[#6b8ab0]" aria-hidden="true"></i> Documents à télécharger</a>
+                                <a href="{% url 'documents:document_manage' %}#categories" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-category text-[#6b8ab0]" aria-hidden="true"></i> Catégories de documents</a>
+                                <a href="{% url 'workshop_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-wrench text-[#6b8ab0]" aria-hidden="true"></i> Ateliers catalogue</a>
+                                <a href="{% url 'location_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-map text-[#6b8ab0]" aria-hidden="true"></i> Lieux d'ateliers</a>
+                                <a href="{% url 'notifications:email_admin' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-envelope text-[#6b8ab0]" aria-hidden="true"></i> Modèles d'emails</a>
+                            </div>
+                        </details>
+                        <details class="group/detail">
+                            <summary class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors cursor-pointer list-none font-medium">Médiathèques et système <i class="bx bx-chevron-down ml-auto transition-transform group-open/detail:rotate-180" aria-hidden="true"></i></summary>
+                            <div class="ml-2 mt-1 space-y-0.5">
+                                {% for prof in library_profiles %}
+                                <a href="{% url 'mediatheque_public' prof.pk %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-library text-[#6b8ab0]" aria-hidden="true"></i> {{ prof.name }}</a>
+                                {% endfor %}
+                                <a href="{% url 'newsletter:fiche_list' %}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors"><i class="bx bx-edit text-[#6b8ab0]" aria-hidden="true"></i> Éditer les fiches</a>
+                                <button type="button" data-open-backup-modal class="flex items-center gap-2 px-3 py-2 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors w-full text-left cursor-pointer"><i class="bx bx-download text-[#6b8ab0]" aria-hidden="true"></i> Sauvegardes</button>
+                            </div>
+                        </details>
                     </div>
                     {% endif %}
                 {% else %}
@@ -329,13 +354,73 @@
         const modal = document.getElementById('backup-modal');
         const closeBtn = document.getElementById('close-backup-modal');
         if (modal) {
-          const openBtns = [document.getElementById('open-backup-modal'), document.getElementById('open-backup-modal-mobile')];
-          function openModal(){ modal.classList.remove('hidden'); }
-          function closeModal(){ modal.classList.add('hidden'); }
-          openBtns.forEach(function(b) { if (b) b.addEventListener('click', function(e){ e.preventDefault(); openModal(); }); });
+          const openBtns = Array.from(document.querySelectorAll('[data-open-backup-modal]'));
+          let lastOpener = null;
+          function openModal(opener){ modal.classList.remove('hidden'); lastOpener = opener || null; if (closeBtn) closeBtn.focus(); }
+          function closeModal(){ modal.classList.add('hidden'); if (lastOpener && document.contains(lastOpener)) lastOpener.focus(); }
+          openBtns.forEach(function(b) { if (b) b.addEventListener('click', function(e){ e.preventDefault(); openModal(b); }); });
           if (closeBtn) closeBtn.addEventListener('click', closeModal);
           modal.addEventListener('click', function(e){
             if (e.target === modal) closeModal();
+          });
+          document.addEventListener('keydown', function(e){
+            if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
+          });
+        }
+
+        const adminButton = document.getElementById('admin-menu-button');
+        const adminPanel = document.getElementById('admin-menu-panel');
+        const adminSearch = document.getElementById('admin-menu-search');
+        const adminNoResult = document.getElementById('admin-menu-no-result');
+        if (adminButton && adminPanel) {
+          function setAdminOpen(open){
+            adminPanel.classList.toggle('hidden', !open);
+            adminButton.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (open && adminSearch) {
+              adminSearch.value = '';
+              if (typeof filterAdminItems === 'function') filterAdminItems('');
+              setTimeout(function(){ adminSearch.focus(); }, 50);
+            }
+          }
+          function normalize(s){ return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+          function filterAdminItems(q){
+            const query = normalize(q.trim());
+            const items = adminPanel.querySelectorAll('[data-admin-item]');
+            let visible = 0;
+            items.forEach(function(li){
+              const text = normalize(li.textContent);
+              const show = !query || text.includes(query);
+              li.classList.toggle('hidden', !show);
+              if (show) visible += 1;
+            });
+            adminPanel.querySelectorAll('[data-admin-section]').forEach(function(sec){
+              const hasVisible = Array.from(sec.querySelectorAll('[data-admin-item]')).some(function(li){ return !li.classList.contains('hidden'); });
+              sec.classList.toggle('hidden', !hasVisible);
+            });
+            if (adminNoResult) adminNoResult.classList.toggle('hidden', visible !== 0);
+          }
+          adminButton.addEventListener('click', function(e){
+            e.stopPropagation();
+            setAdminOpen(adminPanel.classList.contains('hidden'));
+          });
+          adminButton.addEventListener('keydown', function(e){
+            if (e.key === 'ArrowDown' && adminPanel.classList.contains('hidden')) {
+              e.preventDefault();
+              setAdminOpen(true);
+            }
+          });
+          if (adminSearch) adminSearch.addEventListener('input', function(){ filterAdminItems(adminSearch.value); });
+          document.addEventListener('click', function(e){
+            if (!adminPanel.classList.contains('hidden') && !e.target.closest('[data-admin-menu]')) setAdminOpen(false);
+          });
+          document.addEventListener('keydown', function(e){
+            if (e.key === 'Escape' && !adminPanel.classList.contains('hidden')) {
+              setAdminOpen(false);
+              adminButton.focus();
+            }
+          });
+          document.addEventListener('focusin', function(e){
+            if (!adminPanel.classList.contains('hidden') && !e.target.closest('[data-admin-menu]')) setAdminOpen(false);
           });
         }
       });
