@@ -14,62 +14,54 @@ class WorkshopForm(forms.ModelForm):
     """
 
     name = forms.CharField(
-        widget=forms.TextInput(attrs={"class": "form-control"}),
+        widget=forms.TextInput(),
         label="Nom de l'atelier",
     )
     location = forms.ModelChoiceField(
         queryset=Location.objects.all(),
-        widget=forms.Select(attrs={"class": "form-control"}),
+        widget=forms.Select(),
         label="Lieu",
     )
     date = forms.DateField(
-        widget=forms.DateInput(
-            attrs={"type": "date", "class": "form-control"}
-        ),
+        widget=forms.DateInput(attrs={"type": "date"}),
         label="Date de début",
     )
     date_end = forms.DateField(
         required=False,
-        widget=forms.DateInput(
-            attrs={"type": "date", "class": "form-control"}
-        ),
+        widget=forms.DateInput(attrs={"type": "date"}),
         label="Date de fin",
     )
     start_time = forms.TimeField(
-        widget=forms.TimeInput(
-            attrs={"type": "time", "class": "form-control"}
-        ),
+        widget=forms.TimeInput(attrs={"type": "time"}),
         label="Heure de début",
     )
     end_time = forms.TimeField(
-        widget=forms.TimeInput(
-            attrs={"type": "time", "class": "form-control"}
-        ),
+        widget=forms.TimeInput(attrs={"type": "time"}),
         label="Heure de fin",
     )
     number_registered = forms.IntegerField(
         required=False,
-        widget=forms.NumberInput(attrs={"class": "form-control"}),
-        label="Nombre de participants",
+        widget=forms.NumberInput(),
+        label="Inscrits",
     )
     number_attendees = forms.IntegerField(
         required=False,
-        widget=forms.NumberInput(attrs={"class": "form-control"}),
-        label="Nombre d'inscription",
+        widget=forms.NumberInput(),
+        label="Présents",
     )
     class_welcome = forms.BooleanField(
         required=False,
-        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        widget=forms.CheckboxInput(),
         label="Accueil de classe ?",
     )
     poster_required = forms.BooleanField(
         required=False,
-        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        widget=forms.CheckboxInput(),
         label="Affiche requis ?",
     )
     observations = forms.CharField(
         required=False,
-        widget=forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+        widget=forms.Textarea(attrs={"rows": 4}),
         label="Observations",
     )
 
@@ -275,7 +267,7 @@ class WorkshopFilterForm(forms.Form):
     # classe Bootstrap "form-control" n'est définie nulle part.
     WIDGET_ATTRS = {
         "class": (
-            "w-full bg-white border border-slate-300 rounded-lg px-3 py-2 "
+            "w-full bg-white border border-[#dce3ef] rounded-lg px-3 py-2 "
             "text-sm text-slate-900 focus:outline-none focus:ring-2 "
             "focus:ring-[#4a6fa5]/30 focus:border-[#4a6fa5]"
         )

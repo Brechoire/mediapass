@@ -281,7 +281,7 @@ class WorkshopListViewTests(TestCase):
         self.assertIn('scope="col"', content)
         self.assertIn('aria-sort="descending"', content)
         self.assertIn(
-            'class="w-full bg-white border border-slate-300 rounded-lg',
+            'class="w-full bg-white border border-[#dce3ef] rounded-lg',
             content,
         )
 
@@ -474,6 +474,19 @@ class WorkshopCreateViewTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "obligatoire")
+
+    def test_post_invalid_preserves_selected_location(self):
+        self.login()
+        response = self.client.post(
+            reverse("workshop_create"),
+            {"name": "", "location": self.location.pk, "date": ""},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            f'<option value="{self.location.pk}" selected>Loc</option>',
+            html=True,
+        )
 
 
 class WorkshopDetailViewTests(TestCase):

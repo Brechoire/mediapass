@@ -3,6 +3,29 @@
 
 {% block title %}Statistiques visiteurs | {{ block.super }}{% endblock %}
 
+{% block stylesheets %}
+{{ block.super }}
+<style>
+  .info-bulle { position: relative; cursor: help; }
+  .info-bulle::after {
+    content: attr(data-texte);
+    position: absolute; bottom: calc(100% + 0.5rem); left: 50%;
+    transform: translateX(-50%) scale(0.95);
+    background: #1e293b; color: #fff;
+    font-size: 0.75rem; font-weight: 500; line-height: 1.4; text-transform: none;
+    letter-spacing: normal; text-align: left;
+    padding: 0.5rem 0.75rem; border-radius: 0.75rem;
+    box-shadow: 0 10px 25px rgba(0,0,0,.25);
+    width: max-content; max-width: 15rem; white-space: normal;
+    opacity: 0; pointer-events: none; z-index: 50;
+    transition: opacity .15s ease, transform .15s ease;
+  }
+  .info-bulle:hover::after, .info-bulle:focus::after {
+    opacity: 1; transform: translateX(-50%) scale(1);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
     <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
@@ -85,7 +108,7 @@
         </form>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5 mb-8">
         <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
             <div class="flex items-center justify-between">
                 <div>
@@ -168,6 +191,19 @@
             <div class="mt-2"><span class="text-xs text-[#b0bedb]">Aucune donnée N-1</span></div>
             {% endif %}
         </div>
+        {% if has_animation_space %}
+        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Jours d'animation <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold normal-case tracking-normal bg-amber-100 text-amber-700 info-bulle" data-texte="Estimation : 1 jour avec pointages compte pour 1 jour d'animation, on ne distingue pas plusieurs seances le meme jour." tabindex="0">estimation</span></p>
+                    <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ anim_days }}</p>
+                    <p class="text-[10px] text-[#b0bedb] mt-0.5">hors dimanche</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-palette text-2xl text-[#4a6fa5]"></i></div>
+            </div>
+            <div class="mt-2"><span class="text-xs text-[#b0bedb]">{{ anim_total }} visiteurs - {{ anim_avg }} en moyenne / jour</span></div>
+        </div>
+        {% endif %}
         {% if projection %}
         <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
             <div class="flex items-center justify-between">
@@ -392,6 +428,7 @@
         <div class="px-6 py-4 border-b border-[#dce3ef]">
             <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-trophy mr-1.5 text-amber-500"></i> Top 5 des meilleurs jours</h5>
         </div>
+        <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-[#dce3ef]">
             <thead class="bg-[#f8f9fc]">
                 <tr>
@@ -412,6 +449,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
     {% endif %}
 </section>

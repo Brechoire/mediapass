@@ -28,26 +28,26 @@
                 <span class="text-sm font-medium text-[#5a6f80]" id="year-label">Année :</span>
                 <div class="flex flex-wrap gap-2" role="group" aria-labelledby="year-label">
                     {% for y in years_list %}
-                    <a href="?year={{ y }}{% if year_base %}&{{ year_base }}{% endif %}" aria-current="{% if selected_year == y %}true{% else %}false{% endif %}"
+                    <a href="?year={{ y }}{% if year_base %}&{{ year_base }}{% endif %}"{% if selected_year == y %} aria-current="page"{% endif %}
                         class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
                         {% if selected_year == y %}bg-[#4a6fa5] text-white{% else %}bg-white text-[#4a6fa5] border border-[#dce3ef] hover:bg-[#e8eef7]{% endif %}">
                         {{ y }}
                     </a>
                     {% empty %}
-                    <span class="text-sm text-[#b0bedb]">{{ selected_year }}</span>
+                    <span class="text-sm text-[#5a6f80]">{{ selected_year }}</span>
                     {% endfor %}
                 </div>
             </div>
             <a href="{% url 'workshop_list' %}"
-                class="text-sm text-[#b0bedb] hover:text-[#4a6fa5] transition-colors {% if not filter_chips and selected_year == current_year %}hidden{% endif %}">
-                <i class="bx bx-x" aria-hidden="true"></i> Réinitialiser
+                class="text-sm text-[#5a6f80] hover:text-[#4a6fa5] transition-colors {% if not filter_chips and selected_year == current_year %}hidden{% endif %}">
+                <i class="bx bx-x" aria-hidden="true"></i> Revenir à l'année en cours
             </a>
         </div>
     </div>
 </section>
 
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-    <details class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm" {% if filter_chips %}open{% endif %}>
+    <details class="group bg-white rounded-2xl border border-[#dce3ef] shadow-sm" {% if filter_chips %}open{% endif %}>
         <summary class="flex items-center justify-between gap-4 p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
             <span class="inline-flex items-center gap-1.5 text-sm font-medium text-[#4a6fa5]">
                 <i class="bx bx-filter text-sm" aria-hidden="true"></i> Filtres
@@ -55,62 +55,62 @@
                 <span class="w-2 h-2 rounded-full bg-[#4a6fa5]" aria-hidden="true"></span>
                 {% endif %}
             </span>
-            <i class="bx bx-chevron-down text-[#b0bedb]" aria-hidden="true"></i>
+            <i class="bx bx-chevron-down text-[#5a6f80] transition-transform group-open:rotate-180" aria-hidden="true"></i>
         </summary>
         <div class="px-6 pb-6">
         <form method="get" action="{% url 'workshop_list' %}">
             <input type="hidden" name="year" value="{{ selected_year }}">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.q.label }}</label>
+                    <label for="{{ filter_form.q.id_for_label }}" class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.q.label }}</label>
                     {{ filter_form.q }}
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.location.label }}</label>
+                    <label for="{{ filter_form.location.id_for_label }}" class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.location.label }}</label>
                     {{ filter_form.location }}
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.city.label }}</label>
+                    <label for="{{ filter_form.city.id_for_label }}" class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.city.label }}</label>
                     {{ filter_form.city }}
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.date_from.label }}</label>
+                    <label for="{{ filter_form.date_from.id_for_label }}" class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.date_from.label }}</label>
                     {{ filter_form.date_from }}
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.date_to.label }}</label>
+                    <label for="{{ filter_form.date_to.id_for_label }}" class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.date_to.label }}</label>
                     {{ filter_form.date_to }}
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.class_welcome.label }}</label>
+                    <label for="{{ filter_form.class_welcome.id_for_label }}" class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.class_welcome.label }}</label>
                     {{ filter_form.class_welcome }}
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.poster_required.label }}</label>
+                    <label for="{{ filter_form.poster_required.id_for_label }}" class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.poster_required.label }}</label>
                     {{ filter_form.poster_required }}
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.poster_valide.label }}</label>
+                    <label for="{{ filter_form.poster_valide.id_for_label }}" class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.poster_valide.label }}</label>
                     {{ filter_form.poster_valide }}
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.has_image.label }}</label>
+                    <label for="{{ filter_form.has_image.id_for_label }}" class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.has_image.label }}</label>
                     {{ filter_form.has_image }}
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.number_registered_min.label }}</label>
+                    <label for="{{ filter_form.number_registered_min.id_for_label }}" class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.number_registered_min.label }}</label>
                     {{ filter_form.number_registered_min }}
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.number_registered_max.label }}</label>
+                    <label for="{{ filter_form.number_registered_max.id_for_label }}" class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.number_registered_max.label }}</label>
                     {{ filter_form.number_registered_max }}
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.number_attendees_min.label }}</label>
+                    <label for="{{ filter_form.number_attendees_min.id_for_label }}" class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.number_attendees_min.label }}</label>
                     {{ filter_form.number_attendees_min }}
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.number_attendees_max.label }}</label>
+                    <label for="{{ filter_form.number_attendees_max.id_for_label }}" class="block text-xs font-semibold text-[#5a6f80] uppercase tracking-wider mb-1.5">{{ filter_form.number_attendees_max.label }}</label>
                     {{ filter_form.number_attendees_max }}
                 </div>
             </div>
@@ -139,7 +139,7 @@
         {% endfor %}
         <a href="?year={{ selected_year }}"
             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
-            <i class="bx bx-x" aria-hidden="true"></i> Tout effacer
+            <i class="bx bx-x" aria-hidden="true"></i> Tout effacer (garde {{ selected_year }})
         </a>
     </div>
 </section>
@@ -151,14 +151,14 @@
             <h5 class="font-semibold text-[#1e293b]">
                 <i class="bx bx-calendar mr-1.5 text-[#4a6fa5]"></i> Liste des ateliers {{ selected_year }}
             </h5>
-            <span class="text-sm text-[#b0bedb]">{{ paginator.count }} atelier{{ paginator.count|pluralize }}</span>
+            <span class="text-sm text-[#5a6f80]">{{ paginator.count }} atelier{{ paginator.count|pluralize }}</span>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-[#dce3ef]">
                 <caption class="sr-only">Liste des ateliers {{ selected_year }}, triable par colonne</caption>
                 <thead class="bg-[#f8f9fc]">
                     <tr>
-                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider"{% if sort_field == 'name' %} aria-sort="ascending"{% elif sort_field == '-name' %} aria-sort="descending"{% else %} aria-sort="none"{% endif %}>
+                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider"{% if sort_field == 'name' %} aria-sort="ascending"{% elif sort_field == '-name' %} aria-sort="descending"{% else %} aria-sort="none"{% endif %}>
                             <a href="?{% if sort_base %}{{ sort_base }}&{% endif %}sort={% if sort_field == 'name' %}-{% endif %}name&page=1"
                                class="inline-flex items-center gap-1 hover:text-[#4a6fa5] transition-colors">
                                 Nom
@@ -167,16 +167,16 @@
                                 {% endif %}
                             </a>
                         </th>
-                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden sm:table-cell"{% if sort_field == 'poster_sort' %} aria-sort="ascending"{% elif sort_field == '-poster_sort' %} aria-sort="descending"{% else %} aria-sort="none"{% endif %}>
+                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider hidden sm:table-cell"{% if sort_field == 'poster_sort' %} aria-sort="ascending"{% elif sort_field == '-poster_sort' %} aria-sort="descending"{% else %} aria-sort="none"{% endif %}>
                             <a href="?{% if sort_base %}{{ sort_base }}&{% endif %}sort={% if sort_field == 'poster_sort' %}-{% endif %}poster_sort&page=1"
-                               class="inline-flex items-center gap-1 hover:text-[#4a6fa5] transition-colors">
+                               class="inline-flex items-center gap-1 hover:text-[#4a6fa5] transition-colors" title="Tri : accueil classe, avec affiche, affiche requise, sans affiche" aria-label="Trier par statut d'affiche : accueil classe, avec affiche, affiche requise, sans affiche">
                                 Affiche
                                 {% if sort_field == 'poster_sort' %}<i class="bx bx-chevron-up text-xs"></i>
                                 {% elif sort_field == '-poster_sort' %}<i class="bx bx-chevron-down text-xs"></i>
                                 {% endif %}
                             </a>
                         </th>
-                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider"{% if sort_field == 'location__name' %} aria-sort="ascending"{% elif sort_field == '-location__name' %} aria-sort="descending"{% else %} aria-sort="none"{% endif %}>
+                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider"{% if sort_field == 'location__name' %} aria-sort="ascending"{% elif sort_field == '-location__name' %} aria-sort="descending"{% else %} aria-sort="none"{% endif %}>
                             <a href="?{% if sort_base %}{{ sort_base }}&{% endif %}sort={% if sort_field == 'location__name' %}-{% endif %}location__name&page=1"
                                class="inline-flex items-center gap-1 hover:text-[#4a6fa5] transition-colors">
                                 Lieu
@@ -185,7 +185,7 @@
                                 {% endif %}
                             </a>
                         </th>
-                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider hidden md:table-cell"{% if sort_field == 'date' %} aria-sort="ascending"{% elif sort_field == '-date' %} aria-sort="descending"{% else %} aria-sort="none"{% endif %}>
+                        <th scope="col" class="px-6 py-3.5 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider hidden md:table-cell"{% if sort_field == 'date' %} aria-sort="ascending"{% elif sort_field == '-date' %} aria-sort="descending"{% else %} aria-sort="none"{% endif %}>
                             <a href="?{% if sort_base %}{{ sort_base }}&{% endif %}sort={% if sort_field == 'date' %}-{% endif %}date&page=1"
                                class="inline-flex items-center gap-1 hover:text-[#4a6fa5] transition-colors">
                                 Date
@@ -194,7 +194,7 @@
                                 {% endif %}
                             </a>
                         </th>
-                        <th scope="col" class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider"{% if sort_field == 'number_registered' %} aria-sort="ascending"{% elif sort_field == '-number_registered' %} aria-sort="descending"{% else %} aria-sort="none"{% endif %}>
+                        <th scope="col" class="px-6 py-3.5 text-center text-xs font-semibold text-[#5a6f80] uppercase tracking-wider"{% if sort_field == 'number_registered' %} aria-sort="ascending"{% elif sort_field == '-number_registered' %} aria-sort="descending"{% else %} aria-sort="none"{% endif %}>
                             <a href="?{% if sort_base %}{{ sort_base }}&{% endif %}sort={% if sort_field == 'number_registered' %}-{% endif %}number_registered&page=1"
                                class="inline-flex items-center gap-1 hover:text-[#4a6fa5] transition-colors">
                                 Inscrits
@@ -203,7 +203,7 @@
                                 {% endif %}
                             </a>
                         </th>
-                        <th scope="col" class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider"{% if sort_field == 'number_attendees' %} aria-sort="ascending"{% elif sort_field == '-number_attendees' %} aria-sort="descending"{% else %} aria-sort="none"{% endif %}>
+                        <th scope="col" class="px-6 py-3.5 text-center text-xs font-semibold text-[#5a6f80] uppercase tracking-wider"{% if sort_field == 'number_attendees' %} aria-sort="ascending"{% elif sort_field == '-number_attendees' %} aria-sort="descending"{% else %} aria-sort="none"{% endif %}>
                             <a href="?{% if sort_base %}{{ sort_base }}&{% endif %}sort={% if sort_field == 'number_attendees' %}-{% endif %}number_attendees&page=1"
                                class="inline-flex items-center gap-1 hover:text-[#4a6fa5] transition-colors">
                                 Présents
@@ -212,14 +212,15 @@
                                 {% endif %}
                             </a>
                         </th>
-                        <th scope="col" class="px-6 py-3.5 text-center text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Actions</th>
+                        <th scope="col" class="px-6 py-3.5 text-center text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-[#dce3ef]">
                     {% for w in workshops %}
                     <tr class="hover:bg-[#f8f9fc] transition-colors">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <a href="{% url 'workshop_detail' w.pk %}" class="text-sm font-medium text-[#4a6fa5] hover:text-[#3d5f8f]" title="{{ w.name }}">{{ w.name|truncatechars:25 }}</a>
+                        <td class="px-6 py-4">
+                            <a href="{% url 'workshop_detail' w.pk %}" class="block max-w-[220px] whitespace-normal break-words text-sm font-medium text-[#4a6fa5] hover:text-[#3d5f8f]" title="{{ w.name }}" aria-label="Voir {{ w.name }}">{{ w.name }}</a>
+                            <span class="mt-1 block text-xs text-[#5a6f80] md:hidden">{{ w.date|date:"d/m/Y" }}{% if w.date_end %} — {{ w.date_end|date:"d/m" }}{% endif %}</span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                             {% if w.class_welcome %}
@@ -227,7 +228,7 @@
                                 <i class="bx bx-chalkboard text-xs"></i> Classe
                             </span>
                             {% elif w.image %}
-                            <img src="{{ w.image.url }}" alt="" class="w-8 h-8 rounded-lg object-cover border border-[#dce3ef]" />
+                            <img src="{{ w.image.url }}" alt="Affiche de {{ w.name }}" class="w-8 h-8 rounded-lg object-cover border border-[#dce3ef]" />
                             {% elif w.poster_required %}
                             <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                                 <i class="bx bx-image text-xs"></i> Requise
@@ -241,20 +242,20 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80]">{{ w.location.name }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-[#5a6f80] hidden md:table-cell">
                             {{ w.date|date:"d/m/Y" }}
-                            {% if w.date_end %}<span class="text-[#b0bedb]"> — {{ w.date_end|date:"d/m" }}</span>{% endif %}
+                            {% if w.date_end %}<span class="text-[#5a6f80]"> — {{ w.date_end|date:"d/m" }}</span>{% endif %}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center"><span class="text-xs font-medium bg-[#e8eef7] text-[#4a6fa5] px-2 py-0.5 rounded-full">{{ w.number_registered|default:"0" }}</span></td>
                         <td class="px-6 py-4 whitespace-nowrap text-center"><span class="text-xs font-medium bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{{ w.number_attendees|default:"0" }}</span></td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
                             <div class="flex items-center justify-center gap-1">
                                 {% if user.is_staff or user.is_superuser %}
-                                <a href="{% url 'workshop_update' w.pk %}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-[#b0bedb] hover:bg-[#e8eef7] hover:text-[#4a6fa5] transition-colors" title="Modifier" aria-label="Modifier {{ w.name }}"><i class="bx bx-edit text-sm" aria-hidden="true"></i></a>
+                                <a href="{% url 'workshop_update' w.pk %}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-[#5a6f80] hover:bg-[#e8eef7] hover:text-[#4a6fa5] transition-colors" title="Modifier" aria-label="Modifier {{ w.name }}"><i class="bx bx-edit text-sm" aria-hidden="true"></i></a>
                                 {% endif %}
-                                <a href="{% url 'workshop_detail' w.pk %}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-[#b0bedb] hover:bg-[#e8eef7] hover:text-[#4a6fa5] transition-colors" title="Voir" aria-label="Voir {{ w.name }}"><i class="bx bx-show text-sm" aria-hidden="true"></i></a>
+                                <a href="{% url 'workshop_detail' w.pk %}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-[#5a6f80] hover:bg-[#e8eef7] hover:text-[#4a6fa5] transition-colors" title="Voir" aria-label="Voir {{ w.name }}"><i class="bx bx-show text-sm" aria-hidden="true"></i></a>
                                 {% if user.is_staff or user.is_superuser %}
                                 <form method="post" action="{% url 'workshop_delete' w.pk %}" class="inline" onsubmit="return confirm('Supprimer « {{ w.name|escapejs }} » ? Cette action est irréversible.');">
                                     {% csrf_token %}
-                                    <button type="submit" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-[#b0bedb] hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer" title="Supprimer" aria-label="Supprimer {{ w.name }}"><i class="bx bx-trash text-sm" aria-hidden="true"></i></button>
+                                    <button type="submit" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-[#5a6f80] hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer" title="Supprimer" aria-label="Supprimer {{ w.name }}"><i class="bx bx-trash text-sm" aria-hidden="true"></i></button>
                                 </form>
                                 {% endif %}
                             </div>
@@ -267,9 +268,9 @@
                                 <i class="bx bx-calendar text-3xl text-[#4a6fa5]"></i>
                             </div>
                             <h3 class="text-lg font-semibold text-[#4a6fa5] mb-1">Aucun atelier trouvé</h3>
-                            <p class="text-[#b0bedb] text-sm">
+                            <p class="text-[#5a6f80] text-sm">
                                 Aucun atelier ne correspond aux critères sélectionnés.
-                                <a href="?year={{ selected_year }}" class="text-[#4a6fa5] hover:underline">Réinitialiser les filtres</a>
+                                <a href="?year={{ selected_year }}" class="text-[#4a6fa5] hover:underline">Réinitialiser les filtres (garde {{ selected_year }})</a>
                             </p>
                         </td>
                     </tr>
@@ -280,22 +281,27 @@
     </div>
 
     {% if paginator.num_pages > 1 %}
-    <div class="flex items-center justify-between mt-6">
-        <div class="text-sm text-[#b0bedb]">
+    <nav class="flex items-center justify-between mt-6" aria-label="Pagination des ateliers">
+        <div class="text-sm text-[#5a6f80]">
             Page {{ workshops.number }} sur {{ paginator.num_pages }}
             ({{ paginator.count }} atelier{{ paginator.count|pluralize }})
         </div>
         <div class="flex items-center gap-2">
+            {% if workshops.number > 3 %}
+            <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}page=1"
+                class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-[#dce3ef] text-[#5a6f80] hover:bg-[#e8eef7] transition-colors text-sm" aria-label="Première page">1</a>
+            <span class="text-[#5a6f80]" aria-hidden="true">…</span>
+            {% endif %}
             {% if workshops.has_previous %}
             <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ workshops.previous_page_number }}"
-                class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-[#dce3ef] text-[#5a6f80] hover:bg-[#e8eef7] transition-colors">
-                <i class="bx bx-chevron-left text-sm"></i>
+                class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-[#dce3ef] text-[#5a6f80] hover:bg-[#e8eef7] transition-colors" aria-label="Page précédente">
+                <i class="bx bx-chevron-left text-sm" aria-hidden="true"></i>
             </a>
             {% endif %}
 
             {% for num in paginator.page_range %}
             {% if num == workshops.number %}
-            <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[#4a6fa5] text-white text-sm font-medium">{{ num }}</span>
+            <span aria-current="page" class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-[#4a6fa5] text-white text-sm font-medium">{{ num }}</span>
             {% elif num > workshops.number|add:"-3" and num < workshops.number|add:"3" %}
             <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ num }}"
                 class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-[#dce3ef] text-[#5a6f80] hover:bg-[#e8eef7] transition-colors text-sm">{{ num }}</a>
@@ -304,12 +310,17 @@
 
             {% if workshops.has_next %}
             <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ workshops.next_page_number }}"
-                class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-[#dce3ef] text-[#5a6f80] hover:bg-[#e8eef7] transition-colors">
-                <i class="bx bx-chevron-right text-sm"></i>
+                class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-[#dce3ef] text-[#5a6f80] hover:bg-[#e8eef7] transition-colors" aria-label="Page suivante">
+                <i class="bx bx-chevron-right text-sm" aria-hidden="true"></i>
             </a>
             {% endif %}
+            {% if workshops.number < paginator.num_pages|add:"-2" %}
+            <span class="text-[#5a6f80]" aria-hidden="true">…</span>
+            <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ paginator.num_pages }}"
+                class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-[#dce3ef] text-[#5a6f80] hover:bg-[#e8eef7] transition-colors text-sm" aria-label="Dernière page">{{ paginator.num_pages }}</a>
+            {% endif %}
         </div>
-    </div>
+    </nav>
     {% endif %}
 </section>
 {% endblock %}

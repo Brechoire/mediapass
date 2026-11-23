@@ -680,6 +680,26 @@ def statistics(request):
         .order_by("total")[:3]
     )
 
+    # ---- Jours d'animation (espaces "Animation(s)", hors dimanche) ----
+    # Convention : 1 jour avec pointages > 0 sur un espace Animation = 1 jour
+    # d'animation (on ne peut pas distinguer plusieurs seances le meme jour).
+    anim_rows = qs.exclude(date__week_day=1).filter(
+        location__name__icontains="animation", count__gt=0
+    )
+    anim_agg = anim_rows.aggregate(
+        total=Sum("count"), days=Count("date", distinct=True)
+    )
+    anim_total = anim_agg["total"] or 0
+    anim_days = anim_agg["days"] or 0
+    anim_avg = round(anim_total / anim_days, 1) if anim_days else 0
+    has_animation_space = (
+        filter_location_owned(
+            Location.objects.filter(is_active=True), request.user
+        )
+        .filter(name__icontains="animation")
+        .exists()
+    )
+
     context = {
         "form": form,
         "start_date": start_date,
@@ -723,6 +743,10 @@ def statistics(request):
         "best_week": best_week,
         "worst_week": worst_week,
         "bottom_locations": bottom_locations,
+        "anim_total": anim_total,
+        "anim_days": anim_days,
+        "anim_avg": anim_avg,
+        "has_animation_space": has_animation_space,
         "current_year": timezone.now().year,
         "title": "Statistiques visiteurs",
     }
@@ -976,15 +1000,57 @@ def heatmap(request, year=None):
     months = SuperadminStatisticsService.build_calendar_months(
         year, count_map, max_count
     )
+    # Les membres ne voient que leur propre mediatheque dans le detail
+    # (comme les totaux) ; les superadmins gardent la vue globale.
+    breakdown_commune = commune or None
+    if not request.user.is_superuser:
+        breakdown_commune = request.user.username
     breakdown = SuperadminStatisticsService.get_breakdown_by_date(
         start_date,
         end_date,
-        commune=commune or None,
+        commune=breakdown_commune,
         location_filter=location_filter,
     )
-    SuperadminStatisticsService.attach_tooltips(
-        months, breakdown, request.user.is_superuser and not commune
-    )
+    show_commune = request.user.is_superuser and not commune
+    SuperadminStatisticsService.attach_tooltips(months, breakdown, show_commune)
+
+    # Carte des infobulles dynamiques : {date_iso: {label, total, lines[]}}.
+    _days_fr = [
+        "lundi", "mardi", "mercredi", "jeudi",
+        "vendredi", "samedi", "dimanche",
+    ]
+    _months_fr = [
+        "janvier", "février", "mars", "avril", "mai", "juin",
+        "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+    ]
+    tooltip_map = {}
+    for _month in months:
+        for _week in _month["weeks"]:
+            for _cell in _week:
+                if not _cell:
+                    continue
+                _d = _cell["date"]
+                _label = (
+                    f"{_days_fr[_d.weekday()]} {_d.day} "
+                    f"{_months_fr[_d.month - 1]} {_d.year}"
+                )
+                _cell["label_fr"] = _label
+                _entries = breakdown.get(_d, [])
+                _lines = []
+                for _e in _entries[:6]:
+                    _where = (
+                        f"{_e['commune'].capitalize()} — {_e['espace']}"
+                        if show_commune
+                        else _e["espace"]
+                    )
+                    _lines.append({"label": _where, "count": _e["count"] or 0})
+                _extra = len(_entries) - len(_lines)
+                tooltip_map[_d.isoformat()] = {
+                    "label": _label,
+                    "total": _cell["count"] or 0,
+                    "lines": _lines,
+                    "extra": _extra if _extra > 0 else 0,
+                }
 
     locations = filter_location_owned(
         Location.objects.filter(is_active=True), request.user
@@ -1006,6 +1072,7 @@ def heatmap(request, year=None):
         "show_commune_prefix": request.user.is_superuser and not commune,
         "today": timezone.now().date(),
         "title": f"Calendrier {year}",
+        "heatmap_tooltips": tooltip_map,
     }
 
     return render(request, "visitor_tracking/heatmap.html", context)

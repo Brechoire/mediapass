@@ -32,7 +32,8 @@ if not SECRET_KEY:
     raise ImproperlyConfigured("SECRET_KEY environment variable is required")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEV", "false").lower() == "true"
+# Accepte DJANGO_DEBUG (convention du .env local) avec repli sur DEV historique.
+DEBUG = os.environ.get("DJANGO_DEBUG", os.environ.get("DEV", "false")).lower() == "true"
 
 ALLOWED_HOSTS = [
     "www.mediapass.ccsudavesnois.fr",

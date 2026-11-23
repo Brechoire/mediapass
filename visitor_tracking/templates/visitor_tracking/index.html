@@ -26,6 +26,10 @@
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
                     <i class="bx bx-bar-chart-alt-2"></i> Statistiques
                 </a>
+                <a href="{% url 'visitor_tracking:heatmap_year' today.year %}"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    <i class="bx bx-calendar-heart"></i> Calendrier
+                </a>
                 <a href="{% url 'visitor_tracking:history' %}"
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
                     <i class="bx bx-history"></i> Historique

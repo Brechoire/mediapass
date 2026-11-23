@@ -936,6 +936,7 @@ def workshop_list(request):
         selected_year = int(selected_year)
     except (ValueError, TypeError):
         selected_year = current_year
+        messages.warning(request, "Année invalide, affichage de l'année en cours.")
 
     # Récupérer toutes les années disponibles
     all_years = Workshop.objects.dates("date", "year", order="DESC")
