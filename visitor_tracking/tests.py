@@ -951,6 +951,7 @@ class AnnualReportExportTests(TestCase):
             paragraph.text for paragraph in document.paragraphs
         )
         self.assertIn("Rapport d'activité", text)
+        self.assertIn("Sommaire", text)
         self.assertIn(
             "Annexe — Répartition mensuelle par espace", text
         )

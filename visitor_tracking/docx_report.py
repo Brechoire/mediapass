@@ -188,6 +188,25 @@ def _add_cover(doc, report, detailed):
     doc.add_page_break()
 
 
+def _add_sommaire(doc):
+    doc.add_heading("Sommaire", level=1)
+    entries = [
+        "Synthèse",
+        "Évolution mensuelle",
+        "Par trimestre",
+        "Moyenne par jour de semaine",
+        "Faits marquants",
+        "Détail par espace",
+        "Meilleurs jours",
+        "Qualité des pointages",
+        "Méthode et définitions",
+        "Annexe — Répartition mensuelle par espace",
+    ]
+    for entry in entries:
+        doc.add_paragraph(entry, style="List Bullet")
+    doc.add_page_break()
+
+
 def _add_header_footer(doc, report):
     section = doc.sections[0]
     section.different_first_page_header_footer = True
@@ -808,6 +827,8 @@ def build_annual_report_docx(report, detailed=False):
 
     _add_cover(doc, report, detailed)
     _add_header_footer(doc, report)
+    if detailed:
+        _add_sommaire(doc)
 
     _add_kpi_table(doc, report)
     _add_synthese(doc, report)
