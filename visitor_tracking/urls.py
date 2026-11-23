@@ -33,6 +33,21 @@ urlpatterns = [
     # Heatmap
     path("heatmap/", views.heatmap, name="heatmap"),
     path("heatmap/<int:year>/", views.heatmap, name="heatmap_year"),
+    path(
+        "heatmap/<int:year>/closures/",
+        views.heatmap_create_closures,
+        name="heatmap_create_closures",
+    ),
+    path(
+        "heatmap/<int:year>/closures/<int:closure_id>/delete/",
+        views.heatmap_delete_closure,
+        name="heatmap_delete_closure",
+    ),
+    path(
+        "heatmap/<int:year>/opening-days/",
+        views.heatmap_opening_days,
+        name="heatmap_opening_days",
+    ),
 
     # Calendrier superadmin
     path("admin-heatmap/", views.superadmin_heatmap, name="superadmin_heatmap"),

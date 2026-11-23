@@ -199,6 +199,7 @@ def _add_sommaire(doc):
         "Détail par espace",
         "Meilleurs jours",
         "Qualité des pointages",
+        "Fermetures",
         "Méthode et définitions",
         "Annexe — Répartition mensuelle par espace",
     ]
@@ -652,39 +653,52 @@ def _add_completeness(doc, report, compact=False):
     if compact:
         doc.add_heading("Qualité des pointages", level=1)
         doc.add_paragraph(
-            f"{_fmt_int(totals['weekday_pointed_days'])} jours ouvrés "
+            f"{_fmt_int(totals['open_pointed_days'])} jours d'ouverture "
             f"pointés sur {_fmt_int(totals['expected_days'])} attendus "
             f"({_fmt_num(totals['completeness'])} % de complétude)."
         )
         if totals["missing_days"]:
             doc.add_paragraph(
-                f"{_fmt_int(totals['missing_days'])} jours ouvrés sans " "pointage."
+                f"{_fmt_int(totals['missing_days'])} jours d'ouverture "
+                "sans pointage."
             )
-        if totals["sunday_days"]:
+        if totals["closure_days"]:
             doc.add_paragraph(
-                f"{_fmt_int(totals['sunday_days'])} dimanche(s) pointé(s) "
-                f"({_fmt_int(totals['sunday_total'])} visiteurs) : "
-                "ouvertures exceptionnelles."
+                f"{_fmt_int(totals['closure_days'])} jours de fermeture " "déclarés."
+            )
+        if totals["exceptional_days"]:
+            doc.add_paragraph(
+                f"{_fmt_int(totals['exceptional_days'])} pointage(s) sur "
+                f"jour non ouvert ({_fmt_int(totals['exceptional_total'])} "
+                "visiteurs)."
             )
         return
 
     doc.add_heading("Qualité des pointages", level=1)
     rows = [
         [
-            "Jours attendus (lundi-samedi)",
+            "Jours d'ouverture",
             _fmt_int(totals["expected_days"]),
         ],
         [
-            "Jours ouvrés pointés",
-            _fmt_int(totals["weekday_pointed_days"]),
+            "Jours d'ouverture pointés",
+            _fmt_int(totals["open_pointed_days"]),
         ],
         [
-            "Jours ouvrés sans pointage",
+            "Jours d'ouverture sans pointage",
             _fmt_int(totals["missing_days"]),
         ],
         [
             "Complétude",
             f"{_fmt_num(totals['completeness'])} %",
+        ],
+        [
+            "Jours de fermeture",
+            _fmt_int(totals["closure_days"]),
+        ],
+        [
+            "Pointages sur fermeture",
+            _fmt_int(totals["closure_pointed_days"]),
         ],
         [
             "Jours pointés à zéro",
@@ -722,6 +736,35 @@ def _add_completeness(doc, report, compact=False):
         )
 
 
+def _add_closures(doc, report):
+    doc.add_heading("Fermetures", level=1)
+    rows = report.get("closure_rows") or []
+    if not rows:
+        doc.add_paragraph("Aucune fermeture déclarée sur la période.")
+        return
+    table_rows = [
+        [
+            f"Du {closure['start']:%d/%m/%Y} au {closure['end']:%d/%m/%Y}",
+            closure["kind_label"],
+            _fmt_int(closure["days"]),
+            closure["label"] or "—",
+        ]
+        for closure in rows
+    ]
+    _add_table(
+        doc,
+        ["Période", "Motif", "Jours ouvrés", "Précision"],
+        table_rows,
+        widths=[5.0, 4.0, 2.2, 5.0],
+        aligns=[
+            None,
+            None,
+            WD_ALIGN_PARAGRAPH.RIGHT,
+            None,
+        ],
+    )
+
+
 def _add_method(doc, report, detailed=False):
     doc.add_heading("Méthode et définitions", level=1)
     period = report["period"]
@@ -736,10 +779,15 @@ def _add_method(doc, report, detailed=False):
 
     if period["method"] == "v2":
         doc.add_paragraph(
-            "Jours attendus : lundi à samedi. Les dimanches ne sont pas "
-            "comptés dans les jours attendus. Si un dimanche a été pointé, "
-            "il reste dans le total et il est signalé comme ouverture "
-            "exceptionnelle."
+            f"Jours d'ouverture habituels : "
+            f"{period['opening_weekdays_label']}. Les jours habituellement "
+            "fermés et les fermetures déclarées ne sont pas comptés dans "
+            "les jours attendus."
+        )
+        doc.add_paragraph(
+            f"Fermetures déclarées : {_fmt_int(totals['closure_days'])} "
+            "jour(s) ouvré(s). Un pointage sur un jour non ouvert reste "
+            "dans le total et est signalé comme ouverture exceptionnelle."
         )
         doc.add_paragraph(
             f"Moyenne par jour pointé : total ÷ nombre de dates pointées. "
@@ -749,8 +797,8 @@ def _add_method(doc, report, detailed=False):
         )
         if detailed:
             doc.add_paragraph(
-                f"Moyenne par jour ouvré pointé : total lundi-samedi ÷ "
-                f"jours ouvrés pointés = "
+                f"Moyenne par jour d'ouverture pointé : visiteurs des "
+                f"jours ouverts ÷ jours d'ouverture pointés = "
                 f"{_fmt_num(totals['avg_per_open_day'])}."
             )
     else:
@@ -841,6 +889,7 @@ def build_annual_report_docx(report, detailed=False):
         _add_spaces(doc, report)
         _add_top_days(doc, report)
         _add_completeness(doc, report, compact=False)
+        _add_closures(doc, report)
         _add_method(doc, report, detailed=True)
         _add_annex(doc, report)
     else:

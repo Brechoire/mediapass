@@ -41,7 +41,7 @@
                     </div>
                     <div>
                         <h1 class="text-3xl sm:text-4xl font-bold text-white">Statistiques</h1>
-                        <p class="text-white/70 text-sm">Du {{ start_date|date:"d/m/Y" }} au {{ end_date|date:"d/m/Y" }} · {{ period_length }} jours</p>
+                        <p class="text-white/70 text-sm">Du {{ start_date|date:"d/m/Y" }} au {{ end_date|date:"d/m/Y" }} · {% if closure_aware %}{{ open_days }} jours d'ouverture{% else %}{{ period_length }} jours{% endif %}</p>
                     </div>
                 </div>
             </div>
@@ -112,9 +112,13 @@
         <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Total visiteurs</p>
+                    <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Total visiteurs</p>
                     <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ total_visitors }}</p>
-                    <p class="text-[10px] text-[#b0bedb] mt-0.5">hors dimanche</p>
+                    <p class="text-[10px] text-[#5a6f80] mt-0.5">
+                        {% if closure_aware %}
+                            {% if exceptional_total %}dont {{ exceptional_total }} sur jours non ouverts{% else %}jours d'ouverture{% endif %}
+                        {% else %}hors dimanche{% endif %}
+                    </p>
                 </div>
                 <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-user text-2xl text-[#4a6fa5]"></i></div>
             </div>
@@ -130,9 +134,9 @@
         <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Moyenne / jour</p>
+                    <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Moyenne / jour d'ouverture</p>
                     <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ avg_per_day }}</p>
-                    <p class="text-[10px] text-[#b0bedb] mt-0.5">hors dimanche</p>
+                    <p class="text-[10px] text-[#5a6f80] mt-0.5">{% if closure_aware %}sur {{ open_days }} jours{% else %}hors dimanche{% endif %}</p>
                 </div>
                 <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-trending-up text-2xl text-[#4a6fa5]"></i></div>
             </div>
@@ -148,12 +152,12 @@
         <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Jours avec données</p>
+                    <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Jours avec données</p>
                     <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ days_with_data }}</p>
                 </div>
                 <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-calendar-check text-2xl text-[#4a6fa5]"></i></div>
             </div>
-            <div class="mt-2"><span class="text-xs text-[#b0bedb]">sur {{ period_length }} jours</span></div>
+            <div class="mt-2"><span class="text-xs text-[#5a6f80]">sur {{ open_days }} {% if closure_aware %}jours d'ouverture{% else %}jours{% endif %}</span></div>
         </div>
         <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
             <div class="flex items-center justify-between">
@@ -217,6 +221,29 @@
         </div>
         {% endif %}
     </div>
+
+    {% if closure_aware %}
+    <div class="mb-6 flex flex-wrap items-center gap-2 text-xs text-[#5a6f80]">
+        <span class="inline-flex items-center gap-1.5 rounded-full border border-[#dce3ef] bg-white px-3 py-1">
+            <i class="bx bx-calendar-check text-[#4a6fa5]" aria-hidden="true"></i>
+            {{ open_days }} jours d'ouverture
+        </span>
+        <span class="inline-flex items-center gap-1.5 rounded-full border border-[#dce3ef] bg-white px-3 py-1">
+            <i class="bx bx-lock-alt text-[#4a6fa5]" aria-hidden="true"></i>
+            {{ closure_days }} jour{{ closure_days|pluralize }} de fermeture
+        </span>
+        <span class="inline-flex items-center gap-1.5 rounded-full border border-[#dce3ef] bg-white px-3 py-1">
+            <i class="bx bx-check-shield text-[#4a6fa5]" aria-hidden="true"></i>
+            {{ completeness|floatformat:1 }} % de complétude
+        </span>
+        {% if exceptional_total %}
+        <span class="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-800">
+            <i class="bx bx-error-circle" aria-hidden="true"></i>
+            {{ exceptional_total }} visiteurs sur jours non ouverts
+        </span>
+        {% endif %}
+    </div>
+    {% endif %}
 
     {% if best_day and worst_day %}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">

@@ -12,6 +12,11 @@ from app.validators import (
 )
 
 
+def default_opening_weekdays():
+    """Jours d'ouverture par défaut : lundi à samedi."""
+    return [0, 1, 2, 3, 4, 5]
+
+
 class LibraryProfile(models.Model):
     """Fiche d'une médiathèque : identité et informations pratiques (éditable par la médiathèque)."""
 
@@ -50,6 +55,15 @@ class LibraryProfile(models.Model):
         "Horaires d'ouverture",
         blank=True,
         help_text="Une ligne par jour, ex. « Lundi : 14h - 18h »",
+    )
+    opening_weekdays = models.JSONField(
+        "Jours d'ouverture",
+        default=default_opening_weekdays,
+        blank=True,
+        help_text=(
+            "Jours d'ouverture habituels : 0=lundi, 1=mardi, ..., 6=dimanche. "
+            "Sert au calcul des jours attendus dans les statistiques."
+        ),
     )
     closures = models.TextField(
         "Fermetures exceptionnelles", blank=True, help_text="Une fermeture par ligne"

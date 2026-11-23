@@ -43,6 +43,28 @@
     </div>
 </section>
 
+{% if today_is_closed %}
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 relative z-10">
+    <div class="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900 shadow-sm">
+        <div class="flex items-start gap-3">
+            <i class="bx bx-lock-alt mt-0.5 text-xl" aria-hidden="true"></i>
+            <div>
+                <p class="font-semibold">Médiathèque fermée aujourd'hui</p>
+                <p class="text-sm">
+                    {% if today_closure %}
+                    {{ today_closure.get_kind_display }}{% if today_closure.label %} — {{ today_closure.label }}{% endif %}.
+                    {% else %}
+                    Ce jour n'est pas un jour d'ouverture habituel.
+                    {% endif %}
+                    Les compteurs sont désactivés. Pour une ouverture exceptionnelle, utilisez la
+                    <a href="{% url 'visitor_tracking:entry_form' %}" class="font-medium underline">saisie rétroactive</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
         <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
@@ -121,6 +143,12 @@
                     </div>
                     {% endif %}
 
+                    {% if today_is_closed %}
+                    <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-center text-xs text-amber-800">
+                        <i class="bx bx-lock-alt mr-1" aria-hidden="true"></i>
+                        Compteurs désactivés aujourd'hui.
+                    </div>
+                    {% else %}
                     <div class="grid grid-cols-5 gap-2 mb-3">
                         {% for n in "12345" %}
                         <button onclick="incrementCount({{ item.location.id }}, {{ n }})"
@@ -134,6 +162,7 @@
                         class="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm cursor-pointer">
                         <i class="bx bx-minus"></i> Retirer 1 visiteur
                     </button>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
@@ -198,13 +227,15 @@ function incrementCount(locationId, amount) {
     })
     .then(r => r.json())
     .then(d => {
-        if (d.success) {
-            const el = document.getElementById(`count-${locationId}`);
-            el.textContent = d.count;
-            el.classList.add('text-emerald-600');
-            setTimeout(() => el.classList.remove('text-emerald-600'), 300);
-            document.getElementById('total-today').textContent = d.total_today;
+        if (!d.success) {
+            alert(d.error || 'Erreur lors de l’incrémentation.');
+            return;
         }
+        const el = document.getElementById(`count-${locationId}`);
+        el.textContent = d.count;
+        el.classList.add('text-emerald-600');
+        setTimeout(() => el.classList.remove('text-emerald-600'), 300);
+        document.getElementById('total-today').textContent = d.total_today;
     })
     .catch(e => console.error('Erreur:', e));
 }

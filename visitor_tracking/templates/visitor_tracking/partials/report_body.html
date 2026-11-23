@@ -210,6 +210,7 @@
                 <tr class="hover:bg-[#f8f9fc]{% if m.is_future %} opacity-50{% endif %}">
                     <th scope="row" class="whitespace-nowrap px-4 py-3 text-left text-sm font-medium text-[#1e293b]">
                         {{ m.month }}{% if m.is_current %} <span class="text-xs font-normal text-[#5a6f80]">(en cours)</span>{% endif %}
+                        {% if m.is_closure_month %}<span class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">{{ m.closure_days }} j fermé{{ m.closure_days|pluralize }}</span>{% endif %}
                     </th>
                     <td class="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-[#1e293b]">{% if m.is_future %}—{% else %}{{ m.total }}{% endif %}</td>
                     <td class="whitespace-nowrap px-4 py-3 text-right text-sm text-[#5a6f80]">{% if m.n1 %}{{ m.n1 }}{% else %}—{% endif %}</td>
@@ -250,7 +251,7 @@
         <i class="bx bx-calendar-week mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i>
         Moyenne par jour de semaine
     </h2>
-    <p class="mb-4 text-xs text-[#5a6f80]">Lundi à samedi. Les dimanches pointés sont traités comme ouvertures exceptionnelles.</p>
+    <p class="mb-4 text-xs text-[#5a6f80]">Jours d'ouverture : {{ report.period.opening_weekdays_label }}. Les jours non ouverts sont exclus des moyennes.</p>
     <div class="relative mb-5 h-56">
         <canvas id="report-weekday-chart" role="img"
                 aria-label="Moyenne de visiteurs par jour de semaine en {{ year }}."></canvas>
@@ -386,14 +387,49 @@
         Qualité des pointages
     </h2>
     {% if report.period.method == "v2" %}
-    <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Jours attendus</p><p class="text-xl font-bold text-[#4a6fa5]">{{ report.totals.expected_days }}</p></div>
-        <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Jours ouvrés pointés</p><p class="text-xl font-bold text-[#4a6fa5]">{{ report.totals.weekday_pointed_days }}</p></div>
+    <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Jours d'ouverture</p><p class="text-xl font-bold text-[#4a6fa5]">{{ report.totals.expected_days }}</p></div>
+        <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Jours d'ouverture pointés</p><p class="text-xl font-bold text-[#4a6fa5]">{{ report.totals.open_pointed_days }}</p></div>
         <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Sans pointage</p><p class="text-xl font-bold {% if report.totals.missing_days %}text-amber-600{% else %}text-emerald-700{% endif %}">{{ report.totals.missing_days }}</p></div>
         <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Complétude</p><p class="text-xl font-bold text-[#4a6fa5]">{{ report.totals.completeness|floatformat:1 }} %</p></div>
+        <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Jours de fermeture</p><p class="text-xl font-bold text-[#4a6fa5]">{{ report.totals.closure_days }}</p></div>
+        <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Pointages sur fermeture</p><p class="text-xl font-bold text-[#4a6fa5]">{{ report.totals.closure_pointed_days }}</p></div>
         <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Jours à zéro</p><p class="text-xl font-bold text-[#4a6fa5]">{{ report.totals.zero_days }}</p></div>
         <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Dernière saisie</p><p class="text-sm font-semibold text-[#1e293b]">{% if report.totals.last_update %}{{ report.totals.last_update|date:"d/m/Y H:i" }}{% else %}—{% endif %}</p></div>
     </div>
+    {% if report.closure_rows %}
+    <div class="mt-5 overflow-x-auto">
+        <table class="min-w-full divide-y divide-[#dce3ef]">
+            <caption class="sr-only">Fermetures déclarées sur la période</caption>
+            <thead class="bg-[#f8f9fc]">
+                <tr>
+                    <th scope="col" class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Période</th>
+                    <th scope="col" class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Motif</th>
+                    <th scope="col" class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Jours ouvrés</th>
+                    <th scope="col" class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Précision</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#dce3ef]">
+                {% for closure in report.closure_rows %}
+                <tr>
+                    <th scope="row" class="px-3 py-2 text-left text-sm font-medium text-[#1e293b]">Du {{ closure.start|date:"d/m/Y" }} au {{ closure.end|date:"d/m/Y" }}</th>
+                    <td class="px-3 py-2 text-sm text-[#1e293b]">{{ closure.kind_label }}</td>
+                    <td class="px-3 py-2 text-right text-sm text-[#4a6fa5]">{{ closure.days }}</td>
+                    <td class="px-3 py-2 text-sm text-[#5a6f80]">{{ closure.label|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    {% if report.totals.exceptional_days %}
+    <p class="mt-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
+        <i class="bx bx-error-circle mr-1" aria-hidden="true"></i>
+        {{ report.totals.exceptional_days }} pointage(s) sur des jours non ouverts :
+        {{ report.totals.exceptional_total }} visiteurs. Ces visiteurs restent dans le total,
+        mais ne sont pas comptés dans la moyenne par jour d'ouverture.
+    </p>
+    {% endif %}
     {% if report.spaces_without_data %}
     <p class="mt-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
         <i class="bx bx-error-circle mr-1" aria-hidden="true"></i>
@@ -454,9 +490,15 @@
         </h2>
         {% if report.totals.completeness is not None %}
         <p class="mt-3 text-3xl font-bold text-[#4a6fa5]">{{ report.totals.completeness|floatformat:1 }} %</p>
-        <p class="text-xs text-[#5a6f80]">{{ report.totals.weekday_pointed_days }} / {{ report.totals.expected_days }} jours ouvrés pointés</p>
+        <p class="text-xs text-[#5a6f80]">{{ report.totals.open_pointed_days }} / {{ report.totals.expected_days }} jours d'ouverture pointés</p>
         {% if report.totals.missing_days %}
-        <p class="mt-2 text-xs text-amber-700">{{ report.totals.missing_days }} jour(s) ouvré(s) sans pointage.</p>
+        <p class="mt-2 text-xs text-amber-700">{{ report.totals.missing_days }} jour(s) d'ouverture sans pointage.</p>
+        {% endif %}
+        {% if report.totals.closure_days %}
+        <p class="mt-2 text-xs text-[#5a6f80]">{{ report.totals.closure_days }} jour(s) de fermeture déclarés.</p>
+        {% endif %}
+        {% if report.totals.exceptional_days %}
+        <p class="mt-2 text-xs text-amber-700">{{ report.totals.exceptional_days }} pointage(s) sur jour non ouvert ({{ report.totals.exceptional_total }} visiteurs).</p>
         {% endif %}
         {% else %}
         <p class="mt-3 text-sm text-[#5a6f80]">Méthode historique : complétude non recalculée.</p>
@@ -480,8 +522,9 @@
         <li><span class="font-medium text-[#1e293b]">Période :</span> {{ report.period.label }} ({{ report.period.status_label }}).</li>
         <li><span class="font-medium text-[#1e293b]">Source :</span> pointages manuels saisis dans Médi@'pass, agrégés par espace et par jour. Aucune donnée nominative.</li>
         {% if report.period.method == "v2" %}
-        <li><span class="font-medium text-[#1e293b]">Jours attendus :</span> lundi à samedi. Les dimanches ne sont pas comptés dans les jours attendus. Un dimanche pointé reste dans le total et est signalé comme ouverture exceptionnelle.</li>
-        <li><span class="font-medium text-[#1e293b]">Moyenne :</span> total ÷ nombre de dates pointées. La moyenne par jour ouvré pointé exclut les dimanches.</li>
+        <li><span class="font-medium text-[#1e293b]">Jours d'ouverture :</span> {{ report.period.opening_weekdays_label }}. Les jours habituellement fermés et les fermetures déclarées ne sont pas comptés dans les jours attendus.</li>
+        <li><span class="font-medium text-[#1e293b]">Fermetures :</span> {{ report.totals.closure_days }} jour(s) ouvré(s) sur la période. Un pointage sur un jour non ouvert reste dans le total et est signalé comme ouverture exceptionnelle.</li>
+        <li><span class="font-medium text-[#1e293b]">Moyenne :</span> total ÷ nombre de dates pointées. La moyenne par jour d'ouverture pointé exclut les fermetures et les jours non ouverts.</li>
         {% else %}
         <li><span class="font-medium text-[#1e293b]">Méthode historique :</span> les totaux et moyennes sont conservés tels qu'ils ont été publiés. La règle des dimanches et la complétude ne sont pas recalculées.</li>
         {% endif %}

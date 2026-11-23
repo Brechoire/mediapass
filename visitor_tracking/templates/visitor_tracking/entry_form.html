@@ -44,6 +44,25 @@
     </div>
     {% endif %}
 
+    {% if selected_is_closed %}
+    <div class="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
+        <div class="flex items-start gap-3">
+            <i class="bx bx-lock-alt mt-0.5 text-xl" aria-hidden="true"></i>
+            <div>
+                <p class="font-semibold">Jour de fermeture</p>
+                <p class="text-sm">
+                    {% if selected_closure %}
+                    {{ selected_closure.get_kind_display }}{% if selected_closure.label %} — {{ selected_closure.label }}{% endif %}.
+                    {% else %}
+                    Ce jour n'est pas un jour d'ouverture habituel.
+                    {% endif %}
+                    Vous pouvez enregistrer une ouverture exceptionnelle en cochant la confirmation ci-dessous.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-[#dce3ef]">
             <h5 class="font-semibold text-[#1e293b]">
@@ -113,6 +132,13 @@
                     {% endif %}
                 </div>
             </div>
+
+            {% if selected_is_closed %}
+            <label class="mt-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                {{ form.confirm_closed }}
+                <span>{{ form.confirm_closed.label }}</span>
+            </label>
+            {% endif %}
 
             <div class="mt-8 pt-6 border-t border-[#dce3ef] flex flex-col sm:flex-row gap-4 justify-between">
                 <a href="{% url 'visitor_tracking:index' %}"

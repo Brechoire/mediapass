@@ -1,88 +1,87 @@
 {% extends "base_new.html" %}
 {% load static %}
 
-{% block title %}{{ title }} | {{ block.super }}<div id="heatmap-tip" role="tooltip" aria-hidden="true"></div>
-{{ heatmap_tooltips|json_script:"heatmap-tooltips" }}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  var tip = document.getElementById('heatmap-tip');
-  var dataEl = document.getElementById('heatmap-tooltips');
-  var tips = {};
-  try { tips = JSON.parse(dataEl ? dataEl.textContent : '{}'); } catch (e) { tips = {}; }
-  if (!tip) return;
-
-  function plural(n, one, many) { return n > 1 ? many : one; }
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-    });
-  }
-
-  function showTip(cell, x, y) {
-    var info = tips[cell.getAttribute('data-date')];
-    if (!info) return;
-    var html = '<div class="tip-date">' + esc(info.label) + '</div>'
-      + '<div class="tip-total">' + info.total + ' <small>visiteur' + (info.total > 1 ? 's' : '') + '</small></div>';
-    if (info.lines && info.lines.length) {
-      html += '<ul>';
-      info.lines.forEach(function(l) {
-        html += '<li><span>' + esc(l.label) + '</span><span>' + l.count + '</span></li>';
-      });
-      if (info.extra) html += '<li class="tip-more"><span>et ' + info.extra + ' autre' + (info.extra > 1 ? 's' : '') + '…</span><span></span></li>';
-      html += '</ul>';
-    }
-    tip.innerHTML = html;
-    tip.style.display = 'block';
-    tip.setAttribute('aria-hidden', 'false');
-    moveTip(x, y);
-  }
-
-  function moveTip(x, y) {
-    var pad = 12;
-    var r = tip.getBoundingClientRect();
-    var left = x + 14;
-    var top = y + 16;
-    if (left + r.width > window.innerWidth - pad) left = x - r.width - 14;
-    if (top + r.height > window.innerHeight - pad) top = y - r.height - 16;
-    tip.style.left = Math.max(pad, left) + 'px';
-    tip.style.top = Math.max(pad, top) + 'px';
-  }
-
-  function hideTip() {
-    tip.style.display = 'none';
-    tip.setAttribute('aria-hidden', 'true');
-  }
-
-  document.querySelectorAll('.heatmap-cell[data-date]').forEach(function(cell) {
-    cell.addEventListener('mouseenter', function(e) { showTip(cell, e.clientX, e.clientY); });
-    cell.addEventListener('mousemove', function(e) { moveTip(e.clientX, e.clientY); });
-    cell.addEventListener('mouseleave', hideTip);
-    cell.addEventListener('focus', function() {
-      var r = cell.getBoundingClientRect();
-      showTip(cell, r.left + r.width / 2, r.top);
-    });
-    cell.addEventListener('blur', hideTip);
-    cell.addEventListener('click', function(e) {
-      if (tip.style.display === 'block') { hideTip(); }
-      else { showTip(cell, e.clientX || 0, e.clientY || 0); }
-    });
-  });
-  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') hideTip(); });
-});
-</script>
-{% endblock %}
+{% block title %}Calendrier {{ year }} | {{ block.super }}{% endblock %}
 
 {% block stylesheets %}
 {{ block.super }}
 <style>
-  .heatmap-cell { transition: opacity 0.15s ease, transform 0.15s ease; cursor: default; border-radius: 0.375rem; }
-  .heatmap-cell:hover { opacity: 0.75 !important; transform: scale(1.15); z-index: 1; position: relative; }
+  .heatmap-cell {
+    position: relative;
+    cursor: pointer;
+    border-radius: 0.375rem;
+    border: 1px solid transparent;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+  }
+  .heatmap-cell:hover { transform: scale(1.12); z-index: 1; }
+  .heatmap-cell:focus-visible { outline: 2px solid #4a6fa5; outline-offset: 2px; }
   .heatmap-empty { visibility: hidden; }
-  .day-header { font-size: 0.625rem; color: #b0bedb; text-transform: uppercase; font-weight: 600; text-align: center; padding-bottom: 0.25rem; letter-spacing: 0.05em; }
+  .heatmap-level-0 { background: #f0f2f6; color: #5a6f80; border-color: #dce3ef; }
+  .heatmap-level-1 { background: #a7b8d6; color: #1e293b; }
+  .heatmap-level-2 { background: #4a6fa5; color: #fff; }
+  .heatmap-level-3 { background: #355478; color: #fff; }
+  .heatmap-level-4 { background: #243b58; color: #fff; }
+  .heatmap-missing {
+    background: #fff7ed !important;
+    border: 2px solid #f97316 !important;
+    color: #9a3412 !important;
+  }
+  .heatmap-selected {
+    background: #dbeafe !important;
+    border-color: #1d4ed8 !important;
+    color: #1e3a8a !important;
+    box-shadow: 0 0 0 2px #1d4ed8 inset;
+  }
+  .heatmap-closed {
+    background: repeating-linear-gradient(
+      45deg, #e2e8f0, #e2e8f0 4px, #cbd5e1 4px, #cbd5e1 8px
+    ) !important;
+    color: #475569 !important;
+    border-color: #94a3b8 !important;
+  }
+  .heatmap-nonopen {
+    background: #f1f5f9 !important;
+    color: #94a3b8 !important;
+    border-color: #e2e8f0 !important;
+  }
+  .heatmap-exceptional {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+    border: 1px dashed #f59e0b !important;
+  }
+  .heatmap-future {
+    background: #f8fafc !important;
+    color: #94a3b8 !important;
+    border-color: #e2e8f0 !important;
+  }
+  .heatmap-zero {
+    background: #e2e8f0 !important;
+    color: #334155 !important;
+    border-color: #cbd5e1 !important;
+  }
+  .heatmap-today { outline: 2px solid #d46a78; outline-offset: 1px; }
+  .heatmap-highlight { box-shadow: 0 0 0 3px #f59e0b; }
+  .heatmap-cell .missing-mark {
+    position: absolute; top: 1px; right: 3px;
+    font-size: 9px; font-weight: 800; color: #ea580c;
+  }
+  .heatmap-cell .zero-mark {
+    position: absolute; bottom: 1px; right: 3px;
+    font-size: 8px; font-weight: 700; color: #475569;
+  }
+  .heatmap-cell .lock-mark {
+    position: absolute; bottom: 1px; left: 3px;
+    font-size: 9px; color: #475569;
+  }
+  .day-header {
+    font-size: 0.625rem; color: #5a6f80; text-transform: uppercase;
+    font-weight: 600; text-align: center; padding-bottom: 0.25rem;
+    letter-spacing: 0.05em;
+  }
   .heatmap-legend { display: flex; align-items: center; gap: 0.25rem; }
-  .heatmap-legend-item { width: 0.75rem; height: 0.75rem; border-radius: 0.125rem; }
+  .heatmap-legend-item { width: 0.85rem; height: 0.85rem; border-radius: 0.125rem; }
   #heatmap-tip {
-    position: fixed; z-index: 60; display: none; max-width: 16rem;
+    position: fixed; z-index: 70; display: none; max-width: 17rem;
     background: #1e293b; color: #fff; border-radius: 0.75rem;
     box-shadow: 0 10px 25px rgba(0,0,0,.25); padding: 0.625rem 0.75rem;
     font-size: 0.75rem; line-height: 1.4; pointer-events: none;
@@ -90,134 +89,63 @@ document.addEventListener('DOMContentLoaded', function() {
   #heatmap-tip .tip-date { font-weight: 700; text-transform: capitalize; margin-bottom: 0.125rem; }
   #heatmap-tip .tip-total { font-size: 1rem; font-weight: 800; color: #fff; }
   #heatmap-tip .tip-total small { font-weight: 400; color: #cbd5e1; }
+  #heatmap-tip .tip-hint { color: #fbbf24; margin-top: 0.25rem; }
   #heatmap-tip ul { margin: 0.375rem 0 0; padding: 0; list-style: none; border-top: 1px solid rgba(255,255,255,.15); padding-top: 0.375rem; }
   #heatmap-tip li { display: flex; justify-content: space-between; gap: 0.75rem; color: #e2e8f0; }
   #heatmap-tip li span:last-child { font-weight: 700; }
   #heatmap-tip .tip-more { color: #94a3b8; font-style: italic; }
 </style>
-<div id="heatmap-tip" role="tooltip" aria-hidden="true"></div>
-{{ heatmap_tooltips|json_script:"heatmap-tooltips" }}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  var tip = document.getElementById('heatmap-tip');
-  var dataEl = document.getElementById('heatmap-tooltips');
-  var tips = {};
-  try { tips = JSON.parse(dataEl ? dataEl.textContent : '{}'); } catch (e) { tips = {}; }
-  if (!tip) return;
-
-  function plural(n, one, many) { return n > 1 ? many : one; }
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-    });
-  }
-
-  function showTip(cell, x, y) {
-    var info = tips[cell.getAttribute('data-date')];
-    if (!info) return;
-    var html = '<div class="tip-date">' + esc(info.label) + '</div>'
-      + '<div class="tip-total">' + info.total + ' <small>visiteur' + (info.total > 1 ? 's' : '') + '</small></div>';
-    if (info.lines && info.lines.length) {
-      html += '<ul>';
-      info.lines.forEach(function(l) {
-        html += '<li><span>' + esc(l.label) + '</span><span>' + l.count + '</span></li>';
-      });
-      if (info.extra) html += '<li class="tip-more"><span>et ' + info.extra + ' autre' + (info.extra > 1 ? 's' : '') + '…</span><span></span></li>';
-      html += '</ul>';
-    }
-    tip.innerHTML = html;
-    tip.style.display = 'block';
-    tip.setAttribute('aria-hidden', 'false');
-    moveTip(x, y);
-  }
-
-  function moveTip(x, y) {
-    var pad = 12;
-    var r = tip.getBoundingClientRect();
-    var left = x + 14;
-    var top = y + 16;
-    if (left + r.width > window.innerWidth - pad) left = x - r.width - 14;
-    if (top + r.height > window.innerHeight - pad) top = y - r.height - 16;
-    tip.style.left = Math.max(pad, left) + 'px';
-    tip.style.top = Math.max(pad, top) + 'px';
-  }
-
-  function hideTip() {
-    tip.style.display = 'none';
-    tip.setAttribute('aria-hidden', 'true');
-  }
-
-  document.querySelectorAll('.heatmap-cell[data-date]').forEach(function(cell) {
-    cell.addEventListener('mouseenter', function(e) { showTip(cell, e.clientX, e.clientY); });
-    cell.addEventListener('mousemove', function(e) { moveTip(e.clientX, e.clientY); });
-    cell.addEventListener('mouseleave', hideTip);
-    cell.addEventListener('focus', function() {
-      var r = cell.getBoundingClientRect();
-      showTip(cell, r.left + r.width / 2, r.top);
-    });
-    cell.addEventListener('blur', hideTip);
-    cell.addEventListener('click', function(e) {
-      if (tip.style.display === 'block') { hideTip(); }
-      else { showTip(cell, e.clientX || 0, e.clientY || 0); }
-    });
-  });
-  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') hideTip(); });
-});
-</script>
 {% endblock %}
 
 {% block content %}
 <div class="min-h-screen py-8">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <!-- En-tête -->
-    <div class="mb-8">
-      <div class="flex items-center gap-4 mb-4">
-        {% if user.is_superuser %}
-        <a href="{% url 'visitor_tracking:superadmin_statistics' %}"
-           class="inline-flex items-center gap-2 text-[#7a8fa0] hover:text-[#4a6fa5] transition-colors">
-          <i class="bx bx-arrow-back"></i>
-          Retour aux statistiques
-        </a>
-        {% else %}
-        <a href="{% url 'visitor_tracking:index' %}"
-           class="inline-flex items-center gap-2 text-[#7a8fa0] hover:text-[#4a6fa5] transition-colors">
-          <i class="bx bx-arrow-back"></i>
-          Retour au pointage
-        </a>
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+
+    <div class="mb-4 flex items-center gap-4">
+      {% if user.is_superuser %}
+      <a href="{% url 'visitor_tracking:superadmin_statistics' %}"
+         class="inline-flex items-center gap-2 text-sm text-[#5a6f80] transition-colors hover:text-[#4a6fa5]">
+        <i class="bx bx-arrow-back" aria-hidden="true"></i> Retour aux statistiques
+      </a>
+      {% else %}
+      <a href="{% url 'visitor_tracking:index' %}"
+         class="inline-flex items-center gap-2 text-sm text-[#5a6f80] transition-colors hover:text-[#4a6fa5]">
+        <i class="bx bx-arrow-back" aria-hidden="true"></i> Retour au pointage
+      </a>
+      {% endif %}
+    </div>
+
+    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <h1 class="flex flex-wrap items-center gap-3 text-2xl font-bold text-[#1e293b]">
+        <i class="bx bx-calendar-heart text-[#4a6fa5]" aria-hidden="true"></i>
+        Calendrier de fréquentation {{ year }}
+        {% if commune %}
+        <span class="inline-flex items-center gap-1 rounded-full bg-[#e8eef7] px-2.5 py-1 text-xs font-semibold text-[#4a6fa5]">
+          <i class="bx bx-map" aria-hidden="true"></i> {{ commune|capfirst }}
+        </span>
         {% endif %}
-      </div>
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 class="text-2xl font-bold text-[#1e293b] flex items-center gap-3 flex-wrap">
-          <i class="bx bx-calendar-heart text-[#4a6fa5]"></i>
-          Calendrier de fréquentation {{ year }}
-          {% if commune %}
-          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#e8eef7] text-[#4a6fa5] text-xs font-semibold">
-            <i class="bx bx-map"></i> {{ commune|capfirst }}
-          </span>
-          {% endif %}
-        </h1>
-        <div class="flex items-center gap-3">
-          <a href="{% url 'visitor_tracking:heatmap_year' prev_year %}{% if commune %}?commune={{ commune|urlencode }}{% endif %}"
-             class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#dce3ef] text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
-            <i class="bx bx-chevron-left"></i> {{ prev_year }}
-          </a>
-          <span class="text-sm font-semibold text-[#1e293b] min-w-[4rem] text-center">{{ year }}</span>
-          <a href="{% url 'visitor_tracking:heatmap_year' next_year %}{% if commune %}?commune={{ commune|urlencode }}{% endif %}"
-             class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#dce3ef] text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
-            {{ next_year }} <i class="bx bx-chevron-right"></i>
-          </a>
-        </div>
+      </h1>
+      <div class="flex items-center gap-3">
+        <a href="{% url 'visitor_tracking:heatmap_year' prev_year %}{{ query_suffix }}"
+           class="inline-flex items-center gap-1 rounded-lg border border-[#dce3ef] px-3 py-1.5 text-sm text-[#4a6fa5] transition-colors hover:bg-[#e8eef7]">
+          <i class="bx bx-chevron-left" aria-hidden="true"></i> {{ prev_year }}
+        </a>
+        <span class="min-w-[4rem] text-center text-sm font-semibold text-[#1e293b]">{{ year }}</span>
+        <a href="{% url 'visitor_tracking:heatmap_year' next_year %}{{ query_suffix }}"
+           class="inline-flex items-center gap-1 rounded-lg border border-[#dce3ef] px-3 py-1.5 text-sm text-[#4a6fa5] transition-colors hover:bg-[#e8eef7]">
+          {{ next_year }} <i class="bx bx-chevron-right" aria-hidden="true"></i>
+        </a>
       </div>
     </div>
 
-    <!-- Filtres espace / commune -->
-    <div class="bg-white border border-[#dce3ef] rounded-2xl shadow-sm p-4 mb-8">
-      <form method="get" class="flex flex-wrap gap-4 items-end">
+    <!-- Filtres -->
+    <div class="mb-6 rounded-2xl border border-[#dce3ef] bg-white p-4 shadow-sm">
+      <form method="get" class="flex flex-wrap items-end gap-4">
         {% if available_communes %}
         <div>
-          <label class="block text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Commune</label>
-          <select name="commune" onchange="this.form.submit()"
-                  class="px-4 py-2 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 cursor-pointer">
+          <label for="heatmap-commune" class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Commune</label>
+          <select id="heatmap-commune" name="commune" onchange="this.form.submit()"
+                  class="cursor-pointer rounded-xl border border-[#dce3ef] px-4 py-2 text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20">
             <option value="">Toutes les communes</option>
             {% for c in available_communes %}
             <option value="{{ c.username }}" {% if commune == c.username %}selected{% endif %}>{{ c.username|capfirst }}</option>
@@ -226,50 +154,156 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         {% endif %}
         <div>
-          <label class="block text-xs font-semibold text-[#b0bedb] uppercase tracking-wider mb-1.5">Espace</label>
-          <select name="location" onchange="this.form.submit()"
-                  class="px-4 py-2 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 cursor-pointer">
+          <label for="heatmap-location" class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Espace</label>
+          <select id="heatmap-location" name="location" onchange="this.form.submit()"
+                  class="cursor-pointer rounded-xl border border-[#dce3ef] px-4 py-2 text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20">
             <option value="">Tous les espaces</option>
             {% for loc in locations %}
             <option value="{{ loc.id }}" {% if location_filter == loc.id|stringformat:"i" %}selected{% endif %}>{% if show_commune_prefix %}{{ loc.user.username|capfirst }} › {% endif %}{{ loc.name }}</option>
             {% endfor %}
           </select>
         </div>
+        <label class="inline-flex items-center gap-2 pb-2.5 text-sm text-[#1e293b]">
+          <input type="hidden" name="dimanche" value="0">
+          <input type="checkbox" name="dimanche" value="1" {% if include_sunday %}checked{% endif %} onchange="this.form.submit()"
+                 class="h-4 w-4 rounded border-[#dce3ef] text-[#4a6fa5] focus:ring-[#4a6fa5]">
+          Inclure le dimanche
+        </label>
+        <noscript><button type="submit" class="rounded-xl border border-[#dce3ef] px-4 py-2 text-sm text-[#4a6fa5]">Afficher</button></noscript>
         {% if commune %}
-        <a href="?{% if location_filter %}location={{ location_filter }}&amp;{% endif %}"
-           class="text-xs text-[#7a8fa0] hover:text-[#d46a78] transition-colors pb-2.5">
-          <i class="bx bx-x align-middle"></i> Effacer le filtre commune
+        <a href="?{% if location_filter %}location={{ location_filter }}&{% endif %}dimanche={% if include_sunday %}1{% else %}0{% endif %}"
+           class="pb-2.5 text-xs text-[#5a6f80] transition-colors hover:text-[#d46a78]">
+          <i class="bx bx-x align-middle" aria-hidden="true"></i> Effacer le filtre commune
         </a>
         {% endif %}
       </form>
     </div>
 
+    <!-- Qualification et jours d'ouverture -->
+    <div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div class="rounded-2xl border border-[#dce3ef] bg-white p-4 shadow-sm lg:col-span-2">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p class="text-sm font-semibold text-[#1e293b]">
+              {{ missing_count }} jour{{ missing_count|pluralize }} sans pointage à qualifier
+            </p>
+            <p class="text-xs text-[#5a6f80]">
+              Cliquez sur un jour à bordure orange pour le sélectionner, puis sur d'autres jours si besoin.
+            </p>
+            {% if location_filter %}
+            <p class="mt-1 text-xs text-amber-700">
+              La qualification des jours se fait au niveau de la médiathèque, tous espaces confondus.
+            </p>
+            {% endif %}
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            {% if can_validate and missing_count %}
+            <button type="button" id="select-all-missing"
+                    class="inline-flex items-center gap-2 rounded-xl border border-[#dce3ef] px-3 py-2 text-sm font-medium text-[#4a6fa5] hover:bg-[#e8eef7]">
+              <i class="bx bx-check-square" aria-hidden="true"></i> Tout sélectionner
+            </button>
+            {% endif %}
+            {% if missing_count %}
+            <a href="#missing-list"
+               class="inline-flex items-center gap-2 rounded-xl border border-[#dce3ef] px-3 py-2 text-sm font-medium text-[#4a6fa5] hover:bg-[#e8eef7]">
+              Voir la liste
+            </a>
+            {% endif %}
+          </div>
+        </div>
+        {% if not can_validate %}
+        <p class="mt-3 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
+          <i class="bx bx-info-circle mr-1" aria-hidden="true"></i>
+          {% if year < calendar_first_year %}
+          La qualification des jours est disponible à partir de {{ calendar_first_year }}.
+          {% else %}
+          Sélectionnez une commune pour qualifier les jours.
+          {% endif %}
+        </p>
+        {% endif %}
+      </div>
+
+      {% if can_validate %}
+      <details class="rounded-2xl border border-[#dce3ef] bg-white p-4 shadow-sm">
+        <summary class="cursor-pointer text-sm font-semibold text-[#1e293b]">
+          <i class="bx bx-time-five mr-1 text-[#4a6fa5]" aria-hidden="true"></i>
+          Jours d'ouverture
+        </summary>
+        <form method="post" action="{% url 'visitor_tracking:heatmap_opening_days' year %}" class="mt-3">
+          {% csrf_token %}
+          {% if commune %}<input type="hidden" name="commune" value="{{ commune }}">{% endif %}
+          {% if location_filter %}<input type="hidden" name="location" value="{{ location_filter }}">{% endif %}
+          <div class="grid grid-cols-2 gap-1.5 text-sm text-[#1e293b]">
+            {% for label in opening_weekday_labels %}
+            <label class="inline-flex items-center gap-2">
+              <input type="checkbox" name="weekdays" value="{{ forloop.counter0 }}"
+                     {% if forloop.counter0 in opening_weekdays %}checked{% endif %}
+                     class="h-4 w-4 rounded border-[#dce3ef] text-[#4a6fa5] focus:ring-[#4a6fa5]">
+              {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+          <p class="mt-2 text-[11px] text-[#5a6f80]">
+            Le dimanche n'est compté dans les statistiques que s'il est coché ici.
+          </p>
+          <button type="submit"
+                  class="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#4a6fa5] px-3 py-2 text-sm font-medium text-white hover:bg-[#3d5f8f]">
+            Enregistrer
+          </button>
+        </form>
+      </details>
+      {% endif %}
+    </div>
+
     <!-- Grille des mois -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
       {% for month in months %}
-      <div class="bg-white border border-[#dce3ef] rounded-2xl shadow-sm p-4">
-        <h3 class="text-sm font-bold text-[#1e293b] mb-3 text-center">{{ month.name }}</h3>
-        <div class="grid grid-cols-6 gap-1">
+      <div class="rounded-2xl border border-[#dce3ef] bg-white p-4 shadow-sm" data-month-card>
+        <div class="mb-3 flex items-center justify-between gap-2">
+          <h2 class="text-sm font-bold text-[#1e293b]">{{ month.name }}</h2>
+          {% if can_validate %}
+          <button type="button" class="select-month text-[11px] font-medium text-[#4a6fa5] hover:underline">
+            Sélectionner les jours non pointés
+          </button>
+          {% endif %}
+        </div>
+        <div class="grid {% if include_sunday %}grid-cols-7{% else %}grid-cols-6{% endif %} gap-1">
           <div class="day-header">Lun</div>
           <div class="day-header">Mar</div>
           <div class="day-header">Mer</div>
           <div class="day-header">Jeu</div>
           <div class="day-header">Ven</div>
           <div class="day-header">Sam</div>
+          {% if include_sunday %}<div class="day-header">Dim</div>{% endif %}
           {% for week in month.weeks %}
             {% for cell in week %}
               {% if cell %}
-              <div class="heatmap-cell aspect-square flex items-center justify-center text-xs font-medium
-                          {% if cell.opacity == 0 %}bg-[#f0f2f6] text-[#b0bedb] border border-[#dce3ef]{% endif %}
-                          {% if cell.opacity > 0 and cell.opacity <= 0.33 %}bg-[#a7b8d6] text-[#1e293b]{% endif %}
-                          {% if cell.opacity > 0.33 and cell.opacity <= 0.55 %}bg-[#4a6fa5] text-white{% endif %}
-                          {% if cell.opacity > 0.55 and cell.opacity <= 0.78 %}bg-[#355478] text-white{% endif %}
-                          {% if cell.opacity > 0.78 %}bg-[#243b58] text-white{% endif %}
-                          {% if cell.date == today %}ring-2 ring-offset-1 ring-[#d46a78] font-bold{% endif %}"
-                   data-date="{{ cell.date|date:'Y-m-d' }}" tabindex="0"
-                   aria-label="{{ cell.label_fr|capfirst }} : {{ cell.count }} visiteur{{ cell.count|pluralize }}">
-                {{ cell.day }}
-              </div>
+              <button type="button"
+                      id="date-{{ cell.date|date:'Y-m-d' }}"
+                      class="heatmap-cell aspect-square p-0 text-xs font-medium
+                        {% if cell.state == 'closure' %}heatmap-closed
+                        {% elif cell.state == 'nonopen' %}heatmap-nonopen
+                        {% elif cell.state == 'future' %}heatmap-future
+                        {% elif cell.state == 'exceptional' %}heatmap-exceptional
+                        {% elif cell.state == 'missing' %}heatmap-missing
+                        {% elif cell.state == 'zero' %}heatmap-zero
+                        {% elif cell.opacity <= 0.33 %}heatmap-level-1
+                        {% elif cell.opacity <= 0.55 %}heatmap-level-2
+                        {% elif cell.opacity <= 0.78 %}heatmap-level-3
+                        {% else %}heatmap-level-4{% endif %}
+                        {% if cell.is_today %} heatmap-today{% endif %}"
+                      data-date="{{ cell.date|date:'Y-m-d' }}"
+                      data-state="{{ cell.state }}"
+                      data-selectable="{% if cell.is_missing and can_validate %}1{% else %}0{% endif %}"
+                      {% if cell.closure %}data-closure-id="{{ cell.closure.id }}"{% endif %}
+                      {% if cell.is_missing and can_validate %}aria-pressed="false"{% endif %}
+                      aria-label="{{ cell.label_fr|capfirst }} — {{ cell.state_label }}">
+                <span>{{ cell.day }}</span>
+                {% if cell.is_missing %}<span class="missing-mark" aria-hidden="true">!</span>{% endif %}
+                {% if cell.is_zero %}<span class="zero-mark" aria-hidden="true">0</span>{% endif %}
+                {% if cell.state == 'exceptional' %}<span class="zero-mark" aria-hidden="true">{{ cell.count }}</span>{% endif %}
+                {% if cell.is_closure %}<i class="bx bx-lock-alt lock-mark" aria-hidden="true"></i>{% endif %}
+              </button>
               {% else %}
               <div class="heatmap-empty aspect-square"></div>
               {% endif %}
@@ -281,49 +315,155 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 
     <!-- Légende -->
-    <div class="mt-8 flex flex-wrap items-center justify-center gap-2 text-xs text-[#7a8fa0]">
-      <span>Moins</span>
-      <div class="heatmap-legend">
-        <div class="heatmap-legend-item bg-[#f0f2f6] border border-[#dce3ef]"></div>
-        <div class="heatmap-legend-item bg-[#a7b8d6]"></div>
-        <div class="heatmap-legend-item bg-[#4a6fa5]"></div>
-        <div class="heatmap-legend-item bg-[#355478]"></div>
-        <div class="heatmap-legend-item bg-[#243b58]"></div>
-      </div>
-      <span>Plus</span>
-      <span class="ml-2 hidden sm:inline">Survolez ou touchez un jour pour le détail.</span>
+    <div class="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-[#5a6f80]">
+      <span class="inline-flex items-center gap-2">
+        Moins
+        <span class="heatmap-legend">
+          <span class="heatmap-legend-item heatmap-level-0"></span>
+          <span class="heatmap-legend-item heatmap-level-1"></span>
+          <span class="heatmap-legend-item heatmap-level-2"></span>
+          <span class="heatmap-legend-item heatmap-level-3"></span>
+          <span class="heatmap-legend-item heatmap-level-4"></span>
+        </span>
+        Plus
+      </span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="heatmap-legend-item heatmap-missing"></span> Sans pointage
+      </span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="heatmap-legend-item heatmap-closed"></span> Fermé
+      </span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="heatmap-legend-item heatmap-nonopen"></span> Non ouvert
+      </span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="heatmap-legend-item heatmap-exceptional"></span> Exceptionnel
+      </span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="heatmap-legend-item border-2 border-[#d46a78] bg-white"></span> Aujourd'hui
+      </span>
     </div>
+
+    <!-- Liste des jours à qualifier -->
+    {% if missing_count %}
+    <details id="missing-list" class="mt-6 rounded-2xl border border-[#dce3ef] bg-white p-4 shadow-sm">
+      <summary class="cursor-pointer text-sm font-semibold text-[#1e293b]">
+        Voir les {{ missing_count }} jour{{ missing_count|pluralize }} sans pointage
+      </summary>
+      <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {% for group in missing_groups %}
+        <div>
+          <h3 class="mb-2 text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">{{ group.label }}</h3>
+          <ul class="space-y-1 text-sm">
+            {% for day in group.dates %}
+            <li>
+              <a href="#date-{{ day|date:'Y-m-d' }}" data-missing-date="{{ day|date:'Y-m-d' }}"
+                 class="inline-flex items-center gap-1.5 text-[#4a6fa5] hover:underline">
+                <i class="bx bx-error-circle text-[#f97316]" aria-hidden="true"></i>
+                {{ day|date:"d/m/Y" }}
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% empty %}
+        <p class="text-sm text-[#5a6f80]">Aucun jour sans pointage.</p>
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
+
   </div>
 </div>
+
+<!-- Barre de sélection -->
+<div id="selection-bar" class="fixed bottom-4 left-1/2 z-50 hidden w-[min(95vw,54rem)] -translate-x-1/2 rounded-2xl border border-[#dce3ef] bg-white p-3 shadow-2xl" role="region" aria-live="polite">
+  <div class="flex flex-wrap items-center gap-2">
+    <span id="selection-count" class="text-sm font-semibold text-[#1e293b]">0 jour sélectionné</span>
+    <select id="selection-kind" class="rounded-lg border border-[#dce3ef] px-2 py-1.5 text-sm text-[#1e293b]">
+      {% for value, label in closure_kinds %}
+      <option value="{{ value }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+    <input id="selection-label" type="text" maxlength="200" placeholder="Précision (facultatif)"
+           class="min-w-[10rem] flex-1 rounded-lg border border-[#dce3ef] px-2 py-1.5 text-sm text-[#1e293b]">
+    <button type="button" id="selection-save"
+            class="inline-flex items-center gap-2 rounded-xl bg-[#4a6fa5] px-4 py-2 text-sm font-medium text-white hover:bg-[#3d5f8f]">
+      <i class="bx bx-check" aria-hidden="true"></i> Marquer comme non ouverts
+    </button>
+    <button type="button" id="selection-clear"
+            class="inline-flex items-center gap-2 rounded-xl border border-[#dce3ef] px-3 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7]">
+      Annuler
+    </button>
+  </div>
+</div>
+
+<form id="csrf-form" class="hidden">{% csrf_token %}</form>
 <div id="heatmap-tip" role="tooltip" aria-hidden="true"></div>
 {{ heatmap_tooltips|json_script:"heatmap-tooltips" }}
+{% endblock %}
+
+{% block javascripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   var tip = document.getElementById('heatmap-tip');
   var dataEl = document.getElementById('heatmap-tooltips');
   var tips = {};
   try { tips = JSON.parse(dataEl ? dataEl.textContent : '{}'); } catch (e) { tips = {}; }
   if (!tip) return;
 
-  function plural(n, one, many) { return n > 1 ? many : one; }
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  var canValidate = {{ can_validate|yesno:"true,false" }};
+  var csrfInput = document.querySelector('#csrf-form [name=csrfmiddlewaretoken]');
+  var csrfToken = csrfInput ? csrfInput.value : '';
+  var createUrl = "{% url 'visitor_tracking:heatmap_create_closures' year %}{% if commune %}?commune={{ commune|urlencode }}{% endif %}";
+  var reopenUrlTemplate = "{% url 'visitor_tracking:heatmap_delete_closure' year 0 %}{% if commune %}?commune={{ commune|urlencode }}{% endif %}";
+  var selected = new Set();
+  var lastSelected = null;
+
+  function esc(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char];
     });
   }
 
   function showTip(cell, x, y) {
     var info = tips[cell.getAttribute('data-date')];
     if (!info) return;
-    var html = '<div class="tip-date">' + esc(info.label) + '</div>'
-      + '<div class="tip-total">' + info.total + ' <small>visiteur' + (info.total > 1 ? 's' : '') + '</small></div>';
+    var html = '<div class="tip-date">' + esc(info.label) + '</div>';
+    if (info.state === 'closure') {
+      html += '<div class="tip-total">Fermeture</div>';
+      html += '<div>' + esc(info.closure && (info.closure.detail || info.closure.label) || info.state_label) + '</div>';
+      if (info.total) {
+        html += '<div class="tip-hint">' + info.total + ' visiteur(s) — ouverture exceptionnelle</div>';
+      }
+    } else if (info.state === 'missing') {
+      html += '<div class="tip-total">Aucun pointage</div><div>Jour ouvert à qualifier.</div>';
+    } else if (info.state === 'nonopen') {
+      html += '<div class="tip-total">Jour non ouvert</div>';
+    } else if (info.state === 'exceptional') {
+      html += '<div class="tip-total">' + info.total + ' <small>visiteur' + (info.total > 1 ? 's' : '') + '</small></div>'
+        + '<div>Ouverture exceptionnelle sur un jour non ouvert.</div>';
+    } else if (info.state === 'future') {
+      html += '<div class="tip-total">À venir</div>';
+    } else if (info.state === 'zero') {
+      html += '<div class="tip-total">0 <small>visiteur</small></div><div>Pointage à zéro.</div>';
+    } else {
+      html += '<div class="tip-total">' + info.total + ' <small>visiteur' + (info.total > 1 ? 's' : '') + '</small></div>';
+    }
     if (info.lines && info.lines.length) {
       html += '<ul>';
-      info.lines.forEach(function(l) {
-        html += '<li><span>' + esc(l.label) + '</span><span>' + l.count + '</span></li>';
+      info.lines.forEach(function (line) {
+        html += '<li><span>' + esc(line.label) + '</span><span>' + line.count + '</span></li>';
       });
-      if (info.extra) html += '<li class="tip-more"><span>et ' + info.extra + ' autre' + (info.extra > 1 ? 's' : '') + '…</span><span></span></li>';
+      if (info.extra) {
+        html += '<li class="tip-more"><span>et ' + info.extra + ' autre' + (info.extra > 1 ? 's' : '') + '…</span><span></span></li>';
+      }
       html += '</ul>';
+    }
+    if (cell.getAttribute('data-selectable') === '1') {
+      html += '<div class="tip-hint">Cliquez pour sélectionner ce jour.</div>';
+    } else if (info.state === 'closure' && canValidate) {
+      html += '<div class="tip-hint">Cliquez pour rouvrir ce jour.</div>';
     }
     tip.innerHTML = html;
     tip.style.display = 'block';
@@ -333,11 +473,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function moveTip(x, y) {
     var pad = 12;
-    var r = tip.getBoundingClientRect();
+    var rect = tip.getBoundingClientRect();
     var left = x + 14;
     var top = y + 16;
-    if (left + r.width > window.innerWidth - pad) left = x - r.width - 14;
-    if (top + r.height > window.innerHeight - pad) top = y - r.height - 16;
+    if (left + rect.width > window.innerWidth - pad) left = x - rect.width - 14;
+    if (top + rect.height > window.innerHeight - pad) top = y - rect.height - 16;
     tip.style.left = Math.max(pad, left) + 'px';
     tip.style.top = Math.max(pad, top) + 'px';
   }
@@ -347,21 +487,170 @@ document.addEventListener('DOMContentLoaded', function() {
     tip.setAttribute('aria-hidden', 'true');
   }
 
-  document.querySelectorAll('.heatmap-cell[data-date]').forEach(function(cell) {
-    cell.addEventListener('mouseenter', function(e) { showTip(cell, e.clientX, e.clientY); });
-    cell.addEventListener('mousemove', function(e) { moveTip(e.clientX, e.clientY); });
+  function setSelected(cell, state) {
+    if (state) {
+      selected.add(cell.getAttribute('data-date'));
+    } else {
+      selected.delete(cell.getAttribute('data-date'));
+    }
+    cell.classList.toggle('heatmap-selected', state);
+    cell.setAttribute('aria-pressed', state ? 'true' : 'false');
+  }
+
+  function updateBar() {
+    var bar = document.getElementById('selection-bar');
+    var count = document.getElementById('selection-count');
+    if (!bar || !count) return;
+    count.textContent = selected.size + (selected.size > 1 ? ' jours sélectionnés' : ' jour sélectionné');
+    bar.classList.toggle('hidden', selected.size === 0);
+  }
+
+  function clearSelection() {
+    document.querySelectorAll('.heatmap-cell[data-selectable="1"]').forEach(function (cell) {
+      setSelected(cell, false);
+    });
+    selected.clear();
+    lastSelected = null;
+    updateBar();
+  }
+
+  function selectAllMissing() {
+    document.querySelectorAll('.heatmap-cell[data-selectable="1"]').forEach(function (cell) {
+      setSelected(cell, true);
+    });
+    updateBar();
+  }
+
+  function selectMonth(button) {
+    var card = button.closest('[data-month-card]');
+    if (!card) return;
+    card.querySelectorAll('.heatmap-cell[data-selectable="1"]').forEach(function (cell) {
+      setSelected(cell, true);
+    });
+    updateBar();
+  }
+
+  function saveSelection() {
+    if (!selected.size) return;
+    var kind = document.getElementById('selection-kind').value;
+    var label = document.getElementById('selection-label').value;
+    fetch(createUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify({ dates: Array.from(selected), kind: kind, label: label })
+    })
+      .then(function (response) {
+        return response.json().then(function (data) {
+          return { ok: response.ok, data: data };
+        });
+      })
+      .then(function (result) {
+        if (!result.ok) {
+          throw new Error(result.data.error || 'Erreur lors de la validation.');
+        }
+        if (result.data.skipped && result.data.skipped.length) {
+          alert(result.data.created + ' fermeture(s) créée(s). ' + result.data.skipped.length + ' jour(s) ignoré(s) car déjà pointé(s) ou déjà fermé(s).');
+        }
+        window.location.reload();
+      })
+      .catch(function (error) {
+        alert(error.message);
+      });
+  }
+
+  function reopenClosure(cell) {
+    var closureId = cell.getAttribute('data-closure-id');
+    var iso = cell.getAttribute('data-date');
+    if (!closureId || !canValidate) return;
+    if (!confirm('Rouvrir le ' + iso + ' ?')) return;
+    var url = reopenUrlTemplate.replace('/0/', '/' + closureId + '/');
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify({ date: iso })
+    })
+      .then(function (response) {
+        return response.json().then(function (data) {
+          return { ok: response.ok, data: data };
+        });
+      })
+      .then(function (result) {
+        if (!result.ok) throw new Error(result.data.error || 'Erreur.');
+        window.location.reload();
+      })
+      .catch(function (error) { alert(error.message); });
+  }
+
+  document.querySelectorAll('.heatmap-cell[data-date]').forEach(function (cell) {
+    cell.addEventListener('mouseenter', function (event) { showTip(cell, event.clientX, event.clientY); });
+    cell.addEventListener('mousemove', function (event) { moveTip(event.clientX, event.clientY); });
     cell.addEventListener('mouseleave', hideTip);
-    cell.addEventListener('focus', function() {
-      var r = cell.getBoundingClientRect();
-      showTip(cell, r.left + r.width / 2, r.top);
+    cell.addEventListener('focus', function () {
+      var rect = cell.getBoundingClientRect();
+      showTip(cell, rect.left + rect.width / 2, rect.top);
     });
     cell.addEventListener('blur', hideTip);
-    cell.addEventListener('click', function(e) {
-      if (tip.style.display === 'block') { hideTip(); }
-      else { showTip(cell, e.clientX || 0, e.clientY || 0); }
+    cell.addEventListener('click', function (event) {
+      if (cell.getAttribute('data-selectable') === '1') {
+        if (event.shiftKey && lastSelected) {
+          var cells = Array.from(document.querySelectorAll('.heatmap-cell[data-selectable="1"]'));
+          var start = cells.indexOf(lastSelected);
+          var end = cells.indexOf(cell);
+          if (start >= 0 && end >= 0) {
+            var from = Math.min(start, end);
+            var to = Math.max(start, end);
+            for (var i = from; i <= to; i += 1) {
+              setSelected(cells[i], true);
+            }
+          }
+        } else {
+          setSelected(cell, !selected.has(cell.getAttribute('data-date')));
+        }
+        lastSelected = cell;
+        updateBar();
+        hideTip();
+        return;
+      }
+      if (cell.getAttribute('data-closure-id') && canValidate) {
+        reopenClosure(cell);
+        return;
+      }
+      if (tip.style.display === 'block') {
+        hideTip();
+      } else {
+        showTip(cell, event.clientX || 0, event.clientY || 0);
+      }
     });
   });
-  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') hideTip(); });
+
+  var selectAllButton = document.getElementById('select-all-missing');
+  if (selectAllButton) selectAllButton.addEventListener('click', selectAllMissing);
+
+  document.querySelectorAll('.select-month').forEach(function (button) {
+    button.addEventListener('click', function () { selectMonth(button); });
+  });
+
+  var saveButton = document.getElementById('selection-save');
+  if (saveButton) saveButton.addEventListener('click', saveSelection);
+
+  var clearButton = document.getElementById('selection-clear');
+  if (clearButton) clearButton.addEventListener('click', clearSelection);
+
+  document.querySelectorAll('[data-missing-date]').forEach(function (link) {
+    link.addEventListener('click', function () {
+      var target = document.getElementById('date-' + link.getAttribute('data-missing-date'));
+      if (!target) return;
+      target.classList.add('heatmap-highlight');
+      setTimeout(function () { target.classList.remove('heatmap-highlight'); }, 1800);
+    });
+  });
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+      if (selected.size) clearSelection();
+      else hideTip();
+    }
+  });
 });
 </script>
 {% endblock %}

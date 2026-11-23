@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Location, VisitorCount
+from .models import Closure, Location, VisitorCount
 
 
 @admin.register(Location)
@@ -44,4 +44,21 @@ class VisitorCountAdmin(admin.ModelAdmin):
             obj.created_by = request.user
         obj.updated_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(Closure)
+class ClosureAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "start_date",
+        "end_date",
+        "kind",
+        "label",
+        "created_by",
+    )
+    list_filter = ("kind", "user", "start_date")
+    search_fields = ("user__username", "label")
+    date_hierarchy = "start_date"
+    ordering = ("-start_date", "-end_date")
+    readonly_fields = ("created_at", "updated_at")
 

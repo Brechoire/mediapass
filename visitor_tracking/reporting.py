@@ -13,7 +13,16 @@ from django.db.models.functions import ExtractMonth
 from django.utils import timezone
 
 from .models import Location, VisitorCount
-from .services import SuperadminStatisticsService, WEEKDAY_NAMES
+from .opening import (
+    WEEKDAY_LABELS,
+    build_closure_map,
+    count_open_days,
+    format_weekdays,
+    get_closures,
+    get_open_dates,
+    get_opening_weekdays,
+)
+from .services import SuperadminStatisticsService
 
 MONTH_NAMES = [
     "Janvier",
@@ -62,19 +71,6 @@ def _shift_year_back(value):
         return value.replace(year=value.year - 1)
     except ValueError:
         return value.replace(year=value.year - 1, day=28)
-
-
-def _count_weekdays(start, end):
-    """Nombre de lundis-samedis entre deux dates incluses."""
-    if end < start:
-        return 0
-    total = 0
-    current = start
-    while current <= end:
-        if current.weekday() != 6:
-            total += 1
-        current += timedelta(days=1)
-    return total
 
 
 def _pct(part, whole):
@@ -171,6 +167,9 @@ class AnnualReportService:
         )
         self.has_data = self.qs.exists()
 
+        self.opening_weekdays = get_opening_weekdays(scope_user)
+        self.closure_map = build_closure_map(scope_user, self.start_date, self.end_date)
+
     @staticmethod
     def get_available_communes():
         """Médiathèques ayant au moins un espace, pour le sélecteur superadmin."""
@@ -192,35 +191,102 @@ class AnnualReportService:
 
         total = sum(daily_map.values())
         pointed_days = len(daily_map)
-        sunday_dates = [d for d in daily_map if d.weekday() == 6]
-        sunday_days = len(sunday_dates)
-        sunday_total = sum(daily_map[d] for d in sunday_dates)
-        weekday_total = total - sunday_total
-        weekday_pointed_days = pointed_days - sunday_days
+
+        if self.method == "v2":
+            open_dates = get_open_dates(
+                self.start_date,
+                self.end_date,
+                self.opening_weekdays,
+                self.closure_map,
+            )
+            expected_days = len(open_dates)
+            open_pointed_dates = set(daily_map) & open_dates
+            open_pointed_days = len(open_pointed_dates)
+            open_total = sum(daily_map[d] for d in open_pointed_dates)
+            exceptional_dates = set(daily_map) - open_dates
+            exceptional_days = len(exceptional_dates)
+            exceptional_total = sum(daily_map[d] for d in exceptional_dates)
+            closure_dates = {
+                d for d in self.closure_map if d.weekday() in self.opening_weekdays
+            }
+            closure_days = len(closure_dates)
+            closure_pointed_dates = set(daily_map) & set(self.closure_map)
+            closure_pointed_days = len(closure_pointed_dates)
+            closure_pointed_total = sum(daily_map[d] for d in closure_pointed_dates)
+            missing_days = max(expected_days - open_pointed_days, 0)
+            completeness = (
+                round(open_pointed_days / expected_days * 100, 1)
+                if expected_days
+                else None
+            )
+            avg_per_open_day = (
+                round(open_total / open_pointed_days, 1) if open_pointed_days else 0
+            )
+            avg_per_expected_open_day = (
+                round(open_total / expected_days, 1) if expected_days else 0
+            )
+            sunday_dates = [
+                d
+                for d in daily_map
+                if d.weekday() == 6 and 6 not in self.opening_weekdays
+            ]
+            sunday_days = len(sunday_dates)
+            sunday_total = sum(daily_map[d] for d in sunday_dates)
+            weekday_total = open_total
+            weekday_pointed_days = open_pointed_days
+        else:
+            open_dates = None
+            expected_days = None
+            open_pointed_dates = set()
+            open_pointed_days = 0
+            open_total = 0
+            exceptional_dates = set()
+            exceptional_days = 0
+            exceptional_total = 0
+            closure_dates = set()
+            closure_days = 0
+            closure_pointed_dates = set()
+            closure_pointed_days = 0
+            closure_pointed_total = 0
+            missing_days = None
+            completeness = None
+            sunday_dates = [d for d in daily_map if d.weekday() == 6]
+            sunday_days = len(sunday_dates)
+            sunday_total = sum(daily_map[d] for d in sunday_dates)
+            weekday_total = total - sunday_total
+            weekday_pointed_days = pointed_days - sunday_days
+            avg_per_open_day = (
+                round(weekday_total / weekday_pointed_days, 1)
+                if weekday_pointed_days
+                else 0
+            )
+            avg_per_expected_open_day = 0
 
         avg_per_pointed_day = round(total / pointed_days, 1) if pointed_days else 0
-        avg_per_open_day = (
-            round(weekday_total / weekday_pointed_days, 1)
-            if weekday_pointed_days
-            else 0
-        )
-
-        expected_days = (
-            _count_weekdays(self.start_date, self.end_date)
-            if self.method == "v2"
-            else None
-        )
-        missing_days = (
-            max(expected_days - weekday_pointed_days, 0)
-            if expected_days is not None
-            else None
-        )
-        completeness = (
-            round((expected_days - missing_days) / expected_days * 100, 1)
-            if expected_days
-            else None
-        )
         zero_days = sum(1 for value in daily_map.values() if value == 0)
+
+        closure_days_by_kind = {}
+        for day, closure in self.closure_map.items():
+            if day.weekday() in self.opening_weekdays:
+                closure_days_by_kind[closure.kind] = (
+                    closure_days_by_kind.get(closure.kind, 0) + 1
+                )
+        closure_rows = []
+        for closure in get_closures(self.scope_user, self.start_date, self.end_date):
+            first = max(closure.start_date, self.start_date)
+            last = min(closure.end_date, self.end_date)
+            if first > last:
+                continue
+            closure_rows.append(
+                {
+                    "kind": closure.kind,
+                    "kind_label": closure.get_kind_display(),
+                    "label": closure.label,
+                    "start": first,
+                    "end": last,
+                    "days": count_open_days(first, last, self.opening_weekdays, {}),
+                }
+            )
 
         n1_total = self.n1_qs.aggregate(total=Sum("count"))["total"] or 0
         n1_has_data = self.n1_qs.exists()
@@ -269,8 +335,13 @@ class AnnualReportService:
             variation=variation,
             expected_days=expected_days,
             missing_days=missing_days,
+            closure_days=closure_days,
+            closure_days_by_kind=closure_days_by_kind,
+            exceptional_days=exceptional_days,
+            exceptional_total=exceptional_total,
             sunday_days=sunday_days,
             sunday_total=sunday_total,
+            opening_weekdays_label=format_weekdays(self.opening_weekdays),
             top_space=top_space,
             record=record,
             best_weekday=best_weekday,
@@ -324,6 +395,8 @@ class AnnualReportService:
                     "à date comparable" if self.is_partial else "année complète"
                 ),
                 "n1_method_note": self._n1_method_note(n1_has_data),
+                "opening_weekdays": self.opening_weekdays,
+                "opening_weekdays_label": format_weekdays(self.opening_weekdays),
             },
             "totals": {
                 "total": total,
@@ -337,9 +410,19 @@ class AnnualReportService:
                 "completeness": completeness,
                 "avg_per_pointed_day": avg_per_pointed_day,
                 "avg_per_open_day": avg_per_open_day,
+                "avg_per_expected_open_day": avg_per_expected_open_day,
                 "zero_days": zero_days,
                 "sunday_days": sunday_days,
                 "sunday_total": sunday_total,
+                "open_days": expected_days,
+                "open_pointed_days": open_pointed_days,
+                "open_total": open_total,
+                "closure_days": closure_days,
+                "closure_pointed_days": closure_pointed_days,
+                "closure_pointed_total": closure_pointed_total,
+                "closure_days_by_kind": closure_days_by_kind,
+                "exceptional_days": exceptional_days,
+                "exceptional_total": exceptional_total,
                 "last_update": last_update,
                 "record": record,
                 "best_month": best_month,
@@ -356,6 +439,7 @@ class AnnualReportService:
             "record": record,
             "top_days": top_days,
             "matrix": self._build_matrix(spaces),
+            "closure_rows": closure_rows,
             "synthese": synthese,
             "has_data": self.has_data,
             "charts": {
@@ -441,6 +525,11 @@ class AnnualReportService:
             current = month_map.get(number, 0)
             previous = n1_month_map.get(number, 0)
             running += current
+            closure_days = sum(
+                1
+                for day in self.closure_map
+                if day.month == number and day.weekday() in self.opening_weekdays
+            )
             monthly.append(
                 {
                     "number": number,
@@ -451,6 +540,8 @@ class AnnualReportService:
                     "variation": _variation(current, previous),
                     "share": _pct(current, total),
                     "cumulative": running,
+                    "closure_days": closure_days,
+                    "is_closure_month": closure_days > 0,
                     "is_current": (self.is_current_year and number == self.today.month),
                     "is_future": (
                         self.is_future_year
@@ -481,21 +572,23 @@ class AnnualReportService:
         return quarters
 
     def _build_weekday(self, daily_map, total):
-        sums = {index: 0 for index in range(6)}
-        counts = {index: 0 for index in range(6)}
+        weekdays = self.opening_weekdays if self.method == "v2" else [0, 1, 2, 3, 4, 5]
+        sums = {index: 0 for index in weekdays}
+        counts = {index: 0 for index in weekdays}
         for day, value in daily_map.items():
             weekday = day.weekday()
-            if weekday < 6:
+            if weekday in sums:
                 sums[weekday] += value
                 counts[weekday] += 1
+        share_total = sum(sums.values())
         return [
             {
-                "name": WEEKDAY_NAMES[index],
+                "name": WEEKDAY_LABELS[index],
                 "total": sums[index],
                 "avg": (round(sums[index] / counts[index], 1) if counts[index] else 0),
-                "share": _pct(sums[index], total),
+                "share": _pct(sums[index], share_total),
             }
-            for index in range(6)
+            for index in weekdays
         ]
 
     def _build_spaces(self, total):
@@ -532,15 +625,16 @@ class AnnualReportService:
             .annotate(total=Sum("count"))
             .order_by("location_id", "date")
         )
+        weekdays = self.opening_weekdays if self.method == "v2" else [0, 1, 2, 3, 4, 5]
         weekday_sums = {}
         weekday_counts = {}
         for row in weekday_rows:
             weekday = row["date"].weekday()
-            if weekday >= 6:
+            if weekday not in weekdays:
                 continue
             location_id = row["location_id"]
-            weekday_sums.setdefault(location_id, [0] * 6)
-            weekday_counts.setdefault(location_id, [0] * 6)
+            weekday_sums.setdefault(location_id, {day: 0 for day in weekdays})
+            weekday_counts.setdefault(location_id, {day: 0 for day in weekdays})
             weekday_sums[location_id][weekday] += row["total"] or 0
             weekday_counts[location_id][weekday] += 1
 
@@ -551,16 +645,16 @@ class AnnualReportService:
             days = row.get("days") or 0
             n1 = n1_by_loc.get(location.id, 0)
 
-            sums = weekday_sums.get(location.id, [0] * 6)
-            counts = weekday_counts.get(location.id, [0] * 6)
+            sums = weekday_sums.get(location.id, {day: 0 for day in weekdays})
+            counts = weekday_counts.get(location.id, {day: 0 for day in weekdays})
             weekday_avgs = [
                 {
-                    "name": WEEKDAY_NAMES[index],
+                    "name": WEEKDAY_LABELS[index],
                     "avg": (
                         round(sums[index] / counts[index], 1) if counts[index] else 0
                     ),
                 }
-                for index in range(6)
+                for index in weekdays
             ]
             best_weekday = None
             if any(item["avg"] > 0 for item in weekday_avgs):
@@ -667,8 +761,13 @@ class AnnualReportService:
         variation,
         expected_days,
         missing_days,
+        closure_days,
+        closure_days_by_kind,
+        exceptional_days,
+        exceptional_total,
         sunday_days,
         sunday_total,
+        opening_weekdays_label,
         top_space,
         record,
         best_weekday,
@@ -751,18 +850,56 @@ class AnnualReportService:
             )
 
         if self.method == "v2":
-            if missing_days:
+            phrases.append(
+                f"Jours d'ouverture habituels : " f"{opening_weekdays_label}."
+            )
+            if closure_days:
+                kind_labels = {
+                    "public_holiday": "jours fériés",
+                    "annual": "jours de fermeture annuelle",
+                    "works": "jours de travaux",
+                    "exceptional": "jours de fermeture exceptionnelle",
+                    "other": "autres jours",
+                }
+                details = [
+                    f"{_fmt_int(count)} {kind_labels.get(kind, kind)}"
+                    for kind, count in sorted(
+                        closure_days_by_kind.items(),
+                        key=lambda item: item[1],
+                        reverse=True,
+                    )
+                ]
                 phrases.append(
-                    f"{_fmt_int(missing_days)} jours ouvrés sans pointage "
-                    f"sur {_fmt_int(expected_days)} jours attendus."
+                    f"La médiathèque a été fermée "
+                    f"{_fmt_int(closure_days)} jours ouvrés "
+                    f"({', '.join(details)})."
                 )
             else:
+                phrases.append("Aucune fermeture déclarée sur la période.")
+
+            if expected_days:
+                if missing_days:
+                    phrases.append(
+                        f"{_fmt_int(missing_days)} jours ouvrés sans "
+                        f"pointage sur {_fmt_int(expected_days)} jours "
+                        "d'ouverture attendus."
+                    )
+                else:
+                    phrases.append(
+                        f"Pointage complet sur les "
+                        f"{_fmt_int(expected_days)} jours d'ouverture "
+                        "de la période."
+                    )
+
+            if exceptional_days:
                 phrases.append(
-                    f"Pointage complet sur les {_fmt_int(expected_days)} "
-                    f"jours ouvrés de la période."
+                    f"{_fmt_int(exceptional_days)} pointage(s) ont été "
+                    f"saisis sur des jours non ouverts "
+                    f"({_fmt_int(exceptional_total)} visiteurs) : "
+                    "ouvertures exceptionnelles."
                 )
 
-        if sunday_days:
+        if self.method == "legacy" and sunday_days:
             phrases.append(
                 f"{_fmt_int(sunday_days)} dimanche(s) ont été pointé(s) "
                 f"({_fmt_int(sunday_total)} visiteurs) : ouvertures "
