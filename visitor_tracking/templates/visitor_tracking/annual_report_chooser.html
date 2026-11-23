@@ -1,0 +1,58 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}Rapport annuel {{ year }} | {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-8">
+    <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <a href="{% url 'visitor_tracking:index' %}"
+           class="mb-4 inline-flex items-center gap-2 text-sm text-[#5a6f80] hover:text-[#4a6fa5]">
+            <i class="bx bx-arrow-back" aria-hidden="true"></i> Retour au pointage
+        </a>
+
+        <div class="rounded-2xl border border-[#dce3ef] bg-white p-6 shadow-sm sm:p-8">
+            <div class="mb-5 flex items-center gap-3">
+                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e8eef7] text-[#4a6fa5]" aria-hidden="true">
+                    <i class="bx bx-buildings text-2xl"></i>
+                </span>
+                <div>
+                    <h1 class="text-xl font-bold text-[#1e293b]">Rapport annuel {{ year }}</h1>
+                    <p class="text-sm text-[#5a6f80]">Choisissez la médiathèque à consulter.</p>
+                </div>
+            </div>
+
+            {% if available_communes %}
+            <form method="get" action="{% url 'visitor_tracking:annual_report_year' year %}" class="space-y-4">
+                <input type="hidden" name="vue" value="{{ vue }}">
+                <div>
+                    <label for="chooser-commune" class="mb-1.5 block text-sm font-medium text-[#1e293b]">Médiathèque</label>
+                    <select id="chooser-commune" name="commune" required
+                            class="w-full rounded-xl border border-[#dce3ef] bg-white px-4 py-2.5 text-sm text-[#1e293b] focus:border-[#4a6fa5] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20">
+                        <option value="" disabled selected>Sélectionner une médiathèque…</option>
+                        {% for item in available_communes %}
+                        <option value="{{ item.username }}">{{ item.username|capfirst }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 rounded-xl bg-[#4a6fa5] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#3d5f8f]">
+                        <i class="bx bx-bar-chart-alt-2" aria-hidden="true"></i> Ouvrir le rapport
+                    </button>
+                    <a href="{% url 'visitor_tracking:index' %}"
+                       class="inline-flex items-center gap-2 rounded-xl border border-[#dce3ef] px-4 py-2.5 text-sm text-[#4a6fa5] hover:bg-[#e8eef7]">
+                        Annuler
+                    </a>
+                </div>
+            </form>
+            {% else %}
+            <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                <p class="font-medium">Aucune médiathèque avec un espace n'est disponible.</p>
+                <p class="mt-1">Créez d'abord un espace de pointage et rattachez-le à une médiathèque.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

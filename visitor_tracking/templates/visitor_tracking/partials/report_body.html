@@ -1,0 +1,492 @@
+{% load static %}
+
+<!-- Périmètre et méthode -->
+<div class="mb-6 flex flex-wrap items-center gap-2 text-xs">
+    <span class="inline-flex items-center gap-1.5 rounded-full border border-[#dce3ef] bg-white px-3 py-1 text-[#4a6fa5]">
+        <i class="bx bx-map-pin" aria-hidden="true"></i>
+        {{ report.synthese.perimetre }}
+    </span>
+    <span class="inline-flex items-center gap-1.5 rounded-full border border-[#dce3ef] bg-white px-3 py-1 text-[#5a6f80]">
+        <i class="bx bx-calendar" aria-hidden="true"></i>
+        {{ report.period.label }}
+    </span>
+    <span class="inline-flex items-center gap-1.5 rounded-full border border-[#dce3ef] bg-white px-3 py-1 text-[#5a6f80]">
+        <i class="bx bx-info-circle" aria-hidden="true"></i>
+        {{ report.period.status_label }}
+    </span>
+    {% if report.period.method == "legacy" %}
+    <span class="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-800">
+        <i class="bx bx-history" aria-hidden="true"></i>
+        Méthode historique
+    </span>
+    {% endif %}
+</div>
+
+{% if not report.has_data %}
+<div class="rounded-2xl border border-[#dce3ef] bg-white p-10 text-center shadow-sm">
+    <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#e8eef7]">
+        <i class="bx bx-bar-chart-alt-2 text-3xl text-[#4a6fa5]" aria-hidden="true"></i>
+    </div>
+    <h2 class="text-lg font-bold text-[#1e293b]">Aucun pointage pour {{ report.scope.label }} en {{ year }}</h2>
+    <p class="mx-auto mt-2 max-w-md text-sm text-[#5a6f80]">
+        Aucune donnée de fréquentation n'est disponible pour cette médiathèque sur l'année sélectionnée.
+        {% if report.period.is_future_year %}Cette année n'est pas encore commencée.{% endif %}
+    </p>
+    <div class="mt-6 flex flex-wrap items-center justify-center gap-3 no-print">
+        {% if prev_year %}
+        <a href="?year={{ prev_year }}{% if commune %}&commune={{ commune }}{% endif %}"
+           class="inline-flex items-center gap-2 rounded-xl border border-[#dce3ef] px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7]">
+            <i class="bx bx-chevron-left" aria-hidden="true"></i> Voir {{ prev_year }}
+        </a>
+        {% endif %}
+        <a href="{% url 'visitor_tracking:entry_form' %}"
+           class="inline-flex items-center gap-2 rounded-xl bg-[#4a6fa5] px-4 py-2 text-sm font-medium text-white hover:bg-[#3d5f8f]">
+            <i class="bx bx-plus" aria-hidden="true"></i> Saisir des pointages
+        </a>
+    </div>
+</div>
+{% else %}
+
+<!-- KPI -->
+<div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+    <div class="avoid-break rounded-2xl border border-[#dce3ef] bg-white p-4 shadow-sm">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-[#5a6f80]">Total visiteurs</p>
+        <p class="mt-1 text-3xl font-bold text-[#4a6fa5]">{{ report.totals.total }}</p>
+        <p class="mt-0.5 text-[10px] text-[#5a6f80]">sur {{ report.totals.pointed_days }} jours pointés</p>
+    </div>
+    <div class="avoid-break rounded-2xl border border-[#dce3ef] bg-white p-4 shadow-sm">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-[#5a6f80]">Moyenne / jour pointé</p>
+        <p class="mt-1 text-3xl font-bold text-[#4a6fa5]">{{ report.totals.avg_per_pointed_day|floatformat:1 }}</p>
+        <p class="mt-0.5 text-[10px] text-[#5a6f80]">{{ report.totals.avg_per_open_day|floatformat:1 }} / jour ouvré pointé</p>
+    </div>
+    <div class="avoid-break rounded-2xl border border-[#dce3ef] bg-white p-4 shadow-sm">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-[#5a6f80]">Année {{ report.period.n1_year }}</p>
+        <p class="mt-1 text-3xl font-bold text-[#4a6fa5]">
+            {% if report.totals.n1_has_data %}{{ report.totals.n1_total }}{% else %}—{% endif %}
+        </p>
+        <p class="mt-0.5 text-[10px] text-[#5a6f80]">
+            {% if report.totals.n1_has_data %}{{ report.period.n1_label }}{% else %}aucune donnée{% endif %}
+        </p>
+    </div>
+    <div class="avoid-break rounded-2xl border border-[#dce3ef] bg-white p-4 shadow-sm">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-[#5a6f80]">Variation vs N-1</p>
+        <p class="mt-1 text-3xl font-bold {% if report.totals.variation and report.totals.variation > 0 %}text-emerald-700{% elif report.totals.variation and report.totals.variation < 0 %}text-red-600{% else %}text-[#4a6fa5]{% endif %}">
+            {% if report.totals.variation is not None %}
+                {% if report.totals.variation > 0 %}+{% endif %}{{ report.totals.variation|floatformat:1 }} %
+            {% else %}—{% endif %}
+        </p>
+        <p class="mt-0.5 text-[10px] text-[#5a6f80]">vs {{ report.period.n1_year }}</p>
+    </div>
+    <div class="avoid-break rounded-2xl border border-[#dce3ef] bg-white p-4 shadow-sm">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-[#5a6f80]">Jours pointés</p>
+        <p class="mt-1 text-3xl font-bold text-[#4a6fa5]">{{ report.totals.pointed_days }}</p>
+        <p class="mt-0.5 text-[10px] text-[#5a6f80]">
+            {% if report.totals.completeness is not None %}
+                {{ report.totals.completeness|floatformat:1 }} % de complétude
+            {% else %}
+                méthode historique
+            {% endif %}
+        </p>
+    </div>
+    <div class="avoid-break rounded-2xl border border-[#dce3ef] bg-white p-4 shadow-sm">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-[#5a6f80]">Record</p>
+        <p class="mt-1 text-3xl font-bold text-[#4a6fa5]">
+            {% if report.totals.record %}{{ report.totals.record.total }}{% else %}—{% endif %}
+        </p>
+        <p class="mt-0.5 text-[10px] text-[#5a6f80]">
+            {% if report.totals.record %}{{ report.totals.record.date|date:"d/m/Y" }}{% else %}aucun jour pointé{% endif %}
+        </p>
+    </div>
+</div>
+
+<!-- Synthèse -->
+<div class="avoid-break mb-8 rounded-2xl border border-[#dce3ef] bg-white p-5 shadow-sm sm:p-6">
+    <div class="mb-1 flex items-center gap-3">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#4a6fa5] text-white" aria-hidden="true">
+            <i class="bx bx-detail text-xl"></i>
+        </span>
+        <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-base font-bold text-[#1e293b]">Synthèse {{ year }}</h2>
+            <span class="rounded-full bg-[#e8eef7] px-2.5 py-0.5 text-xs font-semibold text-[#4a6fa5]">
+                {{ report.synthese.phrases|length }} points clés
+            </span>
+        </div>
+    </div>
+    <p class="mb-4 ml-0 text-xs text-[#5a6f80] sm:ml-12">Sert à : résumer l'année pour le rapport d'activité et les élus.</p>
+    <div class="rounded-r-lg border-l-4 border-[#4a6fa5] bg-[#eef3f9] p-4 text-[#1e293b] sm:p-5">
+        {% for phrase in report.synthese.phrases %}
+            {% if forloop.first %}
+            <p class="text-[15px] font-medium leading-relaxed text-[#1e293b]">{{ phrase }}</p>
+            {% else %}
+                {% if forloop.counter == 2 %}<ol class="mt-4 space-y-2 text-sm leading-relaxed">{% endif %}
+                <li class="flex gap-2.5">
+                    <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#4a6fa5] text-[11px] font-bold text-white" aria-hidden="true">{{ forloop.counter|add:"-1" }}</span>
+                    <span>{{ phrase }}</span>
+                </li>
+                {% if forloop.last %}</ol>{% endif %}
+            {% endif %}
+        {% empty %}
+            <p class="leading-relaxed">Aucune donnée pour rédiger la synthèse.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Graphique journalier -->
+<div class="avoid-break mb-8 rounded-2xl border border-[#dce3ef] bg-white p-5 shadow-sm">
+    <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <div>
+            <h2 class="font-semibold text-[#1e293b]">
+                <i class="bx bx-line-chart mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i>
+                Évolution journalière
+            </h2>
+            <p class="text-xs text-[#5a6f80]">Comparaison avec {{ report.period.n1_year }}{% if report.period.is_partial %} à date comparable{% endif %}.</p>
+            {% if not report.totals.n1_has_data %}
+            <p class="text-xs text-amber-700">Aucune donnée N-1 pour cette période : la comparaison n'est pas disponible.</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="relative mt-4 h-72 sm:h-80">
+        <canvas id="report-daily-chart" role="img"
+                aria-label="Évolution journalière des visiteurs en {{ year }}, comparée à {{ report.period.n1_year }}."></canvas>
+    </div>
+    <noscript><p class="mt-3 text-sm text-[#5a6f80]">Le graphique nécessite JavaScript. Les données mensuelles restent disponibles ci-dessous.</p></noscript>
+    <details class="mt-4 rounded-xl border border-[#dce3ef] bg-[#f8f9fc] p-3">
+        <summary class="cursor-pointer text-sm font-medium text-[#4a6fa5]">Voir les données mensuelles</summary>
+        <div class="mt-3 overflow-x-auto">
+            <table class="min-w-full divide-y divide-[#dce3ef] text-sm">
+                <caption class="sr-only">Totaux mensuels {{ year }} et comparaison {{ report.period.n1_year }}</caption>
+                <thead>
+                    <tr>
+                        <th scope="col" class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Mois</th>
+                        <th scope="col" class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Total</th>
+                        <th scope="col" class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">N-1</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#dce3ef]">
+                    {% for m in report.monthly %}
+                    <tr{% if m.is_future %} class="opacity-50"{% endif %}>
+                        <th scope="row" class="px-3 py-2 text-left font-medium text-[#1e293b]">{{ m.month }}{% if m.is_current %} (en cours){% endif %}</th>
+                        <td class="px-3 py-2 text-right">{% if m.is_future %}—{% else %}{{ m.total }}{% endif %}</td>
+                        <td class="px-3 py-2 text-right text-[#5a6f80]">{% if m.n1 %}{{ m.n1 }}{% else %}—{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </details>
+</div>
+
+{% if vue == "detail" %}
+
+<!-- Mensuel -->
+<div class="mb-8 rounded-2xl border border-[#dce3ef] bg-white p-5 shadow-sm">
+    <h2 class="font-semibold text-[#1e293b]">
+        <i class="bx bx-bar-chart mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i>
+        Évolution mensuelle
+    </h2>
+    <p class="mb-4 text-xs text-[#5a6f80]">Totaux, comparaison N-1, part de l'année et cumul.</p>
+    {% if not report.totals.n1_has_data %}
+    <p class="mb-4 text-xs text-amber-700">Aucune donnée N-1 pour cette période : la comparaison n'est pas disponible.</p>
+    {% endif %}
+    <div class="relative mb-5 h-64">
+        <canvas id="report-monthly-chart" role="img"
+                aria-label="Histogramme mensuel des visiteurs {{ year }} comparé à {{ report.period.n1_year }}."></canvas>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-[#dce3ef]">
+            <caption class="sr-only">Évolution mensuelle {{ year }}, comparaison {{ report.period.n1_year }}</caption>
+            <thead class="bg-[#f8f9fc]">
+                <tr>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Mois</th>
+                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Total</th>
+                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">N-1</th>
+                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Variation</th>
+                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Part</th>
+                    <th scope="col" class="print-hide px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#5a6f80]"><span class="sr-only">Répartition visuelle</span></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#dce3ef]">
+                {% for m in report.monthly %}
+                <tr class="hover:bg-[#f8f9fc]{% if m.is_future %} opacity-50{% endif %}">
+                    <th scope="row" class="whitespace-nowrap px-4 py-3 text-left text-sm font-medium text-[#1e293b]">
+                        {{ m.month }}{% if m.is_current %} <span class="text-xs font-normal text-[#5a6f80]">(en cours)</span>{% endif %}
+                    </th>
+                    <td class="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-[#1e293b]">{% if m.is_future %}—{% else %}{{ m.total }}{% endif %}</td>
+                    <td class="whitespace-nowrap px-4 py-3 text-right text-sm text-[#5a6f80]">{% if m.n1 %}{{ m.n1 }}{% else %}—{% endif %}</td>
+                    <td class="whitespace-nowrap px-4 py-3 text-right text-sm font-medium {% if m.variation and m.variation > 0 %}text-emerald-700{% elif m.variation and m.variation < 0 %}text-red-600{% else %}text-[#5a6f80]{% endif %}">
+                        {% if m.variation is not None %}{% if m.variation > 0 %}+{% endif %}{{ m.variation|floatformat:1 }} %{% else %}—{% endif %}
+                    </td>
+                    <td class="whitespace-nowrap px-4 py-3 text-right text-sm text-[#5a6f80]">{% if m.is_future %}—{% else %}{{ m.share|floatformat:1 }} %{% endif %}</td>
+                    <td class="print-hide px-4 py-3" aria-hidden="true">
+                        <div class="h-2 w-24 overflow-hidden rounded-full bg-[#e8eef7]">
+                            <div class="h-2 rounded-full bg-[#4a6fa5]" style="width: {{ m.share }}%"></div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Trimestres -->
+<div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    {% for q in report.quarterly %}
+    <div class="avoid-break rounded-2xl border border-[#dce3ef] bg-white p-4 shadow-sm{% if q.is_current %} ring-1 ring-[#4a6fa5]{% endif %}">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-[#5a6f80]">{{ q.name }}{% if q.is_current %} · en cours{% endif %}</p>
+        <p class="mt-1 text-2xl font-bold text-[#4a6fa5]">{{ q.total }}</p>
+        <p class="mt-0.5 text-[10px] text-[#5a6f80]">N-1 : {{ q.n1 }}{% if q.variation is not None %} · {% if q.variation > 0 %}+{% endif %}{{ q.variation|floatformat:1 }} %{% endif %}</p>
+        <div class="mt-3 h-2 overflow-hidden rounded-full bg-[#e8eef7]" aria-hidden="true">
+            <div class="h-2 rounded-full bg-[#4a6fa5]" style="width: {{ q.share }}%"></div>
+        </div>
+        <p class="mt-1 text-[10px] text-[#5a6f80]">{{ q.share|floatformat:1 }} % de l'année</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Jours de semaine -->
+<div class="mb-8 rounded-2xl border border-[#dce3ef] bg-white p-5 shadow-sm">
+    <h2 class="font-semibold text-[#1e293b]">
+        <i class="bx bx-calendar-week mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i>
+        Moyenne par jour de semaine
+    </h2>
+    <p class="mb-4 text-xs text-[#5a6f80]">Lundi à samedi. Les dimanches pointés sont traités comme ouvertures exceptionnelles.</p>
+    <div class="relative mb-5 h-56">
+        <canvas id="report-weekday-chart" role="img"
+                aria-label="Moyenne de visiteurs par jour de semaine en {{ year }}."></canvas>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-[#dce3ef]">
+            <caption class="sr-only">Moyenne par jour de semaine en {{ year }}</caption>
+            <thead class="bg-[#f8f9fc]">
+                <tr>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Jour</th>
+                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Total</th>
+                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Moyenne</th>
+                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Part</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#dce3ef]">
+                {% for w in report.weekday %}
+                <tr>
+                    <th scope="row" class="px-4 py-3 text-left text-sm font-medium text-[#1e293b]">{{ w.name }}</th>
+                    <td class="px-4 py-3 text-right text-sm">{{ w.total }}</td>
+                    <td class="px-4 py-3 text-right text-sm font-semibold text-[#4a6fa5]">{{ w.avg|floatformat:1 }}</td>
+                    <td class="px-4 py-3 text-right text-sm text-[#5a6f80]">{{ w.share|floatformat:1 }} %</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if report.totals.sunday_days %}
+    <p class="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
+        <i class="bx bx-sun mr-1" aria-hidden="true"></i>
+        {{ report.totals.sunday_days }} dimanche(s) pointé(s) : {{ report.totals.sunday_total }} visiteurs.
+        Ces ouvertures exceptionnelles sont incluses dans le total, mais pas dans les jours attendus.
+    </p>
+    {% endif %}
+</div>
+
+<!-- Espaces -->
+<div class="print-page mb-8 rounded-2xl border border-[#dce3ef] bg-white p-5 shadow-sm">
+    <h2 class="font-semibold text-[#1e293b]">
+        <i class="bx bx-buildings mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i>
+        Détail par espace
+    </h2>
+    <p class="mb-4 text-xs text-[#5a6f80]">Tous les espaces de la médiathèque, y compris ceux sans pointage.</p>
+    {% if report.charts.spaces.labels %}
+    <div class="relative mb-5 h-64">
+        <canvas id="report-spaces-chart" role="img"
+                aria-label="Répartition des visiteurs par espace en {{ year }}."></canvas>
+    </div>
+    {% endif %}
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-[#dce3ef]">
+            <caption class="sr-only">Détail de la fréquentation par espace en {{ year }}</caption>
+            <thead class="bg-[#f8f9fc]">
+                <tr>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Espace</th>
+                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Total</th>
+                    <th scope="col" class="print-hide px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Part</th>
+                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Moy./jour</th>
+                    <th scope="col" class="print-hide px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Jours</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Meilleur jour</th>
+                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">N-1</th>
+                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Variation</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#dce3ef]">
+                {% for s in report.spaces %}
+                <tr class="hover:bg-[#f8f9fc]">
+                    <th scope="row" class="px-4 py-3 text-left text-sm font-medium text-[#1e293b]">
+                        {{ s.name }}
+                        {% if not s.is_active %}<span class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">inactif</span>{% endif %}
+                        {% if s.best_weekday %}<span class="mt-0.5 block text-[10px] font-normal text-[#5a6f80]">Jour dominant : {{ s.best_weekday.name }}</span>{% endif %}
+                    </th>
+                    <td class="px-4 py-3 text-right text-sm font-semibold">{{ s.total }}</td>
+                    <td class="print-hide px-4 py-3 text-right text-sm text-[#5a6f80]">{{ s.share|floatformat:1 }} %</td>
+                    <td class="px-4 py-3 text-right text-sm">{{ s.avg|floatformat:1 }}</td>
+                    <td class="print-hide px-4 py-3 text-right text-sm text-[#5a6f80]">{{ s.days }}</td>
+                    <td class="px-4 py-3 text-left text-sm text-[#5a6f80]">
+                        {% if s.best_day %}{{ s.best_day.date|date:"d/m/Y" }} · {{ s.best_day.total }}{% else %}—{% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-right text-sm text-[#5a6f80]">{% if s.n1 %}{{ s.n1 }}{% else %}—{% endif %}</td>
+                    <td class="px-4 py-3 text-right text-sm font-medium {% if s.variation and s.variation > 0 %}text-emerald-700{% elif s.variation and s.variation < 0 %}text-red-600{% else %}text-[#5a6f80]{% endif %}">
+                        {% if s.variation is not None %}{% if s.variation > 0 %}+{% endif %}{{ s.variation|floatformat:1 }} %{% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="px-4 py-6 text-center text-sm text-[#5a6f80]">Aucun espace rattaché à cette médiathèque.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Meilleurs jours -->
+<div class="mb-8 rounded-2xl border border-[#dce3ef] bg-white p-5 shadow-sm">
+    <h2 class="font-semibold text-[#1e293b]">
+        <i class="bx bx-trophy mr-1.5 text-amber-500" aria-hidden="true"></i>
+        Meilleurs jours
+    </h2>
+    <p class="mb-4 text-xs text-[#5a6f80]">Classement par date, tous espaces confondus.</p>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-[#dce3ef]">
+            <caption class="sr-only">Dix meilleurs jours de fréquentation en {{ year }}</caption>
+            <thead class="bg-[#f8f9fc]">
+                <tr>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">#</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Date</th>
+                    <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Visiteurs</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Espaces</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#dce3ef]">
+                {% for d in report.top_days %}
+                <tr>
+                    <td class="px-4 py-3 text-sm text-[#5a6f80]">{{ forloop.counter }}</td>
+                    <th scope="row" class="px-4 py-3 text-left text-sm font-medium text-[#1e293b]">{{ d.date|date:"d/m/Y" }}</th>
+                    <td class="px-4 py-3 text-right text-sm font-semibold text-[#4a6fa5]">{{ d.total }}</td>
+                    <td class="px-4 py-3 text-left text-sm text-[#5a6f80]">
+                        {% for space in d.spaces %}{{ space.name }} ({{ space.total }}){% if not forloop.last %}, {% endif %}{% endfor %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="px-4 py-6 text-center text-sm text-[#5a6f80]">Aucun jour pointé avec des visiteurs.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Qualité des pointages -->
+<div class="mb-8 rounded-2xl border border-[#dce3ef] bg-white p-5 shadow-sm">
+    <h2 class="font-semibold text-[#1e293b]">
+        <i class="bx bx-check-shield mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i>
+        Qualité des pointages
+    </h2>
+    {% if report.period.method == "v2" %}
+    <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Jours attendus</p><p class="text-xl font-bold text-[#4a6fa5]">{{ report.totals.expected_days }}</p></div>
+        <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Jours ouvrés pointés</p><p class="text-xl font-bold text-[#4a6fa5]">{{ report.totals.weekday_pointed_days }}</p></div>
+        <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Sans pointage</p><p class="text-xl font-bold {% if report.totals.missing_days %}text-amber-600{% else %}text-emerald-700{% endif %}">{{ report.totals.missing_days }}</p></div>
+        <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Complétude</p><p class="text-xl font-bold text-[#4a6fa5]">{{ report.totals.completeness|floatformat:1 }} %</p></div>
+        <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Jours à zéro</p><p class="text-xl font-bold text-[#4a6fa5]">{{ report.totals.zero_days }}</p></div>
+        <div><p class="text-[11px] uppercase tracking-wider text-[#5a6f80]">Dernière saisie</p><p class="text-sm font-semibold text-[#1e293b]">{% if report.totals.last_update %}{{ report.totals.last_update|date:"d/m/Y H:i" }}{% else %}—{% endif %}</p></div>
+    </div>
+    {% if report.spaces_without_data %}
+    <p class="mt-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
+        <i class="bx bx-error-circle mr-1" aria-hidden="true"></i>
+        Espaces sans aucun pointage : {% for s in report.spaces_without_data %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+    </p>
+    {% endif %}
+    {% else %}
+    <p class="mt-4 text-sm text-[#5a6f80]">
+        Méthode historique : les totaux et moyennes sont conservés tels qu'ils ont été publiés.
+        La complétude n'est pas recalculée pour cette année.
+    </p>
+    {% endif %}
+</div>
+
+{% else %}
+
+<!-- Synthèse : top 3 et complétude compacte -->
+<div class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div class="rounded-2xl border border-[#dce3ef] bg-white p-5 shadow-sm lg:col-span-2">
+        <h2 class="font-semibold text-[#1e293b]">
+            <i class="bx bx-trophy mr-1.5 text-amber-500" aria-hidden="true"></i>
+            Top 3 des espaces
+        </h2>
+        <div class="mt-3 overflow-x-auto">
+            <table class="min-w-full divide-y divide-[#dce3ef]">
+                <caption class="sr-only">Trois espaces les plus fréquentés en {{ year }}</caption>
+                <thead>
+                    <tr>
+                        <th scope="col" class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">#</th>
+                        <th scope="col" class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Espace</th>
+                        <th scope="col" class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Total</th>
+                        <th scope="col" class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Part</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#dce3ef]">
+                    {% for s in report.spaces|slice:":3" %}
+                    <tr>
+                        <td class="px-3 py-2 text-sm text-[#5a6f80]">{{ forloop.counter }}</td>
+                        <th scope="row" class="px-3 py-2 text-left text-sm font-medium text-[#1e293b]">{{ s.name }}</th>
+                        <td class="px-3 py-2 text-right text-sm font-semibold">{{ s.total }}</td>
+                        <td class="px-3 py-2 text-right text-sm text-[#5a6f80]">{{ s.share|floatformat:1 }} %</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="px-3 py-4 text-center text-sm text-[#5a6f80]">Aucun espace.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <a href="?vue=detail{% if commune %}&commune={{ commune }}{% endif %}"
+           class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-[#4a6fa5] hover:underline no-print">
+            Voir le rapport détaillé <i class="bx bx-right-arrow-alt" aria-hidden="true"></i>
+        </a>
+    </div>
+    <div class="rounded-2xl border border-[#dce3ef] bg-white p-5 shadow-sm">
+        <h2 class="font-semibold text-[#1e293b]">
+            <i class="bx bx-check-shield mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i>
+            Complétude
+        </h2>
+        {% if report.totals.completeness is not None %}
+        <p class="mt-3 text-3xl font-bold text-[#4a6fa5]">{{ report.totals.completeness|floatformat:1 }} %</p>
+        <p class="text-xs text-[#5a6f80]">{{ report.totals.weekday_pointed_days }} / {{ report.totals.expected_days }} jours ouvrés pointés</p>
+        {% if report.totals.missing_days %}
+        <p class="mt-2 text-xs text-amber-700">{{ report.totals.missing_days }} jour(s) ouvré(s) sans pointage.</p>
+        {% endif %}
+        {% else %}
+        <p class="mt-3 text-sm text-[#5a6f80]">Méthode historique : complétude non recalculée.</p>
+        {% endif %}
+        {% if report.totals.sunday_days %}
+        <p class="mt-3 rounded-lg bg-amber-50 p-2 text-[11px] text-amber-800">{{ report.totals.sunday_days }} dimanche(s) pointé(s) : {{ report.totals.sunday_total }} visiteurs.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endif %}
+
+<!-- Méthode -->
+<div class="print-page avoid-break rounded-2xl border border-[#dce3ef] bg-white p-5 shadow-sm">
+    <h2 class="font-semibold text-[#1e293b]">
+        <i class="bx bx-book-open mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i>
+        Méthode et définitions
+    </h2>
+    <ul class="mt-3 space-y-2 text-sm text-[#5a6f80]">
+        <li><span class="font-medium text-[#1e293b]">Périmètre :</span> {{ report.synthese.perimetre }}.</li>
+        <li><span class="font-medium text-[#1e293b]">Période :</span> {{ report.period.label }} ({{ report.period.status_label }}).</li>
+        <li><span class="font-medium text-[#1e293b]">Source :</span> pointages manuels saisis dans Médi@'pass, agrégés par espace et par jour. Aucune donnée nominative.</li>
+        {% if report.period.method == "v2" %}
+        <li><span class="font-medium text-[#1e293b]">Jours attendus :</span> lundi à samedi. Les dimanches ne sont pas comptés dans les jours attendus. Un dimanche pointé reste dans le total et est signalé comme ouverture exceptionnelle.</li>
+        <li><span class="font-medium text-[#1e293b]">Moyenne :</span> total ÷ nombre de dates pointées. La moyenne par jour ouvré pointé exclut les dimanches.</li>
+        {% else %}
+        <li><span class="font-medium text-[#1e293b]">Méthode historique :</span> les totaux et moyennes sont conservés tels qu'ils ont été publiés. La règle des dimanches et la complétude ne sont pas recalculées.</li>
+        {% endif %}
+        <li><span class="font-medium text-[#1e293b]">Comparaison N-1 :</span> {{ report.period.n1_label }} ({{ report.period.n1_year }}).{% if report.period.n1_method_note %} {{ report.period.n1_method_note }}{% endif %}</li>
+    </ul>
+</div>
+
+{% endif %}

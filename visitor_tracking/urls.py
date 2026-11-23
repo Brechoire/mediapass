@@ -45,5 +45,15 @@ urlpatterns = [
     # Rapport annuel
     path("report/", views.annual_report, name="annual_report"),
     path("report/<int:year>/", views.annual_report, name="annual_report_year"),
+    path(
+        "report/<int:year>/print/",
+        views.annual_report_print,
+        name="annual_report_print",
+    ),
+    path(
+        "report/<int:year>/export/<slug:kind>/",
+        views.annual_report_export,
+        name="annual_report_export",
+    ),
 ]
 

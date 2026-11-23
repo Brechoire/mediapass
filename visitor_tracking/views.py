@@ -6,10 +6,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.cache import cache
 from django.utils import timezone
-from django.http import JsonResponse, HttpResponse
+from django.utils.text import slugify
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.http import require_POST
 from django.db.models import Sum, Count, Max
-from django.db.models.functions import ExtractMonth, TruncDate
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -22,6 +22,8 @@ from library_workshops.utils import filter_owned, filter_location_owned
 from .models import Location, VisitorCount
 from .forms import BulkVisitorCountForm, DateRangeForm, LocationForm
 from .services import SuperadminStatisticsService
+from .reporting import AnnualReportService
+from .docx_report import build_annual_report_docx
 
 # Constantes partagées entre les vues d'espaces
 SPACE_ICONS = [
@@ -1185,176 +1187,270 @@ def superadmin_heatmap(request, year=None):
     return render(request, "visitor_tracking/superadmin_heatmap.html", context)
 
 
-@mediatheque_member_required
-def annual_report(request, year=None):
-    """Rapport annuel de fréquentation."""
-    if not year:
-        try:
-            year = int(request.GET.get("year", timezone.now().year))
-        except (ValueError, TypeError):
-            year = timezone.now().year
+def _report_year(request, year):
+    """Année du rapport, avec repli sur l'année en cours."""
+    if year is None:
+        year = request.GET.get("year")
+    try:
+        value = int(year)
+    except (TypeError, ValueError):
+        value = timezone.now().year
+    if value < 1900 or value > 2100:
+        value = timezone.now().year
+    return value
 
-    start_date = date(year, 1, 1)
-    end_date = date(year, 12, 31)
-    n1_start = start_date.replace(year=year - 1)
-    n1_end = end_date.replace(year=year - 1)
 
-    qs = filter_owned(
-        VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date),
-        request.user, field="location__user",
-    )
-    n1_qs = filter_owned(
-        VisitorCount.objects.filter(date__gte=n1_start, date__lte=n1_end),
-        request.user, field="location__user",
-    )
+def _report_context(request, year=None):
+    """Contexte commun à l'écran, à l'impression et aux exports."""
+    today = timezone.now().date()
+    year = _report_year(request, year)
 
-    total_year = qs.aggregate(total=Sum("count"))["total"] or 0
-    n1_total = n1_qs.aggregate(total=Sum("count"))["total"] or 0
-    variation = round(((total_year - n1_total) / n1_total * 100), 1) if n1_total > 0 else 0
+    vue = request.GET.get("vue", "synthese")
+    if vue not in ("synthese", "detail"):
+        vue = "synthese"
 
-    days_count = qs.values("date").distinct().count()
-    avg_per_day = round(total_year / days_count, 1) if days_count > 0 else 0
+    commune = (request.GET.get("commune") or "").strip()
+    available_communes = []
+    scope_user = request.user
 
-    monthly = (
-        qs.annotate(month_num=ExtractMonth("date"))
-        .values("month_num")
-        .annotate(month_total=Sum("count"))
-        .order_by("month_num")
-    )
-    month_map = {m["month_num"]: m["month_total"] for m in monthly}
-
-    n1_month_map = {}
-    if n1_total:
-        n1_monthly = (
-            n1_qs.annotate(month_num=ExtractMonth("date"))
-            .values("month_num")
-            .annotate(month_total=Sum("count"))
-            .order_by("month_num")
+    if request.user.is_superuser:
+        available_communes = AnnualReportService.get_available_communes()
+        scope_user = next(
+            (user for user in available_communes if user.username == commune),
+            None,
         )
-        n1_month_map = {m["month_num"]: m["month_total"] for m in n1_monthly}
+        if scope_user is None:
+            return None, {
+                "year": year,
+                "vue": vue,
+                "commune": "",
+                "available_communes": available_communes,
+                "needs_commune": True,
+                "today": today,
+                "title": f"Rapport annuel {year}",
+            }
+    else:
+        commune = ""
 
-    month_names = [
-        "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-        "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
-    ]
-    monthly_list = []
-    for i in range(1, 13):
-        cur = month_map.get(i, 0)
-        prev = n1_month_map.get(i, 0)
-        var = round(((cur - prev) / prev * 100), 1) if prev > 0 else 0
-        monthly_list.append({
-            "month": month_names[i - 1],
-            "total": cur,
-            "n1": prev,
-            "variation": var,
-        })
+    report = AnnualReportService(
+        year,
+        scope_user,
+        is_superuser=request.user.is_superuser,
+        today=today,
+    ).build()
 
-    yearly_top = (
-        qs.values("location__name").annotate(total=Sum("count"))
-        .order_by("-total")[:5]
-    )
-
-    best_days = (
-        qs.values("date", "location__name")
-        .annotate(total=Sum("count"))
-        .order_by("-total")[:5]
-    )
-
-    weekday_data = qs.values("date").annotate(total=Sum("count")).order_by("date")
-    weekday_sums = {}
-    weekday_counts = {}
-    for d in weekday_data:
-        wd = d["date"].weekday()
-        if wd != 6:
-            weekday_sums[wd] = weekday_sums.get(wd, 0) + d["total"]
-            weekday_counts[wd] = weekday_counts.get(wd, 0) + 1
-
-    weekday_names = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
-    weekday_avg = []
-    for i in range(6):
-        val = round(weekday_sums.get(i, 0) / weekday_counts.get(i, 1), 1) if weekday_counts.get(i, 0) > 0 else 0
-        weekday_avg.append({"name": weekday_names[i], "avg": val})
-
-    quarterly = {
-        "T1": sum(m["total"] for m in monthly_list[:3]),
-        "T2": sum(m["total"] for m in monthly_list[3:6]),
-        "T3": sum(m["total"] for m in monthly_list[6:9]),
-        "T4": sum(m["total"] for m in monthly_list[9:12]),
-    }
-
-    # Synthèse narrative (même ton que la page statistiques).
-    _months_lc = [m.lower() for m in month_names]
-    _days_lc = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
-    _top_lieu = yearly_top[0] if yearly_top else None
-    _best = best_days[0] if best_days else None
-    _peak_month = max(monthly_list, key=lambda m: m["total"]) if monthly_list else None
-    _best_wd = max(weekday_avg, key=lambda w: w["avg"]) if weekday_avg else None
-    _days_in_year = date(year, 12, 31).timetuple().tm_yday
-    synthese = SuperadminStatisticsService.build_synthese(
-        {
-            "start_label": f"01/01/{year}",
-            "end_label": f"31/12/{year}",
-            "total": total_year,
-            "avg_per_day": avg_per_day,
-            "days_with_data": days_count,
-            "period_length": _days_in_year,
-            "variation": None,
-            "n1_total": n1_total,
-            "n1_variation": variation,
-            "top_commune": (
-                (
-                    _top_lieu["location__name"],
-                    _top_lieu["total"],
-                    round(_top_lieu["total"] / total_year * 100, 1)
-                    if total_year
-                    else 0,
-                )
-                if _top_lieu and total_year
-                else None
-            ),
-            "best_day": (
-                (
-                    f"{_days_lc[_best['date'].weekday()]} "
-                    f"{_best['date'].day} {_months_lc[_best['date'].month - 1]} "
-                    f"({_best['location__name']})",
-                    _best["total"],
-                )
-                if _best
-                else None
-            ),
-            "best_weekday": (
-                _best_wd["name"] if _best_wd and _best_wd["avg"] > 0 else None
-            ),
-            "best_week": None,
-            "peak_month": (
-                (_peak_month["month"], _peak_month["total"])
-                if _peak_month and _peak_month["total"]
-                else None
-            ),
-            "projection": None,
-            "perimetre": None,
-        }
+    data_years = VisitorCount.objects.filter(
+        location__user=scope_user
+    ).dates("date", "year")
+    years = sorted(
+        {item.year for item in data_years} | {today.year, year}
     )
 
     context = {
+        "report": report,
         "year": year,
-        "prev_year": year - 1,
-        "next_year": year + 1,
-        "total_year": total_year,
-        "n1_total": n1_total,
-        "variation": variation,
-        "avg_per_day": avg_per_day,
-        "days_count": days_count,
-        "monthly": monthly_list,
-        "yearly_top": yearly_top,
-        "best_days": best_days,
-        "weekday_avg": weekday_avg,
-        "quarterly": quarterly,
-        "title": f"Rapport annuel {year}",
-        "synthese": synthese,
+        "vue": vue,
+        "commune": commune if request.user.is_superuser else "",
+        "available_communes": available_communes,
+        "years": years,
+        "prev_year": year - 1 if year > 1900 else None,
+        "next_year": year + 1 if year < today.year else None,
+        "current_year": today.year,
+        "today": today,
+        "title": (
+            f"{'Bilan' if vue == 'synthese' else 'Rapport'} "
+            f"d'activité {year}"
+        ),
+        # Alias de compatibilité avec les tests et anciens liens.
+        "monthly": report["monthly"],
+        "yearly_top": report["spaces"][:5],
+        "synthese": report["synthese"],
+        "total_year": report["totals"]["total"],
+        "n1_total": report["totals"]["n1_total"],
+        "variation": report["totals"]["variation"],
+        "avg_per_day": report["totals"]["avg_per_pointed_day"],
+        "days_count": report["totals"]["pointed_days"],
+        "weekday_avg": report["weekday"],
+        "quarterly": {
+            item["name"]: item["total"] for item in report["quarterly"]
+        },
+        "best_days": report["top_days"],
     }
+    return context, None
 
-    return render(request, "visitor_tracking/annual_report.html", context)
+
+@mediatheque_member_required
+def annual_report(request, year=None):
+    """Rapport annuel de fréquentation, par médiathèque."""
+    context, chooser = _report_context(request, year)
+    if chooser:
+        return render(
+            request,
+            "visitor_tracking/annual_report_chooser.html",
+            chooser,
+        )
+    return render(
+        request,
+        "visitor_tracking/annual_report.html",
+        context,
+    )
+
+
+@mediatheque_member_required
+def annual_report_print(request, year=None):
+    """Version imprimable (PDF via la boîte d'impression du navigateur)."""
+    context, chooser = _report_context(request, year)
+    if chooser:
+        return render(
+            request,
+            "visitor_tracking/annual_report_chooser.html",
+            chooser,
+        )
+    context["print_mode"] = True
+    return render(
+        request,
+        "visitor_tracking/annual_report_print.html",
+        context,
+    )
+
+
+def _csv_num(value):
+    """Nombre au format français pour les CSV ouverts dans Excel."""
+    if value is None or value == "":
+        return ""
+    return str(value).replace(".", ",")
+
+
+def _csv_report_response(report, year, kind):
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    label = slugify(report["scope"]["label"]) or "mediatheque"
+    filename = (
+        f"donnees_{label}_{year}.csv"
+        if kind == "csv-donnees"
+        else f"synthese_{label}_{year}.csv"
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="{filename}"'
+    )
+    response.write("\ufeff")
+    writer = csv.writer(response, delimiter=";")
+
+    if kind == "csv-donnees":
+        writer.writerow(["Date", "Espace", "Nombre de visiteurs"])
+        rows = (
+            VisitorCount.objects.filter(
+                location__user__username=report["scope"]["username"],
+                date__gte=report["period"]["start"],
+                date__lte=report["period"]["end"],
+            )
+            .select_related("location")
+            .order_by("date", "location__order", "location__name")
+        )
+        for entry in rows:
+            writer.writerow(
+                [
+                    entry.date.strftime("%d/%m/%Y"),
+                    entry.location.name,
+                    entry.count,
+                ]
+            )
+        return response
+
+    writer.writerow(
+        [
+            "Type",
+            "Libellé",
+            "Total",
+            "N-1",
+            "Variation (%)",
+            "Part (%)",
+        ]
+    )
+    totals = report["totals"]
+    writer.writerow(
+        [
+            "Synthèse",
+            "Total visiteurs",
+            totals["total"],
+            totals["n1_total"],
+            _csv_num(totals["variation"]),
+            "",
+        ]
+    )
+    writer.writerow(
+        [
+            "Synthèse",
+            "Jours pointés",
+            totals["pointed_days"],
+            "",
+            "",
+            "",
+        ]
+    )
+    for month in report["monthly"]:
+        writer.writerow(
+            [
+                "Mois",
+                month["month"],
+                month["total"],
+                month["n1"],
+                _csv_num(month["variation"]),
+                _csv_num(month["share"]),
+            ]
+        )
+    for space in report["spaces"]:
+        writer.writerow(
+            [
+                "Espace",
+                space["name"],
+                space["total"],
+                space["n1"],
+                _csv_num(space["variation"]),
+                _csv_num(space["share"]),
+            ]
+        )
+    return response
+
+
+@mediatheque_member_required
+def annual_report_export(request, year, kind):
+    """Export DOCX ou CSV du rapport annuel."""
+    if kind not in (
+        "docx-synthese",
+        "docx-detail",
+        "csv-synthese",
+        "csv-donnees",
+    ):
+        return HttpResponseBadRequest("Format d'export inconnu.")
+
+    context, chooser = _report_context(request, year)
+    if chooser:
+        return HttpResponseBadRequest(
+            "Sélectionnez une médiathèque avant de télécharger le rapport."
+        )
+
+    report = context["report"]
+    if kind in ("csv-synthese", "csv-donnees"):
+        return _csv_report_response(report, year, kind)
+
+    doc = build_annual_report_docx(
+        report,
+        detailed=kind == "docx-detail",
+    )
+    label = slugify(report["scope"]["label"]) or "mediatheque"
+    prefix = "bilan" if kind == "docx-synthese" else "rapport"
+    filename = f"{prefix}_{label}_{year}.docx"
+    response = HttpResponse(
+        content_type=(
+            "application/vnd.openxmlformats-officedocument"
+            ".wordprocessingml.document"
+        )
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="{filename}"'
+    )
+    doc.save(response)
+    return response
 
 
 @mediatheque_member_required

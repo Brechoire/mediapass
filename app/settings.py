@@ -211,6 +211,13 @@ SENDER_FROM_NAME = os.environ.get("SENDER_FROM_NAME", "Médi@'pass")
 SENDER_REPLY_TO = os.environ.get("SENDER_REPLY_TO", "")
 SENDER_GROUP_ID = os.environ.get("SENDER_GROUP_ID", "")
 
+# Rapport annuel visiteurs : première année appliquant la méthode v2
+# (dimanches hors jours attendus, N-1 à date comparable, complétude).
+# Les années antérieures conservent la méthode historique déjà publiée.
+VISITOR_REPORT_V2_FROM_YEAR = int(
+    os.environ.get("VISITOR_REPORT_V2_FROM_YEAR", "2026")
+)
+
 # Auth redirects
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"

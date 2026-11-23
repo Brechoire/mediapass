@@ -1,253 +1,153 @@
 {% extends "base_new.html" %}
 {% load static %}
 
-{% block title %}{{ title }} | {{ block.super }}{% endblock %}
+{% block title %}{{ title }} — {{ report.scope.label }} | {{ block.super }}{% endblock %}
+
+{% block stylesheets %}
+{{ block.super }}
+<style>
+  @page {
+    size: A4 {% if vue == "detail" %}landscape{% else %}portrait{% endif %};
+  }
+  @media print {
+    header, footer, .no-print, .print-hide { display: none !important; }
+    body { background: #fff !important; }
+    .avoid-break { break-inside: avoid; }
+    .print-page { break-before: page; }
+    table { break-inside: auto; width: 100% !important; }
+    tr { break-inside: avoid; }
+    thead { display: table-header-group; }
+    h1, h2, h3 { break-after: avoid; }
+    table th, table td {
+      font-size: 8px !important;
+      padding: 2px 3px !important;
+      white-space: normal !important;
+    }
+    .overflow-x-auto { overflow: visible !important; }
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="min-h-screen py-8">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <!-- En-tête -->
-    <div class="mb-8">
-      <div class="flex items-center gap-4 mb-4">
+<div class="min-h-screen py-6 sm:py-8">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+
         <a href="{% url 'visitor_tracking:index' %}"
-           class="inline-flex items-center gap-2 text-[#7a8fa0] hover:text-[#4a6fa5] transition-colors">
-          <i class="bx bx-arrow-back"></i>
-          Retour au pointage
+           class="mb-4 inline-flex items-center gap-2 text-sm text-[#5a6f80] transition-colors hover:text-[#4a6fa5] no-print">
+            <i class="bx bx-arrow-back" aria-hidden="true"></i>
+            Retour au pointage
         </a>
-      </div>
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 class="text-2xl font-bold text-[#1e293b] flex items-center gap-3">
-            <i class="bx bx-bar-chart-alt-2 text-[#4a6fa5]"></i>
-            Rapport d'activité {{ year }}
-          </h1>
-          <p class="text-[#7a8fa0] mt-1">Récapitulatif annuel de la fréquentation.</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <a href="{% url 'visitor_tracking:annual_report_year' prev_year %}"
-             class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#dce3ef] text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
-            <i class="bx bx-chevron-left"></i> {{ prev_year }}
-          </a>
-          <span class="text-sm font-semibold text-[#1e293b] min-w-[4rem] text-center">{{ year }}</span>
-          <a href="{% url 'visitor_tracking:annual_report_year' next_year %}"
-             class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#dce3ef] text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
-            {{ next_year }} <i class="bx bx-chevron-right"></i>
-          </a>
-          <a href="javascript:window.print()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#dce3ef] text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors ml-2 no-print">
-            <i class="bx bx-printer"></i> Imprimer
-          </a>
-        </div>
-      </div>
-    </div>
 
-    <!-- KPIs -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-      <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Total visiteurs</p>
-            <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ total_year }}</p>
-          </div>
-          <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-user text-2xl text-[#4a6fa5]"></i></div>
-        </div>
-      </div>
-      <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Moyenne / jour</p>
-            <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ avg_per_day }}</p>
-            <p class="text-[10px] text-[#b0bedb] mt-0.5">sur {{ days_count }} jours</p>
-          </div>
-          <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-trending-up text-2xl text-[#4a6fa5]"></i></div>
-        </div>
-      </div>
-      <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Année N-1</p>
-            <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ n1_total }}</p>
-          </div>
-          <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center"><i class="bx bx-calendar-alt text-2xl text-[#4a6fa5]"></i></div>
-        </div>
-      </div>
-      <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Variation vs N-1</p>
-            <p class="text-3xl font-bold {% if variation > 0 %}text-emerald-600{% elif variation < 0 %}text-red-600{% else %}text-[#4a6fa5]{% endif %} mt-1">
-              {% if variation > 0 %}+{% endif %}{{ variation }}%
-            </p>
-          </div>
-          <div class="w-12 h-12 rounded-xl {% if variation > 0 %}bg-emerald-50{% elif variation < 0 %}bg-red-50{% else %}bg-[#e8eef7]{% endif %} flex items-center justify-center">
-            <i class="bx {% if variation > 0 %}bx-trending-up{% elif variation < 0 %}bx-trending-down{% else %}bx-minus{% endif %} text-2xl {% if variation > 0 %}text-emerald-600{% elif variation < 0 %}text-red-600{% else %}text-[#4a6fa5]{% endif %}"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Synthèse -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6 mb-8">
-      <div class="flex items-center gap-3 mb-1">
-        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#4a6fa5] text-white" aria-hidden="true"><i class="bx bx-detail text-xl"></i></span>
-        <div class="flex flex-wrap items-center gap-2">
-          <h2 class="text-base font-bold text-slate-900">Synthèse {{ year }}</h2>
-          <span class="rounded-full bg-[#e8eef7] px-2.5 py-0.5 text-xs font-semibold text-[#4a6fa5]">{{ synthese.phrases|length }} points clés</span>
-        </div>
-      </div>
-      <p class="text-xs text-[#7a8fa0] mb-4 ml-12">Sert à : résumer l'année pour le rapport d'activité et les élus.</p>
-      <div class="border-l-4 border-[#4a6fa5] bg-[#eef3f9] rounded-r-lg p-4 sm:p-5 text-slate-800">
-        {% for phrase in synthese.phrases %}
-        {% if forloop.first %}
-        <p class="synthese-phrase text-[15px] font-medium leading-relaxed text-slate-900 first-letter:float-left first-letter:mr-1.5 first-letter:text-4xl first-letter:font-bold first-letter:leading-[0.9] first-letter:text-[#4a6fa5]">{{ phrase }}</p>
-        {% else %}
-        {% if forloop.counter == 2 %}<ol class="mt-4 space-y-2 text-sm leading-relaxed">{% endif %}
-          <li class="flex gap-2.5"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#4a6fa5] text-[11px] font-bold text-white" aria-hidden="true">{{ forloop.counter|add:"-1" }}</span><span class="synthese-phrase">{{ phrase }}</span></li>
-        {% if forloop.last %}</ol>{% endif %}
-        {% endif %}
-        {% empty %}
-        <p class="leading-relaxed">Aucune donnée pour rédiger la synthèse sur {{ year }}.</p>
-        {% endfor %}
-      </div>
-    </div>
-
-    <!-- Mensuel + Trimestriel -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-      <div class="lg:col-span-2 bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-[#dce3ef]">
-          <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-bar-chart mr-1.5 text-[#4a6fa5]"></i> Évolution mensuelle</h5>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-[#dce3ef]">
-            <thead class="bg-[#f8f9fc]">
-              <tr>
-                <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Mois</th>
-                <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Total</th>
-                <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">N-1</th>
-                <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Variation</th>
-                <th class="px-6 py-3.5"></th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[#dce3ef]">
-              {% for m in monthly %}
-              <tr class="hover:bg-[#f8f9fc] transition-colors">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1e293b]">{{ m.month }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-[#1e293b]">{{ m.total }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-[#7a8fa0]">{{ m.n1|default:0 }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium {% if m.variation > 0 %}text-emerald-600{% elif m.variation < 0 %}text-red-600{% else %}text-[#7a8fa0]{% endif %}">
-                  {% if m.n1 > 0 %}{% if m.variation > 0 %}+{% endif %}{{ m.variation }}%{% else %}—{% endif %}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="h-2 rounded-full bg-[#e8eef7] w-24 ml-auto">
-                    <div class="h-2 rounded-full bg-[#4a6fa5]" style="width: {% widthratio m.total total_year 100 %}%"></div>
-                  </div>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div class="space-y-4">
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-          <h5 class="text-sm font-semibold text-[#1e293b] mb-4"><i class="bx bx-pie-chart-alt mr-1.5 text-[#4a6fa5]"></i> Par trimestre</h5>
-          <div class="space-y-3">
-            {% for qname, qtot in quarterly.items %}
-            <div class="flex items-center justify-between text-sm">
-              <span class="text-[#5a6f80] w-6 font-semibold">{{ qname }}</span>
-              <div class="flex-1 mx-3">
-                <div class="h-2.5 rounded-full bg-[#e8eef7]">
-                  <div class="h-2.5 rounded-full bg-[#4a6fa5]" style="width: {% widthratio qtot total_year 100 %}%"></div>
+        <!-- En-tête -->
+        <div class="mb-6 rounded-2xl border border-[#dce3ef] bg-white p-5 shadow-sm sm:p-6">
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h1 class="text-2xl font-bold text-[#1e293b] sm:text-3xl">
+                            {{ title }} — {{ report.scope.label }}
+                        </h1>
+                        {% if report.period.method == "legacy" %}
+                        <span class="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">Méthode historique</span>
+                        {% endif %}
+                        {% if report.period.is_partial %}
+                        <span class="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-semibold text-sky-800">Année en cours</span>
+                        {% endif %}
+                    </div>
+                    <p class="mt-1 text-sm text-[#5a6f80]">
+                        {{ report.period.label }} · {{ report.period.status_label }}
+                    </p>
+                    <p class="mt-1 text-sm text-[#5a6f80]">{{ report.synthese.perimetre }}</p>
                 </div>
-              </div>
-              <span class="font-semibold text-[#4a6fa5] w-16 text-right">{{ qtot }}</span>
-            </div>
-            {% endfor %}
-          </div>
-        </div>
 
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
-          <h5 class="text-sm font-semibold text-[#1e293b] mb-4"><i class="bx bx-calendar-week mr-1.5 text-[#4a6fa5]"></i> Moyenne par jour</h5>
-          <div class="space-y-2">
-            {% for w in weekday_avg %}
-            <div class="flex items-center justify-between text-sm">
-              <span class="text-[#5a6f80] w-16">{{ w.name }}</span>
-              <div class="flex-1 mx-3">
-                <div class="h-2 rounded-full bg-[#e8eef7]">
-                  <div class="h-2 rounded-full bg-[#4a6fa5]" style="width: {% widthratio w.avg avg_per_day 100 %}%"></div>
+                <div class="flex flex-wrap items-center gap-2 no-print">
+                    <!-- Année -->
+                    <form method="get" action="{% url 'visitor_tracking:annual_report' %}" class="flex items-center gap-2">
+                        {% if vue %}<input type="hidden" name="vue" value="{{ vue }}">{% endif %}
+                        {% if commune %}<input type="hidden" name="commune" value="{{ commune }}">{% endif %}
+                        <label for="report-year" class="text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Année</label>
+                        <select id="report-year" name="year" onchange="this.form.submit()"
+                                class="rounded-lg border border-[#dce3ef] bg-white px-3 py-2 text-sm text-[#1e293b] focus:border-[#4a6fa5] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20">
+                            {% for y in years %}
+                            <option value="{{ y }}"{% if y == year %} selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                        <noscript><button type="submit" class="rounded-lg border border-[#dce3ef] px-3 py-2 text-sm text-[#4a6fa5]">Afficher</button></noscript>
+                    </form>
+
+                    <!-- Niveau -->
+                    <div class="inline-flex rounded-xl border border-[#dce3ef] bg-white p-1" role="group" aria-label="Niveau de détail">
+                        <a href="?vue=synthese{% if commune %}&commune={{ commune }}{% endif %}"
+                           {% if vue == "synthese" %}aria-current="page"{% endif %}
+                           class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors {% if vue == 'synthese' %}bg-[#4a6fa5] text-white{% else %}text-[#4a6fa5] hover:bg-[#e8eef7]{% endif %}">
+                            Synthèse
+                        </a>
+                        <a href="?vue=detail{% if commune %}&commune={{ commune }}{% endif %}"
+                           {% if vue == "detail" %}aria-current="page"{% endif %}
+                           class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors {% if vue == 'detail' %}bg-[#4a6fa5] text-white{% else %}text-[#4a6fa5] hover:bg-[#e8eef7]{% endif %}">
+                            Détaillé
+                        </a>
+                    </div>
+
+                    <!-- Téléchargements -->
+                    <details class="relative">
+                        <summary class="inline-flex cursor-pointer list-none items-center gap-2 rounded-xl bg-[#4a6fa5] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#3d5f8f] [&::-webkit-details-marker]:hidden">
+                            <i class="bx bx-download" aria-hidden="true"></i> Télécharger
+                        </summary>
+                        <div class="absolute right-0 z-40 mt-2 w-72 rounded-xl border border-[#dce3ef] bg-white p-2 shadow-lg">
+                            <a href="{% url 'visitor_tracking:annual_report_export' year 'docx-synthese' %}{% if commune %}?commune={{ commune }}{% endif %}"
+                               class="flex items-start gap-2 rounded-lg px-3 py-2 text-sm text-[#1e293b] hover:bg-[#e8eef7]">
+                                <i class="bx bx-file mt-0.5 text-[#4a6fa5]" aria-hidden="true"></i>
+                                <span><strong>DOCX — bilan synthèse</strong><br><span class="text-xs text-[#5a6f80]">1 à 3 pages, KPI et synthèse</span></span>
+                            </a>
+                            <a href="{% url 'visitor_tracking:annual_report_export' year 'docx-detail' %}{% if commune %}?commune={{ commune }}{% endif %}"
+                               class="flex items-start gap-2 rounded-lg px-3 py-2 text-sm text-[#1e293b] hover:bg-[#e8eef7]">
+                                <i class="bx bx-book-content mt-0.5 text-[#4a6fa5]" aria-hidden="true"></i>
+                                <span><strong>DOCX — rapport détaillé</strong><br><span class="text-xs text-[#5a6f80]">Toutes les sections et annexes</span></span>
+                            </a>
+                            <a href="{% url 'visitor_tracking:annual_report_export' year 'csv-synthese' %}{% if commune %}?commune={{ commune }}{% endif %}"
+                               class="flex items-start gap-2 rounded-lg px-3 py-2 text-sm text-[#1e293b] hover:bg-[#e8eef7]">
+                                <i class="bx bx-table mt-0.5 text-[#4a6fa5]" aria-hidden="true"></i>
+                                <span><strong>CSV — tableaux de synthèse</strong><br><span class="text-xs text-[#5a6f80]">Mois et espaces</span></span>
+                            </a>
+                            <a href="{% url 'visitor_tracking:annual_report_export' year 'csv-donnees' %}{% if commune %}?commune={{ commune }}{% endif %}"
+                               class="flex items-start gap-2 rounded-lg px-3 py-2 text-sm text-[#1e293b] hover:bg-[#e8eef7]">
+                                <i class="bx bx-data mt-0.5 text-[#4a6fa5]" aria-hidden="true"></i>
+                                <span><strong>CSV — données brutes</strong><br><span class="text-xs text-[#5a6f80]">Date, espace, visiteurs</span></span>
+                            </a>
+                        </div>
+                    </details>
+
+                    <a href="{% url 'visitor_tracking:annual_report_print' year %}?vue={{ vue }}{% if commune %}&commune={{ commune }}{% endif %}"
+                       target="_blank" rel="noopener" title="Ouvre la version imprimable ; choisissez « Enregistrer au format PDF » dans la boîte d'impression"
+                       class="inline-flex items-center gap-2 rounded-xl border border-[#dce3ef] px-4 py-2 text-sm font-medium text-[#4a6fa5] transition-colors hover:bg-[#e8eef7]">
+                        <i class="bx bx-printer" aria-hidden="true"></i> Imprimer / PDF
+                    </a>
                 </div>
-              </div>
-              <span class="font-semibold text-[#4a6fa5] w-8 text-right">{{ w.avg }}</span>
             </div>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Top 5 espaces + Best days -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-[#dce3ef]">
-          <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-trophy mr-1.5 text-amber-500"></i> Top 5 espaces</h5>
+            {% if request.user.is_superuser %}
+            <form method="get" action="{% url 'visitor_tracking:annual_report_year' year %}"
+                  class="mt-5 flex flex-wrap items-end gap-3 border-t border-[#dce3ef] pt-4 no-print">
+                <input type="hidden" name="vue" value="{{ vue }}">
+                <div>
+                    <label for="report-commune" class="mb-1 block text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Médiathèque</label>
+                    <select id="report-commune" name="commune" onchange="this.form.submit()"
+                            class="rounded-lg border border-[#dce3ef] bg-white px-3 py-2 text-sm text-[#1e293b] focus:border-[#4a6fa5] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20">
+                        {% for item in available_communes %}
+                        <option value="{{ item.username }}"{% if item.username == commune %} selected{% endif %}>{{ item.username|capfirst }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <noscript><button type="submit" class="rounded-lg border border-[#dce3ef] px-3 py-2 text-sm text-[#4a6fa5]">Afficher</button></noscript>
+            </form>
+            {% endif %}
         </div>
-        <table class="min-w-full divide-y divide-[#dce3ef]">
-          <thead class="bg-[#f8f9fc]">
-            <tr>
-              <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">#</th>
-              <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Espace</th>
-              <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Total</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[#dce3ef]">
-            {% for loc in yearly_top %}
-            <tr class="hover:bg-[#f8f9fc] transition-colors">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="flex items-center justify-center w-7 h-7 rounded-full {% if forloop.counter == 1 %}bg-amber-100 text-amber-700{% elif forloop.counter == 2 %}bg-gray-100 text-gray-600{% else %}bg-[#e8eef7] text-[#4a6fa5]{% endif %} text-xs font-bold">{{ forloop.counter }}</span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1e293b]">{{ loc.location__name }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-[#4a6fa5]">{{ loc.total }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-[#dce3ef]">
-          <h5 class="font-semibold text-[#1e293b]"><i class="bx bx-star mr-1.5 text-amber-500"></i> Meilleurs jours</h5>
-        </div>
-        <table class="min-w-full divide-y divide-[#dce3ef]">
-          <thead class="bg-[#f8f9fc]">
-            <tr>
-              <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">#</th>
-              <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Date</th>
-              <th class="px-6 py-3.5 text-left text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Espace</th>
-              <th class="px-6 py-3.5 text-right text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Visiteurs</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[#dce3ef]">
-            {% for d in best_days %}
-            <tr class="hover:bg-[#f8f9fc] transition-colors">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="flex items-center justify-center w-7 h-7 rounded-full {% if forloop.counter == 1 %}bg-amber-100 text-amber-700{% else %}bg-[#e8eef7] text-[#4a6fa5]{% endif %} text-xs font-bold">{{ forloop.counter }}</span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#1e293b]">{{ d.date|date:"d/m/Y" }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-[#7a8fa0]">{{ d.location__name }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-[#4a6fa5]">{{ d.total }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+
+        {% include "visitor_tracking/partials/report_body.html" %}
     </div>
-  </div>
 </div>
 {% endblock %}
 
 {% block javascripts %}
-<style>
-@media print {
-  body { background: white !important; }
-  header, footer, .no-print { display: none !important; }
-}
-</style>
+{% include "visitor_tracking/partials/report_scripts.html" %}
 {% endblock %}

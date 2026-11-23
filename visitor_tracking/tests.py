@@ -1,10 +1,14 @@
 from datetime import date, timedelta
+from io import BytesIO
 
 from django.contrib.auth.models import Group, User
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.urls import reverse
 from django.utils import timezone
+from docx import Document as DocxDocument
 
 from .models import Location, VisitorCount
+from .reporting import AnnualReportService
 
 
 def create_mediatheque_group():
@@ -635,13 +639,401 @@ class AnnualReportViewTests(TestCase):
         self.login()
         response = self.client.get(f"/mediatheque/visiteurs/report/{self.year}/")
         self.assertEqual(response.context["prev_year"], self.year - 1)
-        self.assertEqual(response.context["next_year"], self.year + 1)
+        # Pas de navigation vers une année future.
+        self.assertIsNone(response.context["next_year"])
+
+    def test_past_year_has_next_year(self):
+        self.login()
+        response = self.client.get(f"/mediatheque/visiteurs/report/{self.year - 1}/")
+        self.assertEqual(response.context["prev_year"], self.year - 2)
+        self.assertEqual(response.context["next_year"], self.year)
 
     def test_mediatheque_required(self):
         other = User.objects.create_user(username="other", password="pass")
         self.client.login(username="other", password="pass")
         response = self.client.get(f"/mediatheque/visiteurs/report/{self.year}/")
         self.assertEqual(response.status_code, 302)
+
+
+    def test_default_view_is_synthesis(self):
+        self.login()
+        response = self.client.get(
+            f"/mediatheque/visiteurs/report/{self.year}/"
+        )
+        content = response.content.decode()
+        self.assertIn("Synthèse", content)
+        self.assertNotIn("Détail par espace", content)
+
+    def test_detail_view(self):
+        self.login()
+        response = self.client.get(
+            f"/mediatheque/visiteurs/report/{self.year}/?vue=detail"
+        )
+        content = response.content.decode()
+        self.assertIn("Détail par espace", content)
+        self.assertIn("Meilleurs jours", content)
+
+    def test_template_accessibility(self):
+        self.login()
+        response = self.client.get(
+            f"/mediatheque/visiteurs/report/{self.year}/"
+        )
+        content = response.content.decode()
+        self.assertIn('scope="col"', content)
+        self.assertIn("<caption", content)
+        self.assertIn('role="img"', content)
+
+    def test_legacy_year_shows_method(self):
+        self.login()
+        response = self.client.get(
+            f"/mediatheque/visiteurs/report/{self.year - 1}/"
+        )
+        content = response.content.decode()
+        self.assertIn("Méthode historique", content)
+
+    def test_member_commune_is_ignored(self):
+        self.login()
+        response = self.client.get(
+            f"/mediatheque/visiteurs/report/{self.year}/?commune=autre"
+        )
+        self.assertEqual(
+            response.context["report"]["scope"]["username"], "mediat"
+        )
+
+    def test_superadmin_requires_commune(self):
+        superuser = User.objects.create_superuser(
+            username="admin", password="pass"
+        )
+        superuser.groups.add(self.group)
+        self.client.login(username="admin", password="pass")
+        response = self.client.get("/mediatheque/visiteurs/report/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            "Choisissez la médiathèque",
+            response.content.decode(),
+        )
+
+    def test_superadmin_with_commune(self):
+        superuser = User.objects.create_superuser(
+            username="admin", password="pass"
+        )
+        superuser.groups.add(self.group)
+        self.client.login(username="admin", password="pass")
+        response = self.client.get(
+            f"/mediatheque/visiteurs/report/{self.year}/?commune=mediat"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context["report"]["scope"]["username"], "mediat"
+        )
+
+
+@override_settings(VISITOR_REPORT_V2_FROM_YEAR=2026)
+class AnnualReportServiceTests(TestCase):
+    """Règles de calcul du rapport annuel par médiathèque."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="mediat", password="pass")
+        self.loc_a = Location.objects.create(
+            name="Médiathèque",
+            color="#4a6fa5",
+            icon="bx-building",
+            is_active=True,
+            order=1,
+            user=self.user,
+        )
+        self.loc_b = Location.objects.create(
+            name="Ludothèque",
+            color="#10b981",
+            icon="bx-game",
+            is_active=True,
+            order=2,
+            user=self.user,
+        )
+        # 2026-01-05 = lundi, 2026-01-06 = mardi, 2026-01-11 = dimanche.
+        VisitorCount.objects.create(
+            location=self.loc_a, date=date(2026, 1, 5), count=10
+        )
+        VisitorCount.objects.create(
+            location=self.loc_a, date=date(2026, 1, 6), count=20
+        )
+        VisitorCount.objects.create(
+            location=self.loc_a, date=date(2026, 1, 11), count=5
+        )
+        VisitorCount.objects.create(
+            location=self.loc_b, date=date(2026, 1, 5), count=7
+        )
+        VisitorCount.objects.create(
+            location=self.loc_a, date=date(2025, 1, 5), count=10
+        )
+        self.today = date(2026, 11, 23)
+
+    def build(self, year=2026):
+        return AnnualReportService(
+            year, self.user, today=self.today
+        ).build()
+
+    def test_sunday_is_kept_in_total_but_not_in_expected_days(self):
+        report = self.build()
+        totals = report["totals"]
+        self.assertEqual(totals["total"], 42)
+        self.assertEqual(totals["pointed_days"], 3)
+        self.assertEqual(totals["sunday_days"], 1)
+        self.assertEqual(totals["sunday_total"], 5)
+        self.assertEqual(totals["weekday_pointed_days"], 2)
+        self.assertEqual(totals["avg_per_pointed_day"], 14.0)
+        self.assertEqual(totals["avg_per_open_day"], 18.5)
+        self.assertEqual(
+            totals["missing_days"],
+            totals["expected_days"] - 2,
+        )
+
+    def test_no_sunday_pointage_does_not_require_sunday(self):
+        VisitorCount.objects.filter(date=date(2026, 1, 11)).delete()
+        report = self.build()
+        totals = report["totals"]
+        self.assertEqual(totals["total"], 37)
+        self.assertEqual(totals["sunday_days"], 0)
+        self.assertEqual(totals["pointed_days"], 2)
+        self.assertEqual(totals["weekday_pointed_days"], 2)
+        self.assertEqual(
+            totals["missing_days"],
+            totals["expected_days"] - 2,
+        )
+
+    def test_partial_year_stops_today_and_compares_same_period(self):
+        report = self.build()
+        self.assertTrue(report["period"]["is_partial"])
+        self.assertEqual(report["period"]["end"], self.today)
+        self.assertEqual(report["period"]["n1_label"], "à date comparable")
+        self.assertEqual(report["period"]["n1_year"], 2025)
+        self.assertEqual(report["totals"]["n1_total"], 10)
+        self.assertEqual(report["totals"]["variation"], 320.0)
+
+    def test_legacy_year_keeps_historical_method(self):
+        report = self.build(year=2025)
+        self.assertEqual(report["period"]["method"], "legacy")
+        self.assertIsNone(report["totals"]["expected_days"])
+        self.assertIsNone(report["totals"]["completeness"])
+        self.assertEqual(report["totals"]["total"], 10)
+
+    def test_top_days_are_unique_by_date(self):
+        report = self.build()
+        dates = [item["date"] for item in report["top_days"]]
+        self.assertEqual(len(dates), len(set(dates)))
+        jan_5 = next(
+            item
+            for item in report["top_days"]
+            if item["date"] == date(2026, 1, 5)
+        )
+        self.assertEqual(jan_5["total"], 17)
+        self.assertEqual(len(jan_5["spaces"]), 2)
+
+    def test_homonym_locations_are_not_merged(self):
+        loc_c = Location.objects.create(
+            name="Médiathèque",
+            color="#7c3aed",
+            is_active=True,
+            order=3,
+            user=self.user,
+        )
+        VisitorCount.objects.create(
+            location=loc_c, date=date(2026, 1, 5), count=3
+        )
+        report = self.build()
+        homonyms = [
+            space
+            for space in report["spaces"]
+            if space["name"] == "Médiathèque"
+        ]
+        self.assertEqual(len(homonyms), 2)
+        self.assertEqual({space["total"] for space in homonyms}, {35, 3})
+
+    def test_spaces_without_data_are_listed(self):
+        loc_c = Location.objects.create(
+            name="Animation",
+            color="#f97316",
+            is_active=True,
+            order=3,
+            user=self.user,
+        )
+        report = self.build()
+        space = next(
+            item for item in report["spaces"] if item["id"] == loc_c.id
+        )
+        self.assertEqual(space["total"], 0)
+        self.assertFalse(space["has_data"])
+        self.assertIn(
+            loc_c.id,
+            [item["id"] for item in report["spaces_without_data"]],
+        )
+
+    def test_perimetre_and_method_note(self):
+        report = self.build()
+        self.assertIn("Mediat", report["synthese"]["perimetre"])
+        self.assertIn("Médiathèque", report["synthese"]["perimetre"])
+        self.assertIn("recalculé", report["period"]["n1_method_note"])
+        self.assertGreaterEqual(len(report["synthese"]["phrases"]), 5)
+
+    def test_n1_without_data_is_flagged(self):
+        VisitorCount.objects.filter(date__year=2025).delete()
+        report = self.build()
+        self.assertFalse(report["totals"]["n1_has_data"])
+        self.assertIsNone(report["totals"]["variation"])
+        self.assertEqual(report["period"]["n1_method_note"], "")
+
+
+@override_settings(VISITOR_REPORT_V2_FROM_YEAR=2026)
+class AnnualReportExportTests(TestCase):
+    """Exports DOCX, CSV et impression du rapport annuel."""
+
+    def setUp(self):
+        self.group = create_mediatheque_group()
+        self.user = User.objects.create_user(username="mediat", password="pass")
+        self.user.groups.add(self.group)
+        self.today = timezone.now().date()
+        self.year = self.today.year
+        self.loc = Location.objects.create(
+            name="Médiathèque",
+            color="#4a6fa5",
+            icon="bx-building",
+            is_active=True,
+            order=1,
+            user=self.user,
+        )
+        days = []
+        cursor = date(self.year, 1, 1)
+        while len(days) < 2:
+            if cursor.weekday() != 6:
+                days.append(cursor)
+            cursor += timedelta(days=1)
+        VisitorCount.objects.create(
+            location=self.loc, date=days[0], count=12
+        )
+        VisitorCount.objects.create(
+            location=self.loc, date=days[1], count=8
+        )
+
+    def login(self):
+        self.client.login(username="mediat", password="pass")
+
+    def test_docx_synthese(self):
+        self.login()
+        response = self.client.get(
+            reverse(
+                "visitor_tracking:annual_report_export",
+                args=[self.year, "docx-synthese"],
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("wordprocessingml", response["Content-Type"])
+        self.assertIn("bilan_", response["Content-Disposition"])
+        document = DocxDocument(BytesIO(response.content))
+        text = "\n".join(
+            paragraph.text for paragraph in document.paragraphs
+        )
+        self.assertIn("Bilan d'activité", text)
+        self.assertIn("Synthèse", text)
+        self.assertGreaterEqual(len(document.tables), 2)
+
+    def test_docx_detail_contains_annex(self):
+        self.login()
+        response = self.client.get(
+            reverse(
+                "visitor_tracking:annual_report_export",
+                args=[self.year, "docx-detail"],
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("rapport_", response["Content-Disposition"])
+        document = DocxDocument(BytesIO(response.content))
+        text = "\n".join(
+            paragraph.text for paragraph in document.paragraphs
+        )
+        self.assertIn("Rapport d'activité", text)
+        self.assertIn(
+            "Annexe — Répartition mensuelle par espace", text
+        )
+        self.assertGreaterEqual(len(document.tables), 5)
+
+    def test_csv_synthese(self):
+        self.login()
+        response = self.client.get(
+            reverse(
+                "visitor_tracking:annual_report_export",
+                args=[self.year, "csv-synthese"],
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/csv", response["Content-Type"])
+        content = response.content.decode("utf-8-sig")
+        self.assertIn("Type;Libellé;Total;N-1;Variation (%);Part (%)", content)
+        self.assertIn("Mois;Janvier", content)
+        self.assertIn("Espace;Médiathèque", content)
+
+    def test_csv_donnees(self):
+        self.login()
+        response = self.client.get(
+            reverse(
+                "visitor_tracking:annual_report_export",
+                args=[self.year, "csv-donnees"],
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8-sig")
+        self.assertTrue(
+            content.startswith("Date;Espace;Nombre de visiteurs")
+        )
+        self.assertIn("Médiathèque", content)
+
+    def test_print_view(self):
+        self.login()
+        response = self.client.get(
+            reverse(
+                "visitor_tracking:annual_report_print",
+                args=[self.year],
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("Imprimer / PDF", content)
+        self.assertIn("report-daily-chart", content)
+
+    def test_superadmin_export_requires_commune(self):
+        superuser = User.objects.create_superuser(
+            username="admin", password="pass"
+        )
+        superuser.groups.add(self.group)
+        self.client.login(username="admin", password="pass")
+        response = self.client.get(
+            reverse(
+                "visitor_tracking:annual_report_export",
+                args=[self.year, "docx-synthese"],
+            )
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_member_commune_is_ignored(self):
+        other = User.objects.create_user(username="autre", password="pass")
+        other_loc = Location.objects.create(
+            name="Autre médiathèque",
+            user=other,
+            is_active=True,
+        )
+        VisitorCount.objects.create(
+            location=other_loc, date=self.today, count=99
+        )
+        self.login()
+        response = self.client.get(
+            reverse(
+                "visitor_tracking:annual_report_export",
+                args=[self.year, "csv-donnees"],
+            )
+            + "?commune=autre"
+        )
+        content = response.content.decode("utf-8-sig")
+        self.assertIn("Médiathèque", content)
+        self.assertNotIn("Autre médiathèque", content)
 
 
 class SuperadminStatisticsViewTests(TestCase):
@@ -824,7 +1216,7 @@ class SuperadminStatisticsViewTests(TestCase):
     def test_annual_report_synthese(self):
         self.superuser.groups.add(create_mediatheque_group())
         self.login()
-        response = self.client.get("/mediatheque/visiteurs/report/")
+        response = self.client.get("/mediatheque/visiteurs/report/?commune=anor")
         self.assertEqual(response.status_code, 200)
         self.assertIn("synthese", response.context)
         phrases = response.context["synthese"]["phrases"]
