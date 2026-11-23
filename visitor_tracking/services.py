@@ -361,16 +361,38 @@ class SuperadminStatisticsService:
         return {"total": n1_total}
 
     @staticmethod
-    def build_calendar_months(year, count_map, max_count):
+    def build_calendar_months(
+        year,
+        count_map,
+        max_count,
+        include_sunday=False,
+        opening_weekdays=None,
+        closure_map=None,
+        pointed_dates=None,
+        today=None,
+    ):
         """Grille des 12 mois pour le calendrier de fréquentation.
 
         `count_map` : {date: total visiteurs}. Chaque cellule expose day,
-        count, date et opacity (0-1) ; les cases hors mois sont None.
+        count, date, opacity, et les états utiles à la heatmap :
+        pointé, pointé à zéro, sans pointage, fermé, non ouvert, à venir.
         """
         month_names = [
             "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
             "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
         ]
+        weekdays = (
+            opening_weekdays
+            if opening_weekdays is not None
+            else [0, 1, 2, 3, 4, 5]
+        )
+        closures = closure_map or {}
+        pointed = (
+            set(pointed_dates)
+            if pointed_dates is not None
+            else set(count_map)
+        )
+        days_in_week = 7 if include_sunday else 6
 
         months = []
         for m in range(1, 13):
@@ -382,29 +404,85 @@ class SuperadminStatisticsService:
 
             # Lundi de la semaine contenant le 1er
             start = first_day - timedelta(days=first_day.weekday())
-            # Samedi de la semaine contenant le dernier jour
-            end = last_day + timedelta(days=5 - last_day.weekday())
+            if include_sunday:
+                end = last_day + timedelta(days=6 - last_day.weekday())
+            else:
+                end = last_day + timedelta(days=5 - last_day.weekday())
 
             cells = []
             d = start
             while d <= end:
-                if d.weekday() != 6:
+                if include_sunday or d.weekday() != 6:
                     if first_day <= d <= last_day:
                         cnt = count_map.get(d, 0)
                         opacity = cnt / max_count if max_count > 0 else 0
+                        closure = closures.get(d)
+                        has_pointage = d in pointed
+                        is_open_day = d.weekday() in weekdays
+                        is_future = bool(today and d > today)
+                        is_missing = (
+                            is_open_day
+                            and not has_pointage
+                            and closure is None
+                            and not is_future
+                        )
+                        if closure is not None:
+                            state = "closure"
+                            state_label = (
+                                closure.label
+                                or closure.get_kind_display()
+                            )
+                        elif is_future:
+                            state = "future"
+                            state_label = "À venir"
+                        elif not is_open_day:
+                            if has_pointage:
+                                state = "exceptional"
+                                state_label = (
+                                    f"{cnt} visiteur"
+                                    f"{'s' if cnt > 1 else ''} — "
+                                    "jour non ouvert"
+                                )
+                            else:
+                                state = "nonopen"
+                                state_label = "Jour non ouvert"
+                        elif is_missing:
+                            state = "missing"
+                            state_label = "Aucun pointage — à qualifier"
+                        elif has_pointage and cnt == 0:
+                            state = "zero"
+                            state_label = "Pointé à zéro"
+                        else:
+                            state = "pointed"
+                            state_label = (
+                                f"{cnt} visiteur{'s' if cnt > 1 else ''}"
+                            )
                         cells.append(
                             {
                                 "day": d.day,
                                 "count": cnt,
                                 "date": d,
                                 "opacity": opacity,
+                                "has_pointage": has_pointage,
+                                "is_zero": has_pointage and cnt == 0,
+                                "is_closure": closure is not None,
+                                "closure": closure,
+                                "is_open_day": is_open_day,
+                                "is_future": is_future,
+                                "is_missing": is_missing,
+                                "is_today": bool(today and d == today),
+                                "state": state,
+                                "state_label": state_label,
                             }
                         )
                     else:
                         cells.append(None)
                 d += timedelta(days=1)
 
-            weeks = [cells[i:i + 6] for i in range(0, len(cells), 6)]
+            weeks = [
+                cells[i:i + days_in_week]
+                for i in range(0, len(cells), days_in_week)
+            ]
 
             months.append({"name": month_names[m - 1], "weeks": weeks})
 

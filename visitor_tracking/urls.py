@@ -33,6 +33,21 @@ urlpatterns = [
     # Heatmap
     path("heatmap/", views.heatmap, name="heatmap"),
     path("heatmap/<int:year>/", views.heatmap, name="heatmap_year"),
+    path(
+        "heatmap/<int:year>/closures/",
+        views.heatmap_create_closures,
+        name="heatmap_create_closures",
+    ),
+    path(
+        "heatmap/<int:year>/closures/<int:closure_id>/delete/",
+        views.heatmap_delete_closure,
+        name="heatmap_delete_closure",
+    ),
+    path(
+        "heatmap/<int:year>/opening-days/",
+        views.heatmap_opening_days,
+        name="heatmap_opening_days",
+    ),
 
     # Calendrier superadmin
     path("admin-heatmap/", views.superadmin_heatmap, name="superadmin_heatmap"),
@@ -45,5 +60,15 @@ urlpatterns = [
     # Rapport annuel
     path("report/", views.annual_report, name="annual_report"),
     path("report/<int:year>/", views.annual_report, name="annual_report_year"),
+    path(
+        "report/<int:year>/print/",
+        views.annual_report_print,
+        name="annual_report_print",
+    ),
+    path(
+        "report/<int:year>/export/<slug:kind>/",
+        views.annual_report_export,
+        name="annual_report_export",
+    ),
 ]
 

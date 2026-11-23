@@ -30,6 +30,13 @@ class BulkVisitorCountForm(forms.Form):
         ),
         label="Date",
     )
+    confirm_closed = forms.BooleanField(
+        required=False,
+        label="Je confirme une saisie exceptionnelle sur un jour de fermeture",
+        widget=forms.CheckboxInput(
+            attrs={"class": "h-4 w-4 rounded border-[#dce3ef] text-[#4a6fa5]"}
+        ),
+    )
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop("user", None)

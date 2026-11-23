@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
@@ -109,4 +110,81 @@ class VisitorCount(models.Model):
 
     def __str__(self):
         return f"{self.location.name} - {self.date}: {self.count} visiteurs"
+
+
+class Closure(models.Model):
+    """Fermeture de la médiathèque (jour férié, congés, travaux...)."""
+
+    KIND_CHOICES = [
+        ("public_holiday", "Jour férié"),
+        ("annual", "Fermeture annuelle"),
+        ("works", "Travaux"),
+        ("exceptional", "Fermeture exceptionnelle"),
+        ("other", "Autre"),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="visitor_closures",
+        verbose_name="Médiathèque",
+    )
+    start_date = models.DateField("Début", db_index=True)
+    end_date = models.DateField("Fin", db_index=True)
+    kind = models.CharField(
+        "Motif",
+        max_length=20,
+        choices=KIND_CHOICES,
+        default="exceptional",
+        db_index=True,
+    )
+    label = models.CharField("Précision", max_length=200, blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_visitor_closures",
+        verbose_name="Créé par",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Fermeture"
+        verbose_name_plural = "Fermetures"
+        ordering = ["-start_date", "-end_date"]
+        indexes = [
+            models.Index(
+                fields=["user", "start_date", "end_date"],
+                name="idx_closure_user_dates",
+            )
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(end_date__gte=models.F("start_date")),
+                name="closure_end_gte_start",
+            )
+        ]
+
+    def clean(self):
+        if (
+            self.start_date
+            and self.end_date
+            and self.end_date < self.start_date
+        ):
+            raise ValidationError(
+                "La date de fin doit être postérieure ou égale à la date "
+                "de début."
+            )
+
+    def __str__(self):
+        return (
+            f"{self.user.username} — {self.start_date:%d/%m/%Y} au "
+            f"{self.end_date:%d/%m/%Y} ({self.get_kind_display()})"
+        )
+
+    @property
+    def day_count(self):
+        return (self.end_date - self.start_date).days + 1
 

@@ -1,27 +1,44 @@
 import csv
 import hashlib
+import json
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
+from django.conf import settings
 from django.contrib import messages
 from django.core.cache import cache
 from django.utils import timezone
-from django.http import JsonResponse, HttpResponse
+from django.urls import reverse
+from django.utils.text import slugify
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.http import require_POST
+from django.db import transaction
 from django.db.models import Sum, Count, Max
-from django.db.models.functions import ExtractMonth, TruncDate
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.models import User
 
 from library_workshops.decorators import (
     mediatheque_member_required,
     mediatheque_member_required_json,
 )
 from library_workshops.utils import filter_owned, filter_location_owned
-from .models import Location, VisitorCount
+from .models import Closure, Location, VisitorCount
+from .opening import (
+    DEFAULT_OPENING_WEEKDAYS,
+    WEEKDAY_LABELS,
+    build_closure_map,
+    get_closures,
+    get_open_dates,
+    get_opening_weekdays,
+    group_dates_into_ranges,
+)
+from accounts.models import LibraryProfile
 from .forms import BulkVisitorCountForm, DateRangeForm, LocationForm
 from .services import SuperadminStatisticsService
+from .reporting import AnnualReportService
+from .docx_report import build_annual_report_docx
 
 # Constantes partagées entre les vues d'espaces
 SPACE_ICONS = [
@@ -138,12 +155,22 @@ def index(request):
         or 0
     )
 
+    opening_weekdays = get_opening_weekdays(request.user)
+    closure_map = build_closure_map(request.user, today, today)
+    today_closure = closure_map.get(today)
+    today_is_closed = (
+        today_closure is not None
+        or today.weekday() not in opening_weekdays
+    )
+
     context = {
         "location_data": location_data,
         "today": today,
         "total_today": total_today,
         "week_total": week_total,
         "month_total": month_total,
+        "today_closure": today_closure,
+        "today_is_closed": today_is_closed,
         "title": "Pointage visiteurs",
     }
 
@@ -162,6 +189,25 @@ def increment_count(request, location_id, amount=1):
 
     # Limiter le montant entre 1 et 10 pour éviter les abus
     amount = max(1, min(int(amount), 10))
+
+    opening_weekdays = get_opening_weekdays(request.user)
+    closure_map = build_closure_map(request.user, today, today)
+    if (
+        today.weekday() not in opening_weekdays
+        or today in closure_map
+    ):
+        return JsonResponse(
+            {
+                "success": False,
+                "closed": True,
+                "error": (
+                    "La médiathèque est fermée aujourd'hui. "
+                    "Utilisez la saisie rétroactive pour une ouverture "
+                    "exceptionnelle."
+                ),
+            },
+            status=409,
+        )
 
     count_obj, created = VisitorCount.objects.get_or_create(
         location=location, date=today, defaults={"count": 0, "created_by": request.user}
@@ -222,93 +268,137 @@ def decrement_count(request, location_id):
 
 @mediatheque_member_required
 def entry_form(request):
-    """Formulaire de saisie rétroactive (par date)"""
+    """Formulaire de saisie rétroactive (par date)."""
+    selected_date = None
+    selected_closure = None
+    selected_is_closed = False
+    opening_weekdays = get_opening_weekdays(request.user)
+    first_calendar_year = getattr(
+        settings, "VISITOR_REPORT_V2_FROM_YEAR", 2026
+    )
+
     if request.method == "POST":
         form = BulkVisitorCountForm(request.POST, user=request.user)
         if form.is_valid():
             date = form.cleaned_data["date"]
-            active_locations = filter_location_owned(
-                Location.objects.filter(is_active=True), request.user
-            )
-
-            submitted_ids = {
-                int(k.removeprefix("location_"))
-                for k in form.cleaned_data
-                if k.startswith("location_")
-            }
-            active_ids = set(active_locations.values_list("id", flat=True))
-            missing_ids = submitted_ids - active_ids
-            if missing_ids:
-                missing_names = list(
-                    Location.objects.filter(id__in=missing_ids).values_list(
-                        "name", flat=True
-                    )
+            selected_date = date
+            if date.year >= first_calendar_year:
+                closure_map = build_closure_map(request.user, date, date)
+                selected_closure = closure_map.get(date)
+                selected_is_closed = (
+                    selected_closure is not None
+                    or date.weekday() not in opening_weekdays
                 )
-                if missing_names:
-                    messages.warning(
-                        request,
-                        f"Espaces ignorés car désactivés depuis l'ouverture du formulaire : "
-                        f"{', '.join(missing_names)}.",
-                    )
-
-            saved_count = 0
-            for location in active_locations:
-                field_name = f"location_{location.id}"
-                count = form.cleaned_data.get(field_name, 0) or 0
-
-                count_obj, created = VisitorCount.objects.get_or_create(
-                    location=location,
-                    date=date,
-                    defaults={
-                        "count": count,
-                        "created_by": request.user,
-                        "updated_by": request.user,
-                    },
+            if selected_is_closed and not form.cleaned_data.get(
+                "confirm_closed"
+            ):
+                form.add_error(
+                    None,
+                    "Ce jour est un jour de fermeture. Cochez la "
+                    "confirmation pour enregistrer une ouverture "
+                    "exceptionnelle.",
                 )
-                if not created and count_obj.count != count:
-                    count_obj.count = count
-                    count_obj.updated_by = request.user
-                    count_obj.save()
-                saved_count += 1
+            else:
+                active_locations = filter_location_owned(
+                    Location.objects.filter(is_active=True), request.user
+                )
 
-            messages.success(
-                request,
-                f"Comptages enregistrés pour le {date.strftime('%d/%m/%Y')} "
-                f"({saved_count} espaces).",
-            )
-            return redirect("visitor_tracking:index")
+                submitted_ids = {
+                    int(key.removeprefix("location_"))
+                    for key in form.cleaned_data
+                    if key.startswith("location_")
+                }
+                active_ids = set(
+                    active_locations.values_list("id", flat=True)
+                )
+                missing_ids = submitted_ids - active_ids
+                if missing_ids:
+                    missing_names = list(
+                        Location.objects.filter(
+                            id__in=missing_ids
+                        ).values_list("name", flat=True)
+                    )
+                    if missing_names:
+                        messages.warning(
+                            request,
+                            "Espaces ignorés car désactivés depuis "
+                            "l'ouverture du formulaire : "
+                            f"{', '.join(missing_names)}.",
+                        )
+
+                saved_count = 0
+                for location in active_locations:
+                    field_name = f"location_{location.id}"
+                    count = form.cleaned_data.get(field_name, 0) or 0
+
+                    count_obj, created = (
+                        VisitorCount.objects.get_or_create(
+                            location=location,
+                            date=date,
+                            defaults={
+                                "count": count,
+                                "created_by": request.user,
+                                "updated_by": request.user,
+                            },
+                        )
+                    )
+                    if not created and count_obj.count != count:
+                        count_obj.count = count
+                        count_obj.updated_by = request.user
+                        count_obj.save()
+                    saved_count += 1
+
+                messages.success(
+                    request,
+                    f"Comptages enregistrés pour le "
+                    f"{date.strftime('%d/%m/%Y')} "
+                    f"({saved_count} espaces).",
+                )
+                return redirect("visitor_tracking:index")
     else:
-        # Pré-remplir avec les valeurs existantes si date fournie
         initial_date = request.GET.get("date")
         form_initial = {}
 
         if initial_date:
             try:
-                from datetime import datetime
-
-                date_obj = datetime.strptime(initial_date, "%Y-%m-%d").date()
+                date_obj = datetime.strptime(
+                    initial_date, "%Y-%m-%d"
+                ).date()
                 form_initial["date"] = date_obj
+                selected_date = date_obj
+                if date_obj.year >= first_calendar_year:
+                    closure_map = build_closure_map(
+                        request.user, date_obj, date_obj
+                    )
+                    selected_closure = closure_map.get(date_obj)
+                    selected_is_closed = (
+                        selected_closure is not None
+                        or date_obj.weekday() not in opening_weekdays
+                    )
 
-                # Charger les valeurs existantes
                 existing_counts = filter_owned(
-                    VisitorCount.objects.filter(date=date_obj).select_related(
-                        "location"
-                    ),
+                    VisitorCount.objects.filter(
+                        date=date_obj
+                    ).select_related("location"),
                     request.user,
                     field="location__user",
                 )
-
                 for count in existing_counts:
                     field_name = f"location_{count.location.id}"
                     form_initial[field_name] = count.count
             except (ValueError, TypeError):
                 pass
 
-        form = BulkVisitorCountForm(user=request.user, initial=form_initial)
+        form = BulkVisitorCountForm(
+            user=request.user, initial=form_initial
+        )
 
     context = {
         "form": form,
         "location_fields": form.get_location_fields(user=request.user),
+        "selected_date": selected_date,
+        "selected_closure": selected_closure,
+        "selected_is_closed": selected_is_closed,
         "title": "Saisie des visiteurs",
     }
 
@@ -369,9 +459,6 @@ def statistics(request):
         field="location__user",
     )
 
-    # Variante sans dimanche pour les stats agrégées
-    qs_no_sunday = qs.exclude(date__week_day=1)
-
     # Période précédente
     prev_start = start_date - timedelta(days=period_length)
     prev_end = start_date - timedelta(days=1)
@@ -380,7 +467,6 @@ def statistics(request):
         request.user,
         field="location__user",
     )
-    prev_qs_no_sunday = prev_qs.exclude(date__week_day=1)
 
     # Filtrer par espace
     selected_location = None
@@ -394,19 +480,75 @@ def statistics(request):
         except Location.DoesNotExist:
             pass
 
-    # Stats globales (1 requête, hors dimanche)
-    stats = qs_no_sunday.aggregate(
+    qs_no_sunday = qs.exclude(date__week_day=1)
+    prev_qs_no_sunday = prev_qs.exclude(date__week_day=1)
+
+    opening_weekdays = get_opening_weekdays(request.user)
+    closure_map = build_closure_map(request.user, start_date, end_date)
+    first_v2 = date(
+        getattr(settings, "VISITOR_REPORT_V2_FROM_YEAR", 2026), 1, 1
+    )
+    closure_aware = end_date >= first_v2
+    if closure_aware:
+        effective_start = max(start_date, first_v2)
+        open_dates = get_open_dates(
+            effective_start, end_date, opening_weekdays, closure_map
+        )
+        if start_date < effective_start:
+            cursor = start_date
+            while cursor < effective_start:
+                if cursor.weekday() != 6:
+                    open_dates.add(cursor)
+                cursor += timedelta(days=1)
+        open_days = len(open_dates)
+        closure_days = sum(
+            1
+            for day in closure_map
+            if day >= first_v2
+            and day.weekday() in opening_weekdays
+        )
+        stats_qs = qs.filter(date__in=open_dates)
+        exceptional_total = (
+            qs.exclude(date__in=open_dates).aggregate(total=Sum("count"))[
+                "total"
+            ]
+            or 0
+        )
+    else:
+        open_dates = None
+        open_days = period_length
+        closure_days = 0
+        stats_qs = qs_no_sunday
+        exceptional_total = 0
+
+    # Stats globales sur les jours d'ouverture
+    stats = stats_qs.aggregate(
         total=Sum("count"),
         days_count=Count("date", distinct=True),
         max_count=Max("count"),
     )
-    total_visitors = stats["total"] or 0
+    open_total = stats["total"] or 0
+    total_visitors = open_total + exceptional_total
     days_with_data = stats["days_count"] or 0
-    avg_per_day = round(total_visitors / period_length, 1) if period_length > 0 else 0
+    avg_per_day = (
+        round(open_total / open_days, 1) if open_days > 0 else 0
+    )
+    missing_days = (
+        max(open_days - days_with_data, 0)
+        if closure_aware
+        else None
+    )
+    completeness = (
+        round(days_with_data / open_days * 100, 1)
+        if closure_aware and open_days
+        else None
+    )
 
-    # Meilleur et pire jour (hors dimanche)
+    # Meilleur et pire jour
     daily_totals = (
-        qs_no_sunday.values("date").annotate(total=Sum("count")).order_by("-total")
+        stats_qs.values("date")
+        .annotate(total=Sum("count"))
+        .order_by("-total")
     )
     best_day = daily_totals.first()
     worst_day = daily_totals.order_by("total").first()
@@ -414,9 +556,11 @@ def statistics(request):
     # Record
     record_day = best_day  # best_day is already the max total
 
-    # Moyenne par jour de semaine (hors dimanche)
+    # Moyenne par jour de semaine / jour d'ouverture
     weekday_data = (
-        qs_no_sunday.values("date").annotate(total=Sum("count")).order_by("date")
+        stats_qs.values("date")
+        .annotate(total=Sum("count"))
+        .order_by("date")
     )
     weekday_sums = {}
     weekday_counts = {}
@@ -425,32 +569,58 @@ def statistics(request):
         weekday_sums[wd] = weekday_sums.get(wd, 0) + d["total"]
         weekday_counts[wd] = weekday_counts.get(wd, 0) + 1
 
-    weekday_names = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
+    weekday_days = (
+        opening_weekdays if closure_aware else [0, 1, 2, 3, 4, 5]
+    )
     weekday_avg_list = []
     max_wavg = 0
-    for i in range(6):
+    for day in weekday_days:
         val = (
-            weekday_sums.get(i, 0) / weekday_counts.get(i, 1)
-            if weekday_counts.get(i, 0) > 0
+            weekday_sums.get(day, 0) / weekday_counts.get(day, 1)
+            if weekday_counts.get(day, 0) > 0
             else 0
         )
         val = round(val, 1)
-        weekday_avg_list.append({"name": weekday_names[i], "avg": val})
+        weekday_avg_list.append(
+            {"name": WEEKDAY_LABELS[day], "avg": val}
+        )
         if val > max_wavg:
             max_wavg = val
 
     # Meilleur et pire jour de la semaine
-    sorted_days = sorted(weekday_avg_list, key=lambda x: x["avg"], reverse=True)
+    sorted_days = sorted(
+        weekday_avg_list, key=lambda x: x["avg"], reverse=True
+    )
     best_weekday = sorted_days[0] if sorted_days else None
     worst_weekday = sorted_days[-1] if sorted_days else None
 
-    # Semaine vs week-end (samedi seulement, dimanche exclu)
-    weekdays_total = sum(weekday_sums.get(i, 0) for i in range(5))
-    weekend_total = weekday_sums.get(5, 0)
-    weekdays_count = sum(weekday_counts.get(i, 0) for i in range(5))
-    weekend_count = weekday_counts.get(5, 0)
-    weekday_avg = round(weekdays_total / weekdays_count, 1) if weekdays_count > 0 else 0
-    weekend_avg = round(weekend_total / weekend_count, 1) if weekend_count > 0 else 0
+    # Semaine vs week-end (samedi seulement, si ouvert)
+    weekdays_total = sum(
+        weekday_sums.get(day, 0)
+        for day in weekday_days
+        if day < 5
+    )
+    weekend_total = (
+        weekday_sums.get(5, 0) if 5 in weekday_days else 0
+    )
+    weekdays_count = sum(
+        weekday_counts.get(day, 0)
+        for day in weekday_days
+        if day < 5
+    )
+    weekend_count = (
+        weekday_counts.get(5, 0) if 5 in weekday_days else 0
+    )
+    weekday_avg = (
+        round(weekdays_total / weekdays_count, 1)
+        if weekdays_count > 0
+        else 0
+    )
+    weekend_avg = (
+        round(weekend_total / weekend_count, 1)
+        if weekend_count > 0
+        else 0
+    )
     weekend_vs_weekday_var = (
         round(((weekday_avg - weekend_avg) / weekend_avg * 100), 1)
         if weekend_avg > 0
@@ -461,7 +631,9 @@ def statistics(request):
     prev_stats = prev_qs_no_sunday.aggregate(total=Sum("count"))
     prev_total = prev_stats["total"] or 0
     variation = round(
-        ((total_visitors - prev_total) / prev_total * 100) if prev_total > 0 else 100,
+        ((open_total - prev_total) / prev_total * 100)
+        if prev_total > 0
+        else 100,
         1,
     )
 
@@ -705,6 +877,13 @@ def statistics(request):
         "start_date": start_date,
         "end_date": end_date,
         "period_length": period_length,
+        "open_days": open_days,
+        "closure_days": closure_days,
+        "missing_days": missing_days,
+        "completeness": completeness,
+        "exceptional_total": exceptional_total,
+        "opening_weekdays": opening_weekdays,
+        "closure_aware": closure_aware,
         "period": period,
         "selected_location": selected_location,
         "total_visitors": total_visitors,
@@ -964,19 +1143,18 @@ def history(request):
 
 @mediatheque_member_required
 def heatmap(request, year=None):
-    """Calendrier heatmap annuel de fréquentation."""
+    """Calendrier heatmap annuel et qualification des jours sans pointage."""
+    today = timezone.now().date()
     if not year:
         try:
-            year = int(request.GET.get("year", timezone.now().year))
+            year = int(request.GET.get("year", today.year))
         except (ValueError, TypeError):
-            year = timezone.now().year
+            year = today.year
 
     start_date = date(year, 1, 1)
     end_date = date(year, 12, 31)
-
     location_filter = request.GET.get("location")
 
-    # Filtre par commune (superusers uniquement, username = nom de la commune)
     available_communes = []
     if request.user.is_superuser:
         available_communes = SuperadminStatisticsService.get_available_communes()
@@ -984,12 +1162,57 @@ def heatmap(request, year=None):
     if commune not in {u.username for u in available_communes}:
         commune = ""
 
-    qs = filter_owned(
-        VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date),
-        request.user, field="location__user",
+    # La validation se fait toujours pour une médiathèque précise.
+    first_calendar_year = getattr(
+        settings, "VISITOR_REPORT_V2_FROM_YEAR", 2026
+    )
+    scope_user = None
+    can_validate = False
+    if request.user.is_superuser:
+        if commune:
+            scope_user = next(
+                (u for u in available_communes if u.username == commune),
+                None,
+            )
+            can_validate = (
+                scope_user is not None
+                and year >= first_calendar_year
+            )
+    else:
+        scope_user = request.user
+        can_validate = year >= first_calendar_year
+
+    opening_weekdays = (
+        get_opening_weekdays(scope_user)
+        if scope_user
+        else list(DEFAULT_OPENING_WEEKDAYS)
+    )
+    if year < first_calendar_year:
+        opening_weekdays = list(DEFAULT_OPENING_WEEKDAYS)
+    closure_map = (
+        build_closure_map(scope_user, start_date, end_date)
+        if scope_user
+        else {}
+    )
+    sunday_param = request.GET.get("dimanche")
+    include_sunday = (
+        6 in opening_weekdays
+        if sunday_param is None
+        else sunday_param == "1"
+    )
+
+    scope_qs = filter_owned(
+        VisitorCount.objects.filter(
+            date__gte=start_date, date__lte=end_date
+        ),
+        request.user,
+        field="location__user",
     )
     if commune:
-        qs = qs.filter(location__user__username=commune)
+        scope_qs = scope_qs.filter(location__user__username=commune)
+    pointed_dates = set(scope_qs.values_list("date", flat=True))
+
+    qs = scope_qs
     if location_filter:
         qs = qs.filter(location_id=location_filter)
 
@@ -998,10 +1221,16 @@ def heatmap(request, year=None):
     max_count = max(count_map.values()) if count_map else 0
 
     months = SuperadminStatisticsService.build_calendar_months(
-        year, count_map, max_count
+        year,
+        count_map,
+        max_count,
+        include_sunday=include_sunday,
+        opening_weekdays=opening_weekdays,
+        closure_map=closure_map,
+        pointed_dates=pointed_dates,
+        today=today,
     )
-    # Les membres ne voient que leur propre mediatheque dans le detail
-    # (comme les totaux) ; les superadmins gardent la vue globale.
+
     breakdown_commune = commune or None
     if not request.user.is_superuser:
         breakdown_commune = request.user.username
@@ -1014,7 +1243,6 @@ def heatmap(request, year=None):
     show_commune = request.user.is_superuser and not commune
     SuperadminStatisticsService.attach_tooltips(months, breakdown, show_commune)
 
-    # Carte des infobulles dynamiques : {date_iso: {label, total, lines[]}}.
     _days_fr = [
         "lundi", "mardi", "mercredi", "jeudi",
         "vendredi", "samedi", "dimanche",
@@ -1024,6 +1252,7 @@ def heatmap(request, year=None):
         "juillet", "août", "septembre", "octobre", "novembre", "décembre",
     ]
     tooltip_map = {}
+    missing_dates = []
     for _month in months:
         for _week in _month["weeks"]:
             for _cell in _week:
@@ -1045,12 +1274,54 @@ def heatmap(request, year=None):
                     )
                     _lines.append({"label": _where, "count": _e["count"] or 0})
                 _extra = len(_entries) - len(_lines)
+                closure = _cell.get("closure")
+                closure_info = None
+                if closure is not None:
+                    closure_info = {
+                        "id": closure.id,
+                        "kind": closure.kind,
+                        "label": closure.get_kind_display(),
+                        "detail": closure.label,
+                        "start": closure.start_date.isoformat(),
+                        "end": closure.end_date.isoformat(),
+                    }
+                if _cell["is_missing"]:
+                    missing_dates.append(_d)
                 tooltip_map[_d.isoformat()] = {
                     "label": _label,
                     "total": _cell["count"] or 0,
                     "lines": _lines,
                     "extra": _extra if _extra > 0 else 0,
+                    "state": _cell["state"],
+                    "state_label": _cell["state_label"],
+                    "has_pointage": _cell["has_pointage"],
+                    "closure": closure_info,
                 }
+
+    missing_dates.sort()
+    missing_by_month = {}
+    for day in missing_dates:
+        missing_by_month.setdefault(day.strftime("%Y-%m"), []).append(day)
+    missing_groups = [
+        {
+            "label": (
+                f"{_months_fr[days[0].month - 1].capitalize()} "
+                f"{days[0].year}"
+            ),
+            "dates": days,
+        }
+        for _, days in sorted(missing_by_month.items())
+    ]
+
+    query_params = []
+    if commune:
+        query_params.append(f"commune={commune}")
+    if location_filter:
+        query_params.append(f"location={location_filter}")
+    query_params.append(
+        f"dimanche={'1' if include_sunday else '0'}"
+    )
+    query_suffix = "?" + "&".join(query_params) if query_params else ""
 
     locations = filter_location_owned(
         Location.objects.filter(is_active=True), request.user
@@ -1058,6 +1329,12 @@ def heatmap(request, year=None):
     if commune:
         locations = locations.filter(user__username=commune)
     locations = locations.order_by("order", "name")
+
+    closures = (
+        list(get_closures(scope_user, start_date, end_date))
+        if scope_user
+        else []
+    )
 
     context = {
         "year": year,
@@ -1070,12 +1347,263 @@ def heatmap(request, year=None):
         "commune": commune,
         "available_communes": available_communes,
         "show_commune_prefix": request.user.is_superuser and not commune,
-        "today": timezone.now().date(),
+        "today": today,
         "title": f"Calendrier {year}",
         "heatmap_tooltips": tooltip_map,
+        "opening_weekdays": opening_weekdays,
+        "opening_weekday_labels": WEEKDAY_LABELS,
+        "include_sunday": include_sunday,
+        "can_validate": can_validate,
+        "scope_username": scope_user.username if scope_user else "",
+        "closure_map": closure_map,
+        "closures": closures,
+        "missing_dates": missing_dates,
+        "missing_by_month": missing_by_month,
+        "missing_groups": missing_groups,
+        "missing_count": len(missing_dates),
+        "closure_kinds": Closure.KIND_CHOICES,
+        "query_suffix": query_suffix,
+        "calendar_first_year": first_calendar_year,
     }
 
     return render(request, "visitor_tracking/heatmap.html", context)
+
+
+def _heatmap_scope(request, year):
+    """Médiathèque ciblée par une action de qualification."""
+    first_year = getattr(settings, "VISITOR_REPORT_V2_FROM_YEAR", 2026)
+    if year < first_year:
+        return (
+            None,
+            "La qualification des jours est disponible à partir de "
+            f"{first_year}.",
+        )
+    if request.user.is_superuser:
+        commune = (
+            request.POST.get("commune")
+            or request.GET.get("commune")
+            or ""
+        ).strip()
+        if not commune:
+            return None, "Sélectionnez une médiathèque."
+        user = (
+            User.objects.filter(
+                username=commune, locations__isnull=False
+            )
+            .distinct()
+            .first()
+        )
+        if user is None:
+            return None, "Médiathèque inconnue."
+        return user, ""
+    return request.user, ""
+
+
+@mediatheque_member_required
+@require_POST
+def heatmap_create_closures(request, year):
+    """Crée une ou plusieurs fermetures à partir des jours sélectionnés."""
+    scope_user, error = _heatmap_scope(request, year)
+    if scope_user is None:
+        return JsonResponse({"error": error}, status=400)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"error": "Données invalides."}, status=400)
+
+    raw_dates = payload.get("dates") or []
+    kind = payload.get("kind") or "exceptional"
+    label = (payload.get("label") or "").strip()[:200]
+    valid_kinds = {choice[0] for choice in Closure.KIND_CHOICES}
+    if kind not in valid_kinds:
+        return JsonResponse({"error": "Motif inconnu."}, status=400)
+    if not isinstance(raw_dates, list) or not raw_dates:
+        return JsonResponse(
+            {"error": "Aucun jour sélectionné."}, status=400
+        )
+
+    dates = []
+    for raw_date in raw_dates:
+        try:
+            day = date.fromisoformat(str(raw_date))
+        except ValueError:
+            continue
+        if day.year == year:
+            dates.append(day)
+    dates = sorted(set(dates))
+    if not dates:
+        return JsonResponse({"error": "Aucune date valide."}, status=400)
+
+    opening_weekdays = get_opening_weekdays(scope_user)
+    closure_map = build_closure_map(
+        scope_user, date(year, 1, 1), date(year, 12, 31)
+    )
+    pointed = set(
+        VisitorCount.objects.filter(
+            location__user=scope_user,
+            date__in=dates,
+        ).values_list("date", flat=True)
+    )
+
+    valid = []
+    skipped = []
+    for day in dates:
+        if (
+            day.weekday() not in opening_weekdays
+            or day in closure_map
+            or day in pointed
+        ):
+            skipped.append(day.isoformat())
+        else:
+            valid.append(day)
+
+    if not valid:
+        return JsonResponse(
+            {
+                "created": 0,
+                "skipped": skipped,
+                "error": "Aucun jour éligible.",
+            },
+            status=400,
+        )
+
+    ranges = []
+    with transaction.atomic():
+        for start_date, end_date in group_dates_into_ranges(valid):
+            Closure.objects.create(
+                user=scope_user,
+                start_date=start_date,
+                end_date=end_date,
+                kind=kind,
+                label=label,
+                created_by=request.user,
+            )
+            ranges.append(
+                {
+                    "start": start_date.isoformat(),
+                    "end": end_date.isoformat(),
+                }
+            )
+
+    return JsonResponse(
+        {"created": len(ranges), "ranges": ranges, "skipped": skipped}
+    )
+
+
+@mediatheque_member_required
+@require_POST
+def heatmap_delete_closure(request, year, closure_id):
+    """Rouvre un jour, ou supprime toute une fermeture."""
+    scope_user, error = _heatmap_scope(request, year)
+    if scope_user is None:
+        return JsonResponse({"error": error}, status=400)
+
+    closure = get_object_or_404(
+        Closure, id=closure_id, user=scope_user
+    )
+    if not (
+        closure.start_date.year == year
+        or closure.end_date.year == year
+    ):
+        return JsonResponse(
+            {"error": "Fermeture hors de l'année affichée."}, status=400
+        )
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        payload = {}
+
+    raw_date = payload.get("date")
+    if raw_date:
+        try:
+            day = date.fromisoformat(str(raw_date))
+        except ValueError:
+            return JsonResponse({"error": "Date invalide."}, status=400)
+        if not (closure.start_date <= day <= closure.end_date):
+            return JsonResponse(
+                {"error": "Date hors de la fermeture."}, status=400
+            )
+        if closure.start_date == closure.end_date:
+            closure.delete()
+        elif day == closure.start_date:
+            closure.start_date = day + timedelta(days=1)
+            closure.save()
+        elif day == closure.end_date:
+            closure.end_date = day - timedelta(days=1)
+            closure.save()
+        else:
+            with transaction.atomic():
+                before = Closure.objects.create(
+                    user=scope_user,
+                    start_date=closure.start_date,
+                    end_date=day - timedelta(days=1),
+                    kind=closure.kind,
+                    label=closure.label,
+                    created_by=request.user,
+                )
+                after = Closure.objects.create(
+                    user=scope_user,
+                    start_date=day + timedelta(days=1),
+                    end_date=closure.end_date,
+                    kind=closure.kind,
+                    label=closure.label,
+                    created_by=request.user,
+                )
+                closure.delete()
+            return JsonResponse(
+                {
+                    "reopened": day.isoformat(),
+                    "split": [before.id, after.id],
+                }
+            )
+        return JsonResponse({"reopened": day.isoformat()})
+
+    closure.delete()
+    return JsonResponse({"deleted": closure_id})
+
+
+@mediatheque_member_required
+@require_POST
+def heatmap_opening_days(request, year):
+    """Met à jour les jours d'ouverture habituels de la médiathèque."""
+    scope_user, error = _heatmap_scope(request, year)
+    if scope_user is None:
+        messages.error(request, error)
+        return redirect("visitor_tracking:heatmap_year", year=year)
+
+    days = set()
+    for raw_day in request.POST.getlist("weekdays"):
+        try:
+            day = int(raw_day)
+        except (TypeError, ValueError):
+            continue
+        if 0 <= day <= 6:
+            days.add(day)
+    if not days:
+        messages.error(
+            request, "Sélectionnez au moins un jour d'ouverture."
+        )
+        return redirect("visitor_tracking:heatmap_year", year=year)
+
+    profile, _ = LibraryProfile.objects.get_or_create(
+        user=scope_user,
+        defaults={"name": scope_user.username.capitalize()},
+    )
+    profile.opening_weekdays = sorted(days)
+    profile.save()
+
+    messages.success(request, "Jours d'ouverture mis à jour.")
+    url = reverse("visitor_tracking:heatmap_year", args=[year])
+    params = []
+    if request.user.is_superuser:
+        params.append(f"commune={scope_user.username}")
+    location_filter = request.POST.get("location")
+    if location_filter:
+        params.append(f"location={location_filter}")
+    params.append(f"dimanche={'1' if 6 in days else '0'}")
+    return redirect(f"{url}?{'&'.join(params)}")
 
 
 @login_required
@@ -1185,176 +1713,284 @@ def superadmin_heatmap(request, year=None):
     return render(request, "visitor_tracking/superadmin_heatmap.html", context)
 
 
-@mediatheque_member_required
-def annual_report(request, year=None):
-    """Rapport annuel de fréquentation."""
-    if not year:
-        try:
-            year = int(request.GET.get("year", timezone.now().year))
-        except (ValueError, TypeError):
-            year = timezone.now().year
+def _report_year(request, year):
+    """Année du rapport, avec repli sur l'année en cours."""
+    if year is None:
+        year = request.GET.get("year")
+    try:
+        value = int(year)
+    except (TypeError, ValueError):
+        value = timezone.now().year
+    if value < 1900 or value > 2100:
+        value = timezone.now().year
+    return value
 
-    start_date = date(year, 1, 1)
-    end_date = date(year, 12, 31)
-    n1_start = start_date.replace(year=year - 1)
-    n1_end = end_date.replace(year=year - 1)
 
-    qs = filter_owned(
-        VisitorCount.objects.filter(date__gte=start_date, date__lte=end_date),
-        request.user, field="location__user",
-    )
-    n1_qs = filter_owned(
-        VisitorCount.objects.filter(date__gte=n1_start, date__lte=n1_end),
-        request.user, field="location__user",
-    )
+def _report_context(request, year=None):
+    """Contexte commun à l'écran, à l'impression et aux exports."""
+    today = timezone.now().date()
+    year = _report_year(request, year)
 
-    total_year = qs.aggregate(total=Sum("count"))["total"] or 0
-    n1_total = n1_qs.aggregate(total=Sum("count"))["total"] or 0
-    variation = round(((total_year - n1_total) / n1_total * 100), 1) if n1_total > 0 else 0
+    vue = request.GET.get("vue", "synthese")
+    if vue not in ("synthese", "detail"):
+        vue = "synthese"
 
-    days_count = qs.values("date").distinct().count()
-    avg_per_day = round(total_year / days_count, 1) if days_count > 0 else 0
+    commune = (request.GET.get("commune") or "").strip()
+    available_communes = []
+    scope_user = request.user
 
-    monthly = (
-        qs.annotate(month_num=ExtractMonth("date"))
-        .values("month_num")
-        .annotate(month_total=Sum("count"))
-        .order_by("month_num")
-    )
-    month_map = {m["month_num"]: m["month_total"] for m in monthly}
-
-    n1_month_map = {}
-    if n1_total:
-        n1_monthly = (
-            n1_qs.annotate(month_num=ExtractMonth("date"))
-            .values("month_num")
-            .annotate(month_total=Sum("count"))
-            .order_by("month_num")
+    if request.user.is_superuser:
+        available_communes = AnnualReportService.get_available_communes()
+        scope_user = next(
+            (user for user in available_communes if user.username == commune),
+            None,
         )
-        n1_month_map = {m["month_num"]: m["month_total"] for m in n1_monthly}
+        if scope_user is None:
+            return None, {
+                "year": year,
+                "vue": vue,
+                "commune": "",
+                "available_communes": available_communes,
+                "needs_commune": True,
+                "today": today,
+                "title": f"Rapport annuel {year}",
+            }
+    else:
+        commune = ""
 
-    month_names = [
-        "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-        "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
-    ]
-    monthly_list = []
-    for i in range(1, 13):
-        cur = month_map.get(i, 0)
-        prev = n1_month_map.get(i, 0)
-        var = round(((cur - prev) / prev * 100), 1) if prev > 0 else 0
-        monthly_list.append({
-            "month": month_names[i - 1],
-            "total": cur,
-            "n1": prev,
-            "variation": var,
-        })
+    report = AnnualReportService(
+        year,
+        scope_user,
+        is_superuser=request.user.is_superuser,
+        today=today,
+    ).build()
 
-    yearly_top = (
-        qs.values("location__name").annotate(total=Sum("count"))
-        .order_by("-total")[:5]
-    )
-
-    best_days = (
-        qs.values("date", "location__name")
-        .annotate(total=Sum("count"))
-        .order_by("-total")[:5]
-    )
-
-    weekday_data = qs.values("date").annotate(total=Sum("count")).order_by("date")
-    weekday_sums = {}
-    weekday_counts = {}
-    for d in weekday_data:
-        wd = d["date"].weekday()
-        if wd != 6:
-            weekday_sums[wd] = weekday_sums.get(wd, 0) + d["total"]
-            weekday_counts[wd] = weekday_counts.get(wd, 0) + 1
-
-    weekday_names = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
-    weekday_avg = []
-    for i in range(6):
-        val = round(weekday_sums.get(i, 0) / weekday_counts.get(i, 1), 1) if weekday_counts.get(i, 0) > 0 else 0
-        weekday_avg.append({"name": weekday_names[i], "avg": val})
-
-    quarterly = {
-        "T1": sum(m["total"] for m in monthly_list[:3]),
-        "T2": sum(m["total"] for m in monthly_list[3:6]),
-        "T3": sum(m["total"] for m in monthly_list[6:9]),
-        "T4": sum(m["total"] for m in monthly_list[9:12]),
-    }
-
-    # Synthèse narrative (même ton que la page statistiques).
-    _months_lc = [m.lower() for m in month_names]
-    _days_lc = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
-    _top_lieu = yearly_top[0] if yearly_top else None
-    _best = best_days[0] if best_days else None
-    _peak_month = max(monthly_list, key=lambda m: m["total"]) if monthly_list else None
-    _best_wd = max(weekday_avg, key=lambda w: w["avg"]) if weekday_avg else None
-    _days_in_year = date(year, 12, 31).timetuple().tm_yday
-    synthese = SuperadminStatisticsService.build_synthese(
-        {
-            "start_label": f"01/01/{year}",
-            "end_label": f"31/12/{year}",
-            "total": total_year,
-            "avg_per_day": avg_per_day,
-            "days_with_data": days_count,
-            "period_length": _days_in_year,
-            "variation": None,
-            "n1_total": n1_total,
-            "n1_variation": variation,
-            "top_commune": (
-                (
-                    _top_lieu["location__name"],
-                    _top_lieu["total"],
-                    round(_top_lieu["total"] / total_year * 100, 1)
-                    if total_year
-                    else 0,
-                )
-                if _top_lieu and total_year
-                else None
-            ),
-            "best_day": (
-                (
-                    f"{_days_lc[_best['date'].weekday()]} "
-                    f"{_best['date'].day} {_months_lc[_best['date'].month - 1]} "
-                    f"({_best['location__name']})",
-                    _best["total"],
-                )
-                if _best
-                else None
-            ),
-            "best_weekday": (
-                _best_wd["name"] if _best_wd and _best_wd["avg"] > 0 else None
-            ),
-            "best_week": None,
-            "peak_month": (
-                (_peak_month["month"], _peak_month["total"])
-                if _peak_month and _peak_month["total"]
-                else None
-            ),
-            "projection": None,
-            "perimetre": None,
-        }
+    data_years = VisitorCount.objects.filter(
+        location__user=scope_user
+    ).dates("date", "year")
+    years = sorted(
+        {item.year for item in data_years} | {today.year, year}
     )
 
     context = {
+        "report": report,
         "year": year,
-        "prev_year": year - 1,
-        "next_year": year + 1,
-        "total_year": total_year,
-        "n1_total": n1_total,
-        "variation": variation,
-        "avg_per_day": avg_per_day,
-        "days_count": days_count,
-        "monthly": monthly_list,
-        "yearly_top": yearly_top,
-        "best_days": best_days,
-        "weekday_avg": weekday_avg,
-        "quarterly": quarterly,
-        "title": f"Rapport annuel {year}",
-        "synthese": synthese,
+        "vue": vue,
+        "commune": commune if request.user.is_superuser else "",
+        "available_communes": available_communes,
+        "years": years,
+        "prev_year": year - 1 if year > 1900 else None,
+        "next_year": year + 1 if year < today.year else None,
+        "current_year": today.year,
+        "today": today,
+        "title": (
+            f"{'Bilan' if vue == 'synthese' else 'Rapport'} "
+            f"d'activité {year}"
+        ),
+        # Alias de compatibilité avec les tests et anciens liens.
+        "monthly": report["monthly"],
+        "yearly_top": report["spaces"][:5],
+        "synthese": report["synthese"],
+        "total_year": report["totals"]["total"],
+        "n1_total": report["totals"]["n1_total"],
+        "variation": report["totals"]["variation"],
+        "avg_per_day": report["totals"]["avg_per_pointed_day"],
+        "days_count": report["totals"]["pointed_days"],
+        "weekday_avg": report["weekday"],
+        "quarterly": {
+            item["name"]: item["total"] for item in report["quarterly"]
+        },
+        "best_days": report["top_days"],
     }
+    return context, None
 
-    return render(request, "visitor_tracking/annual_report.html", context)
+
+@mediatheque_member_required
+def annual_report(request, year=None):
+    """Rapport annuel de fréquentation, par médiathèque."""
+    context, chooser = _report_context(request, year)
+    if chooser:
+        return render(
+            request,
+            "visitor_tracking/annual_report_chooser.html",
+            chooser,
+        )
+    return render(
+        request,
+        "visitor_tracking/annual_report.html",
+        context,
+    )
+
+
+@mediatheque_member_required
+def annual_report_print(request, year=None):
+    """Version imprimable (PDF via la boîte d'impression du navigateur)."""
+    context, chooser = _report_context(request, year)
+    if chooser:
+        return render(
+            request,
+            "visitor_tracking/annual_report_chooser.html",
+            chooser,
+        )
+    context["print_mode"] = True
+    return render(
+        request,
+        "visitor_tracking/annual_report_print.html",
+        context,
+    )
+
+
+def _csv_num(value):
+    """Nombre au format français pour les CSV ouverts dans Excel."""
+    if value is None or value == "":
+        return ""
+    return str(value).replace(".", ",")
+
+
+def _csv_report_response(report, year, kind):
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    label = slugify(report["scope"]["label"]) or "mediatheque"
+    filename = (
+        f"donnees_{label}_{year}.csv"
+        if kind == "csv-donnees"
+        else f"synthese_{label}_{year}.csv"
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="{filename}"'
+    )
+    response.write("\ufeff")
+    writer = csv.writer(response, delimiter=";")
+
+    if kind == "csv-donnees":
+        writer.writerow(["Date", "Espace", "Nombre de visiteurs"])
+        rows = (
+            VisitorCount.objects.filter(
+                location__user__username=report["scope"]["username"],
+                date__gte=report["period"]["start"],
+                date__lte=report["period"]["end"],
+            )
+            .select_related("location")
+            .order_by("date", "location__order", "location__name")
+        )
+        for entry in rows:
+            writer.writerow(
+                [
+                    entry.date.strftime("%d/%m/%Y"),
+                    entry.location.name,
+                    entry.count,
+                ]
+            )
+        return response
+
+    writer.writerow(
+        [
+            "Type",
+            "Libellé",
+            "Total",
+            "N-1",
+            "Variation (%)",
+            "Part (%)",
+        ]
+    )
+    totals = report["totals"]
+    writer.writerow(
+        [
+            "Synthèse",
+            "Total visiteurs",
+            totals["total"],
+            totals["n1_total"],
+            _csv_num(totals["variation"]),
+            "",
+        ]
+    )
+    writer.writerow(
+        [
+            "Synthèse",
+            "Jours pointés",
+            totals["pointed_days"],
+            "",
+            "",
+            "",
+        ]
+    )
+    for month in report["monthly"]:
+        writer.writerow(
+            [
+                "Mois",
+                month["month"],
+                month["total"],
+                month["n1"],
+                _csv_num(month["variation"]),
+                _csv_num(month["share"]),
+            ]
+        )
+    for space in report["spaces"]:
+        writer.writerow(
+            [
+                "Espace",
+                space["name"],
+                space["total"],
+                space["n1"],
+                _csv_num(space["variation"]),
+                _csv_num(space["share"]),
+            ]
+        )
+    for closure in report.get("closure_rows", []):
+        label = closure["kind_label"]
+        if closure["label"]:
+            label = f"{label} — {closure['label']}"
+        writer.writerow(
+            [
+                "Fermeture",
+                label,
+                closure["days"],
+                "",
+                "",
+                "",
+            ]
+        )
+    return response
+
+
+@mediatheque_member_required
+def annual_report_export(request, year, kind):
+    """Export DOCX ou CSV du rapport annuel."""
+    if kind not in (
+        "docx-synthese",
+        "docx-detail",
+        "csv-synthese",
+        "csv-donnees",
+    ):
+        return HttpResponseBadRequest("Format d'export inconnu.")
+
+    context, chooser = _report_context(request, year)
+    if chooser:
+        return HttpResponseBadRequest(
+            "Sélectionnez une médiathèque avant de télécharger le rapport."
+        )
+
+    report = context["report"]
+    if kind in ("csv-synthese", "csv-donnees"):
+        return _csv_report_response(report, year, kind)
+
+    doc = build_annual_report_docx(
+        report,
+        detailed=kind == "docx-detail",
+    )
+    label = slugify(report["scope"]["label"]) or "mediatheque"
+    prefix = "bilan" if kind == "docx-synthese" else "rapport"
+    filename = f"{prefix}_{label}_{year}.docx"
+    response = HttpResponse(
+        content_type=(
+            "application/vnd.openxmlformats-officedocument"
+            ".wordprocessingml.document"
+        )
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="{filename}"'
+    )
+    doc.save(response)
+    return response
 
 
 @mediatheque_member_required

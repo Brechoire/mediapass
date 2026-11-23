@@ -1,0 +1,199 @@
+{{ report.charts.daily|json_script:"report-daily-data" }}
+{{ report.charts.monthly|json_script:"report-monthly-data" }}
+{{ report.charts.spaces|json_script:"report-spaces-data" }}
+{{ report.charts.weekday|json_script:"report-weekday-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js" integrity="sha384-YAshAm4KKjf8V01c4sdNbPYiwU0D0Q82fjMHhKw8VvP0ecY4fxXsZAHxC4r4Ei+T" crossorigin="anonymous"></script>
+<script>
+(function () {
+    const printMode = {% if print_mode %}true{% else %}false{% endif %};
+    const colors = {
+        primary: '#4a6fa5',
+        muted: '#7a8fa0',
+        grid: '#e2e8f0',
+        text: '#5a6f80'
+    };
+
+    function readData(id) {
+        const node = document.getElementById(id);
+        if (!node) {
+            return null;
+        }
+        try {
+            return JSON.parse(node.textContent);
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function movingAverage(values, windowSize) {
+        return values.map(function (value, index) {
+            if (index < windowSize - 1) {
+                return null;
+            }
+            const slice = values.slice(index - windowSize + 1, index + 1);
+            return Math.round(
+                slice.reduce(function (total, item) { return total + item; }, 0) /
+                windowSize
+            );
+        });
+    }
+
+    function baseOptions(extra) {
+        return Object.assign({
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: printMode ? false : { duration: 400 },
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { boxWidth: 12, usePointStyle: true, color: colors.text }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: colors.text, maxTicksLimit: 12 }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: colors.grid },
+                    ticks: { color: colors.text }
+                }
+            }
+        }, extra || {});
+    }
+
+    if (typeof Chart === 'undefined') {
+        return;
+    }
+
+    const daily = readData('report-daily-data');
+    const dailyCanvas = document.getElementById('report-daily-chart');
+    if (daily && dailyCanvas && daily.labels.length) {
+        const dailyDatasets = [
+            {
+                label: '{{ year }} — jours',
+                data: daily.totals,
+                borderColor: 'rgba(74, 111, 165, 0.35)',
+                backgroundColor: 'transparent',
+                fill: false,
+                tension: 0.2,
+                pointRadius: 0,
+                borderWidth: 1
+            },
+            {
+                label: 'Moyenne 7 jours',
+                data: movingAverage(daily.totals, 7),
+                borderColor: colors.primary,
+                backgroundColor: 'rgba(74, 111, 165, 0.12)',
+                fill: true,
+                tension: 0.25,
+                pointRadius: 0,
+                borderWidth: 2.5
+            }
+        ];
+        if (daily.n1.some(function (value) { return value > 0; })) {
+            dailyDatasets.push({
+                label: '{{ report.period.n1_year }}',
+                data: daily.n1,
+                borderColor: colors.muted,
+                borderDash: [4, 4],
+                fill: false,
+                tension: 0.25,
+                pointRadius: 0,
+                borderWidth: 1.5
+            });
+        }
+        new Chart(dailyCanvas, {
+            type: 'line',
+            data: {
+                labels: daily.labels,
+                datasets: dailyDatasets
+            },
+            options: baseOptions()
+        });
+    }
+
+    const monthly = readData('report-monthly-data');
+    const monthlyCanvas = document.getElementById('report-monthly-chart');
+    if (monthly && monthlyCanvas && monthly.labels.length) {
+        const monthlyDatasets = [
+            {
+                label: '{{ year }}',
+                data: monthly.totals,
+                backgroundColor: colors.primary,
+                borderRadius: 4
+            }
+        ];
+        if (monthly.n1.some(function (value) { return value > 0; })) {
+            monthlyDatasets.push({
+                label: '{{ report.period.n1_year }}',
+                data: monthly.n1,
+                backgroundColor: '#c7d2e3',
+                borderRadius: 4
+            });
+        }
+        new Chart(monthlyCanvas, {
+            type: 'bar',
+            data: {
+                labels: monthly.labels,
+                datasets: monthlyDatasets
+            },
+            options: baseOptions()
+        });
+    }
+
+    const spaces = readData('report-spaces-data');
+    const spacesCanvas = document.getElementById('report-spaces-chart');
+    if (spaces && spacesCanvas && spaces.labels.length) {
+        new Chart(spacesCanvas, {
+            type: 'bar',
+            data: {
+                labels: spaces.labels,
+                datasets: [{
+                    label: 'Visiteurs',
+                    data: spaces.totals,
+                    backgroundColor: spaces.colors,
+                    borderRadius: 4
+                }]
+            },
+            options: baseOptions({
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: colors.grid },
+                        ticks: { color: colors.text }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: colors.text, autoSkip: false }
+                    }
+                }
+            })
+        });
+    }
+
+    const weekday = readData('report-weekday-data');
+    const weekdayCanvas = document.getElementById('report-weekday-chart');
+    if (weekday && weekdayCanvas && weekday.labels.length) {
+        new Chart(weekdayCanvas, {
+            type: 'bar',
+            data: {
+                labels: weekday.labels,
+                datasets: [{
+                    label: 'Moyenne',
+                    data: weekday.avg,
+                    backgroundColor: colors.primary,
+                    borderRadius: 4
+                }]
+            },
+            options: baseOptions({
+                plugins: { legend: { display: false } }
+            })
+        });
+    }
+})();
+</script>

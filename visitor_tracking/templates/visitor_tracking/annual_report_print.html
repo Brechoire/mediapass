@@ -1,0 +1,80 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }} — {{ report.scope.label }} | Médi@'pass</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="{% static 'vendor/fonts/boxicons.css' %}">
+    <link rel="stylesheet" href="{% static 'css/site.css' %}">
+    <style>
+        body { font-family: Inter, system-ui, -apple-system, sans-serif; }
+        @page {
+            size: A4 {% if vue == "detail" %}landscape{% else %}portrait{% endif %};
+            margin: 12mm;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            .print-hide { display: none !important; }
+            body { background: #fff !important; }
+            .print-page { break-before: page; }
+            .avoid-break { break-inside: avoid; }
+            table { break-inside: auto; }
+            tr { break-inside: avoid; }
+            thead { display: table-header-group; }
+            h1, h2, h3 { break-after: avoid; }
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            canvas { max-width: 100% !important; }
+            table { width: 100% !important; }
+            table th, table td {
+                font-size: 8px !important;
+                padding: 2px 3px !important;
+                white-space: normal !important;
+            }
+            .overflow-x-auto { overflow: visible !important; }
+        }
+    </style>
+</head>
+<body class="bg-[#f7f8fa] text-[#1e293b]">
+    <div class="mx-auto max-w-5xl px-4 py-6 print:max-w-none print:px-0 print:py-0">
+        <div class="mb-5 flex flex-wrap items-center justify-between gap-3 no-print">
+            <a href="{% url 'visitor_tracking:annual_report_year' year %}?vue={{ vue }}{% if commune %}&commune={{ commune }}{% endif %}"
+               class="inline-flex items-center gap-2 text-sm text-[#5a6f80] hover:text-[#4a6fa5]">
+                <i class="bx bx-arrow-back" aria-hidden="true"></i> Retour à l'écran
+            </a>
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="?vue={% if vue == 'synthese' %}detail{% else %}synthese{% endif %}{% if commune %}&commune={{ commune }}{% endif %}"
+                   class="inline-flex items-center gap-2 rounded-xl border border-[#dce3ef] bg-white px-3 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7]">
+                    <i class="bx bx-refresh" aria-hidden="true"></i>
+                    Version {% if vue == "synthese" %}détaillée{% else %}synthèse{% endif %}
+                </a>
+                <button type="button" onclick="window.print()"
+                        class="inline-flex items-center gap-2 rounded-xl bg-[#4a6fa5] px-4 py-2 text-sm font-medium text-white hover:bg-[#3d5f8f]">
+                    <i class="bx bx-printer" aria-hidden="true"></i> Imprimer / PDF
+                </button>
+            </div>
+        </div>
+
+        <p class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 no-print">
+            <i class="bx bx-info-circle mr-1" aria-hidden="true"></i>
+            Attendez le chargement complet des graphiques avant d'ouvrir la boîte d'impression.
+            Dans la boîte d'impression, choisissez « Enregistrer au format PDF » pour télécharger le fichier.
+            {% if vue == "detail" %}Le rapport détaillé s'imprime en paysage A4.{% else %}Le bilan s'imprime en portrait A4.{% endif %}
+        </p>
+
+        <header class="mb-6 border-b border-[#dce3ef] pb-4">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#4a6fa5]">Médi@'pass · Réseau de médiathèques</p>
+            <h1 class="mt-1 text-2xl font-bold text-[#1e293b] sm:text-3xl">{{ title }} — {{ report.scope.label }}</h1>
+            <p class="mt-1 text-sm text-[#5a6f80]">{{ report.period.label }} · {{ report.period.status_label }}</p>
+            <p class="mt-1 text-sm text-[#5a6f80]">{{ report.synthese.perimetre }}</p>
+        </header>
+
+        {% include "visitor_tracking/partials/report_body.html" %}
+    </div>
+    {% include "visitor_tracking/partials/report_scripts.html" %}
+</body>
+</html>
