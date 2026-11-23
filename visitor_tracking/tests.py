@@ -1014,6 +1014,27 @@ class AnnualReportExportTests(TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_superadmin_export_with_commune(self):
+        superuser = User.objects.create_superuser(
+            username="admin", password="pass"
+        )
+        superuser.groups.add(self.group)
+        self.client.login(username="admin", password="pass")
+        response = self.client.get(
+            reverse(
+                "visitor_tracking:annual_report_export",
+                args=[self.year, "docx-synthese"],
+            )
+            + "?commune=mediat"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("bilan_mediat_", response["Content-Disposition"])
+        document = DocxDocument(BytesIO(response.content))
+        text = "\n".join(
+            paragraph.text for paragraph in document.paragraphs
+        )
+        self.assertIn("Médiathèque", text)
+
     def test_member_commune_is_ignored(self):
         other = User.objects.create_user(username="autre", password="pass")
         other_loc = Location.objects.create(
