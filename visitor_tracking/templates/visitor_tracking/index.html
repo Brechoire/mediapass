@@ -3,6 +3,33 @@
 
 {% block title %}Pointage visiteurs | {{ block.super }}{% endblock %}
 
+{% block stylesheets %}
+{{ block.super }}
+<style>
+  #link-tip {
+    position: fixed;
+    z-index: 80;
+    display: none;
+    max-width: 20rem;
+    background: #1e293b;
+    color: #fff;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  #link-tip.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
     <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
@@ -19,24 +46,34 @@
             </div>
             <div class="flex flex-wrap gap-2">
                 <a href="{% url 'visitor_tracking:entry_form' %}"
+                    data-tooltip="Enregistrer ou corriger les visiteurs d'une date passée, espace par espace."
+                    aria-label="Saisie rétroactive : enregistrer ou corriger les visiteurs d'une date passée."
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
-                    <i class="bx bx-calendar-edit"></i> Saisie rétroactive
+                    <i class="bx bx-calendar-edit" aria-hidden="true"></i> Saisie rétroactive
                 </a>
                 <a href="{% url 'visitor_tracking:statistics' %}"
+                    data-tooltip="Analyser la fréquentation sur une période : totaux, moyennes, jours forts et comparaison N-1."
+                    aria-label="Statistiques : analyser la fréquentation sur une période."
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
-                    <i class="bx bx-bar-chart-alt-2"></i> Statistiques
+                    <i class="bx bx-bar-chart-alt-2" aria-hidden="true"></i> Statistiques
                 </a>
                 <a href="{% url 'visitor_tracking:heatmap_year' today.year %}"
+                    data-tooltip="Voir la fréquentation jour par jour et qualifier les jours sans pointage : fermetures, jours fériés, ouvertures exceptionnelles."
+                    aria-label="Calendrier : voir la fréquentation jour par jour et qualifier les jours sans pointage."
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
-                    <i class="bx bx-calendar-heart"></i> Calendrier
+                    <i class="bx bx-calendar-heart" aria-hidden="true"></i> Calendrier
                 </a>
                 <a href="{% url 'visitor_tracking:annual_report_year' today.year %}"
+                    data-tooltip="Générer le bilan ou le rapport détaillé d'une médiathèque, avec exports DOCX, CSV et PDF."
+                    aria-label="Rapport annuel : générer le bilan ou le rapport détaillé d'une médiathèque."
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
-                    <i class="bx bx-file"></i> Rapport annuel
+                    <i class="bx bx-file" aria-hidden="true"></i> Rapport annuel
                 </a>
                 <a href="{% url 'visitor_tracking:history' %}"
+                    data-tooltip="Consulter et modifier les pointages enregistrés, avec filtres par date et par espace."
+                    aria-label="Historique : consulter et modifier les pointages enregistrés."
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
-                    <i class="bx bx-history"></i> Historique
+                    <i class="bx bx-history" aria-hidden="true"></i> Historique
                 </a>
             </div>
         </div>
@@ -189,9 +226,62 @@
         </div>
     </div>
 </section>
+
+<div id="link-tip" role="tooltip" aria-hidden="true"></div>
 {% endblock %}
 
 {% block javascripts %}
+<script>
+(function () {
+    const tip = document.getElementById('link-tip');
+    if (!tip) return;
+    const triggers = document.querySelectorAll('[data-tooltip]');
+
+    function hideTip() {
+        tip.classList.remove('is-visible');
+        tip.setAttribute('aria-hidden', 'true');
+        tip.style.display = 'none';
+    }
+
+    function showTip(trigger) {
+        const text = trigger.getAttribute('data-tooltip');
+        if (!text) return;
+        tip.textContent = text;
+        tip.style.display = 'block';
+        tip.classList.remove('is-visible');
+
+        const rect = trigger.getBoundingClientRect();
+        const tipRect = tip.getBoundingClientRect();
+        const gap = 8;
+        let top = rect.top - tipRect.height - gap;
+        if (top < gap) {
+            top = rect.bottom + gap;
+        }
+        let left = rect.left + (rect.width - tipRect.width) / 2;
+        left = Math.max(gap, Math.min(left, window.innerWidth - tipRect.width - gap));
+        top = Math.max(gap, Math.min(top, window.innerHeight - tipRect.height - gap));
+
+        tip.style.left = left + 'px';
+        tip.style.top = top + 'px';
+        tip.classList.add('is-visible');
+        tip.setAttribute('aria-hidden', 'false');
+    }
+
+    triggers.forEach(function (trigger) {
+        trigger.addEventListener('mouseenter', function () { showTip(trigger); });
+        trigger.addEventListener('mouseleave', hideTip);
+        trigger.addEventListener('focus', function () { showTip(trigger); });
+        trigger.addEventListener('blur', hideTip);
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') hideTip();
+    });
+    window.addEventListener('scroll', hideTip, { passive: true });
+    window.addEventListener('resize', hideTip);
+})();
+</script>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
 {% csrf_token %}
 <script>

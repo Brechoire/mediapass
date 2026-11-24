@@ -156,6 +156,18 @@ class VisitorIndexViewTests(TestCase):
         response = self.client.get("/mediatheque/visiteurs/")
         self.assertContains(response, "+1")
 
+    def test_header_links_have_tooltips(self):
+        self.login()
+        response = self.client.get("/mediatheque/visiteurs/")
+        content = response.content.decode()
+        self.assertEqual(content.count("data-tooltip="), 5)
+        self.assertIn('id="link-tip"', content)
+        self.assertIn(
+            "Saisie rétroactive : enregistrer ou corriger les visiteurs",
+            content,
+        )
+        self.assertIn("Rapport annuel : générer le bilan", content)
+
 
 class SpaceEditViewTests(TestCase):
     """Tests pour la vue d'édition d'espace."""
