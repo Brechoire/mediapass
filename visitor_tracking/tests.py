@@ -1,5 +1,5 @@
 import json
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 from io import BytesIO
 
 from accounts.models import LibraryProfile
@@ -8,6 +8,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from docx import Document as DocxDocument
+from library_workshops.models import Workshop
 
 from .models import Closure, Location, VisitorCount
 from .opening import (
@@ -128,6 +129,12 @@ class VisitorIndexViewTests(TestCase):
         self.loc = Location.objects.create(
             name="Médiathèque", color="#4a6fa5", icon="bx-building", is_active=True, order=1, user=self.user
         )
+        LibraryProfile.objects.create(
+            user=self.user,
+            name="Médiathèque test",
+            opening_weekdays=[0, 1, 2, 3, 4, 5, 6],
+        )
+        self.today = timezone.now().date()
 
     def login(self):
         self.client.login(username="mediat", password="pass")
@@ -146,6 +153,7 @@ class VisitorIndexViewTests(TestCase):
         self.login()
         response = self.client.get("/mediatheque/visiteurs/")
         self.assertContains(response, "Médiathèque")
+        self.assertContains(response, "Ajouter un nouvel espace")
 
     def test_redirects_without_login(self):
         response = self.client.get("/mediatheque/visiteurs/")
@@ -167,6 +175,304 @@ class VisitorIndexViewTests(TestCase):
             content,
         )
         self.assertIn("Rapport annuel : générer le bilan", content)
+
+    def test_today_status_and_completeness(self):
+        self.login()
+        response = self.client.get("/mediatheque/visiteurs/")
+        self.assertEqual(response.context["spaces_total"], 1)
+        self.assertEqual(response.context["spaces_pointed"], 0)
+        self.assertEqual(len(response.context["spaces_missing"]), 1)
+        self.assertFalse(response.context["all_pointed"])
+        self.assertContains(response, "Non pointé")
+        self.assertContains(response, "Aucun pointage")
+
+        VisitorCount.objects.create(
+            location=self.loc, date=self.today, count=0
+        )
+        response = self.client.get("/mediatheque/visiteurs/")
+        self.assertEqual(response.context["spaces_pointed"], 1)
+        self.assertTrue(response.context["all_pointed"])
+        self.assertTrue(
+            response.context["location_data"][0]["is_zero"]
+        )
+        self.assertContains(response, "Pointé à 0")
+
+    def test_sparkline_has_seven_days(self):
+        self.login()
+        response = self.client.get("/mediatheque/visiteurs/")
+        item = response.context["location_data"][0]
+        self.assertEqual(len(item["sparkline"]), 7)
+        self.assertEqual(len(item["sparkline_labels"]), 7)
+
+    def test_week_and_month_handle_closure(self):
+        Closure.objects.create(
+            user=self.user,
+            start_date=self.today,
+            end_date=self.today,
+            kind="annual",
+        )
+        VisitorCount.objects.create(
+            location=self.loc, date=self.today, count=5
+        )
+        self.login()
+        response = self.client.get("/mediatheque/visiteurs/")
+        week = response.context["week_stats"]
+        self.assertEqual(week["open_total"], 0)
+        self.assertEqual(week["total"], 5)
+        self.assertEqual(week["exceptional_total"], 5)
+        self.assertEqual(week["avg"], 0)
+        self.assertEqual(week["closure_days"], 1)
+        self.assertEqual(response.context["month_stats"]["total"], 5)
+        self.assertContains(response, "dont 5 sur jours non ouverts")
+
+    def test_increment_accepts_group_amount(self):
+        self.login()
+        response = self.client.post(
+            reverse(
+                "visitor_tracking:increment_amount",
+                args=[self.loc.id, 25],
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["count"], 25)
+        self.assertEqual(
+            VisitorCount.objects.get(
+                location=self.loc, date=self.today
+            ).count,
+            25,
+        )
+
+    def test_decrement_without_row_does_not_create(self):
+        self.login()
+        response = self.client.post(
+            reverse(
+                "visitor_tracking:decrement",
+                args=[self.loc.id],
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["count"], 0)
+        self.assertFalse(response.json()["changed"])
+        self.assertFalse(
+            VisitorCount.objects.filter(
+                location=self.loc, date=self.today
+            ).exists()
+        )
+
+    def test_decrement_existing_count(self):
+        VisitorCount.objects.create(
+            location=self.loc, date=self.today, count=3
+        )
+        self.login()
+        response = self.client.post(
+            reverse(
+                "visitor_tracking:decrement",
+                args=[self.loc.id],
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["count"], 2)
+
+    def test_next_closure_is_displayed(self):
+        Closure.objects.create(
+            user=self.user,
+            start_date=self.today + timedelta(days=2),
+            end_date=self.today + timedelta(days=3),
+            kind="annual",
+            label="Fermeture test",
+        )
+        self.login()
+        response = self.client.get("/mediatheque/visiteurs/")
+        self.assertIsNotNone(response.context["next_closure"])
+        self.assertContains(response, "Prochaine fermeture")
+
+    def test_closed_today_shows_reopening(self):
+        Closure.objects.create(
+            user=self.user,
+            start_date=self.today,
+            end_date=self.today,
+            kind="annual",
+        )
+        self.login()
+        response = self.client.get("/mediatheque/visiteurs/")
+        self.assertTrue(response.context["today_is_closed"])
+        self.assertIsNotNone(response.context["next_open_date"])
+        self.assertContains(response, "Réouverture prévue")
+
+    def test_today_workshops_are_displayed(self):
+        Workshop.objects.create(
+            title="Atelier test",
+            description="Atelier de test",
+            start_date=self.today,
+            start_time=time(14, 0),
+            end_time=time(16, 0),
+            location=self.loc,
+            max_participants=15,
+            created_by=self.user,
+        )
+        self.login()
+        response = self.client.get("/mediatheque/visiteurs/")
+        self.assertEqual(
+            len(response.context["location_data"][0]["workshops"]), 1
+        )
+        self.assertContains(response, "Atelier test")
+
+    def test_index_accessibility_markers(self):
+        self.login()
+        response = self.client.get("/mediatheque/visiteurs/")
+        content = response.content.decode()
+        self.assertNotIn("text-[#b0bedb]", content)
+        self.assertIn("<h2", content)
+        self.assertIn('role="img"', content)
+        self.assertIn('aria-label="7 derniers jours', content)
+        self.assertIn('id="pointage-toast"', content)
+
+    def test_superadmin_scope_and_closure_owner(self):
+        other = User.objects.create_user(
+            username="autre", password="pass"
+        )
+        other_location = Location.objects.create(
+            name="Autre médiathèque",
+            user=other,
+            is_active=True,
+            order=1,
+        )
+        Closure.objects.create(
+            user=other,
+            start_date=self.today,
+            end_date=self.today,
+            kind="annual",
+        )
+        superuser = User.objects.create_superuser(
+            username="admin", password="pass"
+        )
+        superuser.groups.add(self.group)
+        self.client.login(username="admin", password="pass")
+        response = self.client.get(
+            "/mediatheque/visiteurs/?commune=autre"
+        )
+        self.assertEqual(response.context["commune"], "autre")
+        self.assertEqual(len(response.context["location_data"]), 1)
+        self.assertEqual(
+            response.context["location_data"][0]["location"].id,
+            other_location.id,
+        )
+        self.assertTrue(response.context["today_is_closed"])
+        self.assertNotContains(response, "Ajouter un nouvel espace")
+        response = self.client.post(
+            reverse(
+                "visitor_tracking:increment",
+                args=[other_location.id],
+            )
+        )
+        self.assertEqual(response.status_code, 409)
+
+    def test_regular_user_cannot_switch_commune(self):
+        other = User.objects.create_user(
+            username="autre", password="pass"
+        )
+        Location.objects.create(
+            name="Autre médiathèque",
+            user=other,
+            is_active=True,
+            order=1,
+        )
+        self.login()
+        response = self.client.get(
+            "/mediatheque/visiteurs/?commune=autre"
+        )
+        self.assertEqual(response.context["commune"], "")
+        self.assertEqual(len(response.context["location_data"]), 1)
+        self.assertEqual(
+            response.context["location_data"][0]["location"].id,
+            self.loc.id,
+        )
+
+    def test_increment_amount_is_capped_at_99(self):
+        self.login()
+        response = self.client.post(
+            reverse(
+                "visitor_tracking:increment_amount",
+                args=[self.loc.id, 150],
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["count"], 99)
+
+    def test_superadmin_entry_form_is_scoped_by_commune(self):
+        other = User.objects.create_user(
+            username="autre", password="pass"
+        )
+        other_location = Location.objects.create(
+            name="Autre médiathèque",
+            user=other,
+            is_active=True,
+            order=1,
+        )
+        superuser = User.objects.create_superuser(
+            username="admin", password="pass"
+        )
+        superuser.groups.add(self.group)
+        self.client.login(username="admin", password="pass")
+
+        response = self.client.get(
+            reverse("visitor_tracking:entry_form")
+            + "?commune=autre&date=2025-06-02"
+        )
+        self.assertEqual(response.context["commune"], "autre")
+        self.assertEqual(
+            [
+                field["location"].id
+                for field in response.context["location_fields"]
+            ],
+            [other_location.id],
+        )
+
+        response = self.client.post(
+            reverse("visitor_tracking:entry_form"),
+            {
+                "date": "2025-06-02",
+                "commune": "autre",
+                f"location_{other_location.id}": "7",
+            },
+        )
+        self.assertRedirects(
+            response,
+            reverse("visitor_tracking:index") + "?commune=autre",
+        )
+        self.assertEqual(
+            VisitorCount.objects.get(
+                location=other_location, date=date(2025, 6, 2)
+            ).count,
+            7,
+        )
+        self.assertFalse(
+            VisitorCount.objects.filter(
+                location=self.loc, date=date(2025, 6, 2)
+            ).exists()
+        )
+
+    def test_superadmin_entry_form_rejects_unknown_commune(self):
+        superuser = User.objects.create_superuser(
+            username="admin", password="pass"
+        )
+        superuser.groups.add(self.group)
+        self.client.login(username="admin", password="pass")
+
+        response = self.client.post(
+            reverse("visitor_tracking:entry_form"),
+            {
+                "date": "2025-06-02",
+                "commune": "inconnue",
+                f"location_{self.loc.id}": "9",
+            },
+        )
+        self.assertRedirects(
+            response, reverse("visitor_tracking:index")
+        )
+        self.assertFalse(
+            VisitorCount.objects.filter(date=date(2025, 6, 2)).exists()
+        )
 
 
 class SpaceEditViewTests(TestCase):
@@ -275,6 +581,31 @@ class SpaceEditViewTests(TestCase):
         self.login()
         response = self.client.get(f"/mediatheque/visiteurs/spaces/edit/{self.other_location.id}/")
         self.assertEqual(response.status_code, 404)
+
+    def test_superadmin_edit_redirects_to_owner_commune(self):
+        superuser = User.objects.create_superuser(
+            username="admin", password="pass"
+        )
+        superuser.groups.add(self.group)
+        self.client.login(username="admin", password="pass")
+
+        response = self.client.get(
+            f"/mediatheque/visiteurs/spaces/edit/"
+            f"{self.other_location.id}/"
+        )
+        self.assertContains(
+            response, f"?commune={self.other_user.username}"
+        )
+
+        response = self.client.post(
+            f"/mediatheque/visiteurs/spaces/edit/"
+            f"{self.other_location.id}/",
+            {"name": "Autre modifié"},
+        )
+        self.assertRedirects(
+            response,
+            f"/mediatheque/visiteurs/?commune={self.other_user.username}",
+        )
 
 
 class HeatmapViewTests(TestCase):

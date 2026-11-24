@@ -9,7 +9,7 @@
     <div class="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-                <a href="{% url 'visitor_tracking:index' %}" class="inline-flex items-center gap-1 text-white/60 hover:text-white text-sm transition-colors mb-3">
+                <a href="{% url 'visitor_tracking:index' %}{% if commune %}?commune={{ commune }}{% endif %}" class="inline-flex items-center gap-1 text-white/80 hover:text-white text-sm transition-colors mb-3">
                     <i class="bx bx-arrow-back"></i> Retour au pointage
                 </a>
                 <div class="flex items-center gap-3">
@@ -163,7 +163,7 @@
                     <i class="bx bx-check"></i>
                     {% if location %}Enregistrer{% else %}Créer l'espace{% endif %}
                 </button>
-                <a href="{% url 'visitor_tracking:index' %}"
+                <a href="{% url 'visitor_tracking:index' %}{% if commune %}?commune={{ commune }}{% endif %}"
                    class="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl border border-[#dce3ef] text-sm text-[#5a6f80] hover:bg-white hover:border-[#b0bedb] transition-all">
                     <i class="bx bx-x"></i>
                     Annuler

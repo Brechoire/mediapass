@@ -27,6 +27,34 @@
     opacity: 1;
     transform: translateY(0);
   }
+  #pointage-toast {
+    position: fixed;
+    z-index: 90;
+    left: 50%;
+    bottom: 1.25rem;
+    transform: translateX(-50%) translateY(8px);
+    max-width: min(92vw, 30rem);
+    background: #1e293b;
+    color: #fff;
+    border-radius: 0.75rem;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  #pointage-toast.is-visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  #pointage-toast.is-error {
+    background: #b91c1c;
+  }
+  .missing-names [data-missing-location]:not(:last-child)::after {
+    content: ", ";
+  }
 </style>
 {% endblock %}
 
@@ -38,41 +66,50 @@
             <div>
                 <div class="flex items-center gap-3 mb-3">
                     <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                        <i class="bx bx-user-check text-2xl text-white"></i>
+                        <i class="bx bx-user-check text-2xl text-white" aria-hidden="true"></i>
                     </div>
                     <h1 class="text-3xl sm:text-4xl font-bold text-white">Pointage visiteurs</h1>
                 </div>
-                <p class="text-white/70 text-sm">{{ today|date:"l d F Y" }}</p>
+                <p class="text-white/80 text-sm">{{ today|date:"l d F Y" }}</p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <a href="{% url 'visitor_tracking:entry_form' %}"
+                <a href="{% url 'visitor_tracking:entry_form' %}?date={{ today|date:'Y-m-d' }}{% if commune %}&commune={{ commune }}{% endif %}"
                     data-tooltip="Enregistrer ou corriger les visiteurs d'une date passée, espace par espace."
                     aria-label="Saisie rétroactive : enregistrer ou corriger les visiteurs d'une date passée."
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
                     <i class="bx bx-calendar-edit" aria-hidden="true"></i> Saisie rétroactive
                 </a>
+                {% if user.is_superuser %}
+                <a href="{% url 'visitor_tracking:superadmin_statistics' %}?commune={{ commune }}"
+                    data-tooltip="Analyser la fréquentation sur une période : totaux, moyennes, jours forts et comparaison N-1."
+                    aria-label="Statistiques : analyser la fréquentation sur une période."
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
+                    <i class="bx bx-bar-chart-alt-2" aria-hidden="true"></i> Statistiques
+                </a>
+                {% else %}
                 <a href="{% url 'visitor_tracking:statistics' %}"
                     data-tooltip="Analyser la fréquentation sur une période : totaux, moyennes, jours forts et comparaison N-1."
                     aria-label="Statistiques : analyser la fréquentation sur une période."
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
                     <i class="bx bx-bar-chart-alt-2" aria-hidden="true"></i> Statistiques
                 </a>
-                <a href="{% url 'visitor_tracking:heatmap_year' today.year %}"
+                {% endif %}
+                <a href="{% url 'visitor_tracking:heatmap_year' today.year %}{% if commune %}?commune={{ commune }}{% endif %}"
                     data-tooltip="Voir la fréquentation jour par jour et qualifier les jours sans pointage : fermetures, jours fériés, ouvertures exceptionnelles."
                     aria-label="Calendrier : voir la fréquentation jour par jour et qualifier les jours sans pointage."
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
                     <i class="bx bx-calendar-heart" aria-hidden="true"></i> Calendrier
                 </a>
-                <a href="{% url 'visitor_tracking:annual_report_year' today.year %}"
+                <a href="{% url 'visitor_tracking:annual_report_year' today.year %}{% if commune %}?commune={{ commune }}{% endif %}"
                     data-tooltip="Générer le bilan ou le rapport détaillé d'une médiathèque, avec exports DOCX, CSV et PDF."
                     aria-label="Rapport annuel : générer le bilan ou le rapport détaillé d'une médiathèque."
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
                     <i class="bx bx-file" aria-hidden="true"></i> Rapport annuel
                 </a>
                 <a href="{% url 'visitor_tracking:history' %}"
                     data-tooltip="Consulter et modifier les pointages enregistrés, avec filtres par date et par espace."
                     aria-label="Historique : consulter et modifier les pointages enregistrés."
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
                     <i class="bx bx-history" aria-hidden="true"></i> Historique
                 </a>
             </div>
@@ -80,8 +117,25 @@
     </div>
 </section>
 
-{% if today_is_closed %}
+{% if user.is_superuser and available_communes %}
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 relative z-10">
+    <form method="get" class="flex flex-wrap items-end gap-3 rounded-2xl border border-[#dce3ef] bg-white p-4 shadow-sm">
+        <div>
+            <label for="index-commune" class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#5a6f80]">Médiathèque</label>
+            <select id="index-commune" name="commune"
+                    class="min-h-[44px] rounded-xl border border-[#dce3ef] px-4 py-2 text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20">
+                {% for item in available_communes %}
+                <option value="{{ item.username }}" {% if item.username == commune %}selected{% endif %}>{{ item.username|capfirst }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="min-h-[44px] rounded-xl border border-[#dce3ef] px-4 py-2 text-sm font-medium text-[#4a6fa5] hover:bg-[#e8eef7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a6fa5]">Afficher</button>
+    </form>
+</section>
+{% endif %}
+
+{% if today_is_closed %}
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 relative z-10">
     <div class="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900 shadow-sm">
         <div class="flex items-start gap-3">
             <i class="bx bx-lock-alt mt-0.5 text-xl" aria-hidden="true"></i>
@@ -94,7 +148,25 @@
                     Ce jour n'est pas un jour d'ouverture habituel.
                     {% endif %}
                     Les compteurs sont désactivés. Pour une ouverture exceptionnelle, utilisez la
-                    <a href="{% url 'visitor_tracking:entry_form' %}" class="font-medium underline">saisie rétroactive</a>.
+                    <a href="{% url 'visitor_tracking:entry_form' %}?date={{ today|date:'Y-m-d' }}{% if commune %}&commune={{ commune }}{% endif %}" class="font-medium underline">saisie rétroactive</a>.
+                </p>
+                {% if next_open_date %}
+                <p class="mt-1 text-sm font-medium">Réouverture prévue : {{ next_open_date|date:"l d F Y" }}.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% elif next_closure %}
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 relative z-10">
+    <div class="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sky-900 shadow-sm">
+        <div class="flex items-start gap-3">
+            <i class="bx bx-calendar-x mt-0.5 text-xl" aria-hidden="true"></i>
+            <div>
+                <p class="font-semibold">Prochaine fermeture</p>
+                <p class="text-sm">
+                    Du {{ next_closure.start_date|date:"d/m/Y" }}{% if next_closure.end_date != next_closure.start_date %} au {{ next_closure.end_date|date:"d/m/Y" }}{% endif %} —
+                    {{ next_closure.get_kind_display }}{% if next_closure.label %} ({{ next_closure.label }}){% endif %}.
                 </p>
             </div>
         </div>
@@ -102,68 +174,159 @@
 </section>
 {% endif %}
 
-<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 relative z-10">
+    <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#dce3ef] bg-white px-4 py-2 text-xs text-[#5a6f80]">
+        <span class="inline-flex items-center gap-1.5">
+            <i class="bx bx-time-five text-[#4a6fa5]" aria-hidden="true"></i>
+            Dernière saisie aujourd'hui : <span id="last-update-time">{% if last_update %}{{ last_update|date:"H:i" }}{% else %}aucune{% endif %}</span>
+        </span>
+        <button type="button" onclick="window.location.reload()"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-[#dce3ef] px-3 py-1.5 font-medium text-[#4a6fa5] hover:bg-[#e8eef7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a6fa5]">
+            <i class="bx bx-refresh" aria-hidden="true"></i> Rafraîchir
+        </button>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 relative z-10">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        <a href="{% url 'visitor_tracking:history' %}?date_from={{ today|date:'Y-m-d' }}&date_to={{ today|date:'Y-m-d' }}"
+           class="block rounded-2xl border border-[#dce3ef] bg-white p-5 shadow-sm transition-colors hover:border-[#4a6fa5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a6fa5]">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Aujourd'hui</p>
+                    <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Aujourd'hui</p>
                     <p class="text-3xl font-bold text-[#4a6fa5] mt-1" id="total-today">{{ total_today }}</p>
+                    <p class="text-[11px] text-[#5a6f80]">visiteurs</p>
+                    <p class="text-[10px] text-[#5a6f80] mt-0.5" id="today-status"{% if today_is_closed %} data-today-closed="true"{% endif %}>
+                        {% if today_is_closed %}
+                        Fermé aujourd'hui
+                        {% elif spaces_total == 0 %}
+                        Aucun espace
+                        {% elif spaces_pointed == 0 %}
+                        Aucun pointage
+                        {% elif all_pointed %}
+                        Pointage complet · {{ spaces_pointed }}/{{ spaces_total }}
+                        {% else %}
+                        Pointage partiel · {{ spaces_pointed }}/{{ spaces_total }}
+                        {% endif %}
+                    </p>
+                    {% if today_variation is not None %}
+                    <p class="text-[10px] mt-1 {% if today_variation > 0 %}text-emerald-700{% elif today_variation < 0 %}text-red-600{% else %}text-[#5a6f80]{% endif %}">
+                        {% if today_variation > 0 %}+{% endif %}{{ today_variation|floatformat:1 }} % vs même jour la semaine dernière (journée en cours)
+                    </p>
+                    {% endif %}
                 </div>
                 <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center">
-                    <i class="bx bx-user text-2xl text-[#4a6fa5]"></i>
+                    <i class="bx bx-user text-2xl text-[#4a6fa5]" aria-hidden="true"></i>
                 </div>
             </div>
-        </div>
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        </a>
+
+        <a href="{% if user.is_superuser %}{% url 'visitor_tracking:superadmin_statistics' %}?period=7_days{% if commune %}&commune={{ commune }}{% endif %}{% else %}{% url 'visitor_tracking:statistics' %}?period=7_days{% endif %}"
+           class="block rounded-2xl border border-[#dce3ef] bg-white p-5 shadow-sm transition-colors hover:border-[#4a6fa5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a6fa5]">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">7 derniers jours</p>
+                    <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">7 derniers jours</p>
                     <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ week_total }}</p>
-                    <p class="text-[10px] text-[#b0bedb] mt-0.5">hors dimanche</p>
+                    <p class="text-[10px] text-[#5a6f80] mt-0.5">sur {{ week_stats.open_days }} jour{{ week_stats.open_days|pluralize }} d'ouverture · {{ week_stats.avg|floatformat:1 }}/jour</p>
+                    {% if week_stats.exceptional_total %}
+                    <p class="text-[10px] text-amber-800 mt-0.5">dont {{ week_stats.exceptional_total }} sur jour{% if week_stats.exceptional_total > 1 %}s{% endif %} non ouvert{% if week_stats.exceptional_total > 1 %}s{% endif %}</p>
+                    {% endif %}
+                    {% if week_stats.closure_days %}
+                    <p class="text-[10px] text-[#5a6f80] mt-0.5">{{ week_stats.closure_days }} jour{{ week_stats.closure_days|pluralize }} de fermeture</p>
+                    {% endif %}
                 </div>
                 <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center">
-                    <i class="bx bx-calendar-week text-2xl text-[#4a6fa5]"></i>
+                    <i class="bx bx-calendar-week text-2xl text-[#4a6fa5]" aria-hidden="true"></i>
                 </div>
             </div>
-        </div>
-        <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm p-5">
+        </a>
+
+        <a href="{% if user.is_superuser %}{% url 'visitor_tracking:superadmin_statistics' %}?period=this_month{% if commune %}&commune={{ commune }}{% endif %}{% else %}{% url 'visitor_tracking:statistics' %}?period=this_month{% endif %}"
+           class="block rounded-2xl border border-[#dce3ef] bg-white p-5 shadow-sm transition-colors hover:border-[#4a6fa5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a6fa5]">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold text-[#b0bedb] uppercase tracking-wider">Ce mois-ci</p>
+                    <p class="text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Ce mois-ci</p>
                     <p class="text-3xl font-bold text-[#4a6fa5] mt-1">{{ month_total }}</p>
-                    <p class="text-[10px] text-[#b0bedb] mt-0.5">hors dimanche</p>
+                    <p class="text-[10px] text-[#5a6f80] mt-0.5">sur {{ month_stats.open_days }} jour{{ month_stats.open_days|pluralize }} d'ouverture · {{ month_stats.avg|floatformat:1 }}/jour</p>
+                    {% if month_stats.exceptional_total %}
+                    <p class="text-[10px] text-amber-800 mt-0.5">dont {{ month_stats.exceptional_total }} sur jour{% if month_stats.exceptional_total > 1 %}s{% endif %} non ouvert{% if month_stats.exceptional_total > 1 %}s{% endif %}</p>
+                    {% endif %}
+                    {% if month_stats.closure_days %}
+                    <p class="text-[10px] text-[#5a6f80] mt-0.5">{{ month_stats.closure_days }} jour{{ month_stats.closure_days|pluralize }} de fermeture</p>
+                    {% endif %}
                 </div>
                 <div class="w-12 h-12 rounded-xl bg-[#e8eef7] flex items-center justify-center">
-                    <i class="bx bx-calendar text-2xl text-[#4a6fa5]"></i>
+                    <i class="bx bx-calendar text-2xl text-[#4a6fa5]" aria-hidden="true"></i>
                 </div>
+            </div>
+        </a>
+    </div>
+</section>
+
+{% if spaces_missing and not today_is_closed %}
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8 relative z-10" data-missing-banner>
+    <div class="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900 shadow-sm">
+        <div class="flex items-start gap-3">
+            <i class="bx bx-error-circle mt-0.5 text-xl" aria-hidden="true"></i>
+            <div>
+                <p class="font-semibold" data-missing-title>
+                    {% if spaces_pointed == 0 %}Aucun pointage aujourd'hui{% else %}Pointage partiel : {{ spaces_pointed }}/{{ spaces_total }} espaces{% endif %}
+                </p>
+                <p class="text-sm">
+                    <span data-missing-count>{{ spaces_missing|length }}</span> <span data-missing-label>espace{{ spaces_missing|length|pluralize }}</span> sans pointage :
+                    <span class="missing-names" data-missing-list>{% for item in spaces_missing %}<span data-missing-location="{{ item.location.id }}">{{ item.location.name }}</span>{% endfor %}</span>.
+                </p>
+                <a href="{% url 'visitor_tracking:entry_form' %}?date={{ today|date:'Y-m-d' }}{% if commune %}&commune={{ commune }}{% endif %}"
+                   class="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
+                    <i class="bx bx-edit" aria-hidden="true"></i> Compléter les pointages
+                </a>
             </div>
         </div>
     </div>
+</section>
+{% endif %}
 
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
     <div class="bg-white rounded-2xl border border-[#dce3ef] shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-[#dce3ef]">
-            <h5 class="font-semibold text-[#1e293b]">
-                <i class="bx bx-buildings mr-1.5 text-[#4a6fa5]"></i> Compteurs par espace
-            </h5>
-            <p class="text-xs text-[#b0bedb] mt-1">Cliquez sur les boutons pour ajouter des visiteurs</p>
+            <h2 class="font-semibold text-[#1e293b]">
+                <i class="bx bx-buildings mr-1.5 text-[#4a6fa5]" aria-hidden="true"></i> Compteurs par espace
+            </h2>
+            <p class="text-xs text-[#5a6f80] mt-1">Cliquez sur les boutons pour ajouter des visiteurs.</p>
         </div>
         <div class="p-6">
             {% if location_data %}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {% for item in location_data %}
-                <div class="bg-[#f8f9fc] rounded-2xl p-5 border border-[#dce3ef] border-l-4" style="border-left-color: {{ item.location.color }};">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background-color: {{ item.location.color }}20;">
-                                <i class="bx {{ item.location.icon }} text-xl" style="color: {{ item.location.color }};"></i>
+                <div class="bg-[#f8f9fc] rounded-2xl p-5 border border-[#dce3ef] border-l-4" style="border-left-color: {{ item.location.color }};"
+                     data-space-card data-space-name="{{ item.location.name }}"
+                     data-has-pointage="{{ item.has_pointage|yesno:'true,false' }}">
+                    <div class="flex items-start justify-between gap-3 mb-4">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background-color: {{ item.location.color }}20;">
+                                <i class="bx {{ item.location.icon }} text-xl" style="color: {{ item.location.color }};" aria-hidden="true"></i>
                             </div>
-                            <h3 class="font-semibold text-[#1e293b]">{{ item.location.name }}</h3>
+                            <div class="min-w-0">
+                                <h3 class="font-semibold text-[#1e293b] truncate">{{ item.location.name }}</h3>
+                                {% if item.has_pointage %}
+                                <span data-space-status class="inline-flex items-center gap-1 mt-1 rounded-full px-2 py-0.5 text-[10px] font-medium
+                                    {% if item.is_zero %}bg-slate-100 text-slate-600{% else %}bg-emerald-100 text-emerald-800{% endif %}">
+                                    {% if item.is_zero %}Pointé à 0{% else %}Pointé{% if item.updated_at %} à {{ item.updated_at|date:"H:i" }}{% endif %}{% endif %}
+                                </span>
+                                {% if item.updated_by %}
+                                <span class="block text-[10px] text-[#5a6f80] mt-0.5">par {{ item.updated_by.username }}</span>
+                                {% endif %}
+                                {% else %}
+                                <span data-space-status class="inline-flex items-center gap-1 mt-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+                                    Non pointé
+                                </span>
+                                {% endif %}
+                            </div>
                         </div>
                         <a href="{% url 'visitor_tracking:edit_space' item.location.id %}"
-                           class="w-8 h-8 rounded-lg flex items-center justify-center text-[#b0bedb] hover:text-[#4a6fa5] hover:bg-[#e8eef7] transition-all"
-                           title="Modifier l'espace">
-                            <i class="bx bx-pencil text-lg"></i>
+                           class="w-11 h-11 rounded-lg flex items-center justify-center text-[#5a6f80] hover:text-[#4a6fa5] hover:bg-[#e8eef7] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a6fa5]"
+                           aria-label="Modifier l'espace {{ item.location.name }}">
+                            <i class="bx bx-pencil text-lg" aria-hidden="true"></i>
                         </a>
                     </div>
 
@@ -171,12 +334,27 @@
                         <span class="text-5xl font-bold text-[#1e293b] transition-colors duration-200" id="count-{{ item.location.id }}">
                             {{ item.count }}
                         </span>
-                        <p class="text-xs text-[#b0bedb] mt-1">visiteurs aujourd'hui</p>
+                        <p class="text-xs text-[#5a6f80] mt-1">visiteurs aujourd'hui</p>
                     </div>
 
-                    {% if item.sparkline|length > 1 %}
                     <div class="mb-3 h-10">
-                        <canvas id="spark-{{ item.location.id }}" width="200" height="36"></canvas>
+                        <canvas id="spark-{{ item.location.id }}" width="200" height="36" role="img"
+                                aria-label="7 derniers jours pour {{ item.location.name }} : {{ item.sparkline|join:', ' }} visiteurs"></canvas>
+                    </div>
+
+                    {% if item.workshops %}
+                    <div class="mb-3 rounded-xl border border-[#dce3ef] bg-white p-2.5 text-[11px] text-[#5a6f80]">
+                        <p class="font-semibold text-[#1e293b] mb-1">Ateliers aujourd'hui</p>
+                        <ul class="space-y-1">
+                            {% for workshop in item.workshops %}
+                            <li class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                                <a href="{% url 'library_workshops:workshop_detail' workshop.pk %}" class="font-medium text-[#4a6fa5] hover:underline">{{ workshop.title }}</a>
+                                <span>{{ workshop.start_time|time:"H:i" }}–{{ workshop.end_time|time:"H:i" }}</span>
+                                <span>{{ workshop.confirmed_count }}/{{ workshop.max_participants }}</span>
+                                {% if workshop.status == "cancelled" %}<span class="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700">Annulé</span>{% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
                     </div>
                     {% endif %}
 
@@ -186,41 +364,73 @@
                         Compteurs désactivés aujourd'hui.
                     </div>
                     {% else %}
-                    <div class="grid grid-cols-5 gap-2 mb-3">
+                    <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-2">
                         {% for n in "12345" %}
-                        <button onclick="incrementCount({{ item.location.id }}, {{ n }})"
-                            class="py-2 bg-[#e8eef7] hover:bg-[#dce3ef] text-[#4a6fa5] font-semibold rounded-xl transition-colors text-sm cursor-pointer">
+                        <button type="button" onclick="incrementCount({{ item.location.id }}, {{ n }})"
+                            aria-label="Ajouter {{ n }} visiteur{{ n|pluralize }} à {{ item.location.name }}"
+                            class="min-h-[44px] py-2 bg-[#e8eef7] hover:bg-[#dce3ef] text-[#4a6fa5] font-semibold rounded-xl transition-colors text-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a6fa5]">
                             +{{ n }}
                         </button>
                         {% endfor %}
+                        <button type="button" onclick="incrementCount({{ item.location.id }}, 10)"
+                            aria-label="Ajouter 10 visiteurs à {{ item.location.name }}"
+                            class="min-h-[44px] py-2 bg-[#e8eef7] hover:bg-[#dce3ef] text-[#4a6fa5] font-semibold rounded-xl transition-colors text-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a6fa5]">
+                            +10
+                        </button>
                     </div>
 
-                    <button onclick="decrementCount({{ item.location.id }})"
-                        class="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm cursor-pointer">
-                        <i class="bx bx-minus"></i> Retirer 1 visiteur
+                    <div class="flex gap-2 mb-3">
+                        <label for="custom-{{ item.location.id }}" class="sr-only">Autre quantité pour {{ item.location.name }}</label>
+                        <input id="custom-{{ item.location.id }}" type="number" min="1" max="99" inputmode="numeric"
+                               placeholder="Autre quantité"
+                               class="min-h-[44px] w-full rounded-xl border border-[#dce3ef] px-3 py-2 text-sm text-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20">
+                        <button type="button" onclick="incrementCustom({{ item.location.id }})"
+                                aria-label="Ajouter la quantité saisie à {{ item.location.name }}"
+                                class="min-h-[44px] shrink-0 rounded-xl bg-[#4a6fa5] px-3 py-2 text-sm font-medium text-white hover:bg-[#3d5f8f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a6fa5]">
+                            Ajouter
+                        </button>
+                    </div>
+
+                    <button type="button" onclick="decrementCount({{ item.location.id }})"
+                        aria-label="Retirer 1 visiteur de {{ item.location.name }}"
+                        class="min-h-[44px] w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500">
+                        <i class="bx bx-minus" aria-hidden="true"></i> Retirer 1 visiteur
                     </button>
                     {% endif %}
+
+                    <div class="mt-3 text-center">
+                        <a href="{% url 'visitor_tracking:history' %}?location={{ item.location.id }}&date_from={{ today|date:'Y-m-d' }}&date_to={{ today|date:'Y-m-d' }}"
+                           class="inline-flex items-center gap-1 text-xs font-medium text-[#4a6fa5] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a6fa5]">
+                            <i class="bx bx-history" aria-hidden="true"></i> Historique du jour
+                        </a>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
 
+            {% if can_manage_spaces %}
             <div class="mt-6 text-center">
                 <a href="{% url 'visitor_tracking:add_space' %}"
-                    class="inline-flex items-center gap-2 text-sm text-[#4a6fa5] hover:text-[#3d5f8f] transition-colors font-medium">
-                    <i class="bx bx-plus-circle"></i> Ajouter un nouvel espace
+                    class="inline-flex items-center gap-2 text-sm text-[#4a6fa5] hover:text-[#3d5f8f] transition-colors font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a6fa5]">
+                    <i class="bx bx-plus-circle" aria-hidden="true"></i> Ajouter un nouvel espace
                 </a>
             </div>
+            {% endif %}
             {% else %}
             <div class="text-center py-16">
                 <div class="w-16 h-16 rounded-2xl bg-[#e8eef7] flex items-center justify-center mx-auto mb-4">
-                    <i class="bx bx-buildings text-3xl text-[#4a6fa5]"></i>
+                    <i class="bx bx-buildings text-3xl text-[#4a6fa5]" aria-hidden="true"></i>
                 </div>
                 <h3 class="text-lg font-semibold text-[#4a6fa5] mb-2">Aucun espace configuré</h3>
-                <p class="text-[#b0bedb] text-sm mb-6">Ajoutez des espaces (Médiathèque, Ludothèque, etc.) pour pointer les visiteurs.</p>
+                {% if can_manage_spaces %}
+                <p class="text-[#5a6f80] text-sm mb-6">Ajoutez des espaces (Médiathèque, Ludothèque, etc.) pour pointer les visiteurs.</p>
                 <a href="{% url 'visitor_tracking:add_space' %}"
-                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4a6fa5] text-white font-medium text-sm hover:bg-[#3d5f8f] transition-colors shadow-sm">
-                    <i class="bx bx-plus"></i> Ajouter un espace
+                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4a6fa5] text-white font-medium text-sm hover:bg-[#3d5f8f] transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a6fa5]">
+                    <i class="bx bx-plus" aria-hidden="true"></i> Ajouter un espace
                 </a>
+                {% else %}
+                <p class="text-[#5a6f80] text-sm">Cette médiathèque n'a pas encore d'espace de pointage actif.</p>
+                {% endif %}
             </div>
             {% endif %}
         </div>
@@ -228,6 +438,7 @@
 </section>
 
 <div id="link-tip" role="tooltip" aria-hidden="true"></div>
+<div id="pointage-toast" role="status" aria-live="polite"></div>
 {% endblock %}
 
 {% block javascripts %}
@@ -290,19 +501,112 @@ function getCsrfToken() {
            document.cookie.split('; ').find(r => r.startsWith('csrftoken='))?.split('=')[1];
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialiser les sparklines
+function showToast(message, isError) {
+    const toast = document.getElementById('pointage-toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.toggle('is-error', !!isError);
+    toast.classList.add('is-visible');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(function () {
+        toast.classList.remove('is-visible');
+    }, 2800);
+}
+
+function spaceName(locationId) {
+    const card = document.getElementById(`count-${locationId}`)?.closest('[data-space-card]');
+    return card ? card.getAttribute('data-space-name') : 'Espace';
+}
+
+function refreshCompleteness(locationId) {
+    const status = document.getElementById('today-status');
+    const cards = Array.from(document.querySelectorAll('[data-space-card]'));
+    const total = cards.length;
+    const pointed = cards.filter(
+        card => card.dataset.hasPointage === 'true'
+    ).length;
+
+    if (status && !status.dataset.todayClosed) {
+        if (total === 0) {
+            status.textContent = 'Aucun espace';
+        } else if (pointed === 0) {
+            status.textContent = 'Aucun pointage';
+        } else if (pointed === total) {
+            status.textContent = `Pointage complet · ${pointed}/${total}`;
+        } else {
+            status.textContent = `Pointage partiel · ${pointed}/${total}`;
+        }
+    }
+
+    const banner = document.querySelector('[data-missing-banner]');
+    if (!banner) return;
+
+    banner.querySelector(
+        `[data-missing-location="${locationId}"]`
+    )?.remove();
+    const remaining = banner.querySelectorAll(
+        '[data-missing-location]'
+    ).length;
+    if (remaining === 0) {
+        banner.remove();
+        return;
+    }
+
+    const countEl = banner.querySelector('[data-missing-count]');
+    if (countEl) countEl.textContent = remaining;
+    const label = banner.querySelector('[data-missing-label]');
+    if (label) label.textContent = remaining > 1 ? 'espaces' : 'espace';
+    const title = banner.querySelector('[data-missing-title]');
+    if (title) {
+        title.textContent = pointed === 0
+            ? "Aucun pointage aujourd'hui"
+            : `Pointage partiel : ${pointed}/${total} espaces`;
+    }
+}
+
+function markSpaceUpdated(locationId, count) {
+    const time = new Date().toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    const card = document.getElementById(`count-${locationId}`)?.closest('[data-space-card]');
+    if (card) card.dataset.hasPointage = 'true';
+    const badge = card?.querySelector('[data-space-status]');
+    if (badge) {
+        badge.className = 'inline-flex items-center gap-1 mt-1 rounded-full px-2 py-0.5 text-[10px] font-medium ' +
+            (count === 0 ? 'bg-slate-100 text-slate-600' : 'bg-emerald-100 text-emerald-800');
+        badge.textContent = count === 0 ? 'Pointé à 0' : `Pointé à ${time}`;
+    }
+    const lastUpdate = document.getElementById('last-update-time');
+    if (lastUpdate) lastUpdate.textContent = time;
+    refreshCompleteness(locationId);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
     {% for item in location_data %}
-    {% if item.sparkline|length > 1 %}
     (function() {
         const c = document.getElementById('spark-{{ item.location.id }}');
         if (c) new Chart(c, {
             type: 'line',
-            data: { labels: Array({{ item.sparkline|length }}).fill(''), datasets: [{ data: [{% for v in item.sparkline %}{{ v }},{% endfor %}], borderColor: '{{ item.location.color }}', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: .3 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false, beginAtZero: true } } }
+            data: {
+                labels: [{% for label in item.sparkline_labels %}'{{ label }}',{% endfor %}],
+                datasets: [{
+                    data: [{% for v in item.sparkline %}{{ v }},{% endfor %}],
+                    borderColor: '{{ item.location.color }}',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: .3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: { x: { display: false }, y: { display: false, beginAtZero: true } }
+            }
         });
     })();
-    {% endif %}
     {% endfor %}
 });
 
@@ -318,7 +622,7 @@ function incrementCount(locationId, amount) {
     .then(r => r.json())
     .then(d => {
         if (!d.success) {
-            alert(d.error || 'Erreur lors de l’incrémentation.');
+            showToast(d.error || 'Erreur lors de l’incrémentation.', true);
             return;
         }
         const el = document.getElementById(`count-${locationId}`);
@@ -326,8 +630,28 @@ function incrementCount(locationId, amount) {
         el.classList.add('text-emerald-600');
         setTimeout(() => el.classList.remove('text-emerald-600'), 300);
         document.getElementById('total-today').textContent = d.total_today;
+        markSpaceUpdated(locationId, d.count);
+        showToast(`${amount} visiteur${amount > 1 ? 's' : ''} ajouté${amount > 1 ? 's' : ''} — ${spaceName(locationId)}`);
     })
-    .catch(e => console.error('Erreur:', e));
+    .catch(e => {
+        console.error('Erreur:', e);
+        showToast('Erreur réseau lors de l’ajout.', true);
+    });
+}
+
+function incrementCustom(locationId) {
+    const input = document.getElementById(`custom-${locationId}`);
+    const amount = parseInt(input?.value, 10);
+    if (!Number.isInteger(amount) || amount < 1 || amount > 99) {
+        showToast('Saisissez une quantité entre 1 et 99.', true);
+        return;
+    }
+    if (amount > 20) {
+        const name = spaceName(locationId);
+        if (!confirm(`Ajouter ${amount} visiteurs à ${name} ?`)) return;
+    }
+    incrementCount(locationId, amount);
+    if (input) input.value = '';
 }
 
 function decrementCount(locationId) {
@@ -338,15 +662,26 @@ function decrementCount(locationId) {
     })
     .then(r => r.json())
     .then(d => {
-        if (d.success) {
-            const el = document.getElementById(`count-${locationId}`);
-            el.textContent = d.count;
-            el.classList.add('text-red-600');
-            setTimeout(() => el.classList.remove('text-red-600'), 300);
-            document.getElementById('total-today').textContent = d.total_today;
+        if (!d.success) {
+            showToast(d.error || 'Erreur lors du retrait.', true);
+            return;
         }
+        const el = document.getElementById(`count-${locationId}`);
+        el.textContent = d.count;
+        el.classList.add('text-red-600');
+        setTimeout(() => el.classList.remove('text-red-600'), 300);
+        document.getElementById('total-today').textContent = d.total_today;
+        if (d.changed) markSpaceUpdated(locationId, d.count);
+        if (!d.changed) {
+            showToast(`Compteur déjà à 0 — ${spaceName(locationId)}`);
+            return;
+        }
+        showToast(`1 visiteur retiré — ${spaceName(locationId)}`);
     })
-    .catch(e => console.error('Erreur:', e));
+    .catch(e => {
+        console.error('Erreur:', e);
+        showToast('Erreur réseau lors du retrait.', true);
+    });
 }
 </script>
 {% endblock %}

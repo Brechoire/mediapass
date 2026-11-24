@@ -13,7 +13,7 @@ from django.utils.text import slugify
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.http import require_POST
 from django.db import transaction
-from django.db.models import Sum, Count, Max
+from django.db.models import Count, F, Max, Q, Sum
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -76,101 +76,311 @@ SPACE_COLORS = [
 ]
 
 
+def _resolve_index_scope(request):
+    """Médiathèque affichée sur la page de pointage.
+
+    Un membre voit sa médiathèque. Un superadmin choisit une médiathèque via
+    ``?commune=`` ; à défaut, on prend la sienne ou la première disponible.
+    """
+    if not request.user.is_superuser:
+        return request.user, "", []
+
+    available = AnnualReportService.get_available_communes()
+    commune = (
+        request.GET.get("commune")
+        or request.POST.get("commune")
+        or ""
+    ).strip()
+    scope_user = next(
+        (user for user in available if user.username == commune),
+        None,
+    )
+    if scope_user is None:
+        if request.user.locations.exists():
+            scope_user = request.user
+        elif available:
+            scope_user = available[0]
+
+    if scope_user is None:
+        return None, "", available
+    return scope_user, scope_user.username, available
+
+
 @mediatheque_member_required
 def index(request):
-    """Dashboard principal avec compteurs temps réel"""
+    """Dashboard principal avec compteurs temps réel."""
     today = timezone.now().date()
+    scope_user, commune, available_communes = _resolve_index_scope(request)
 
-    # Récupérer les espaces actifs de l'utilisateur avec leur comptage du jour
-    locations = filter_location_owned(
-        Location.objects.filter(is_active=True), request.user
-    ).order_by("order", "name")
+    locations = Location.objects.none()
+    if scope_user is not None:
+        locations = Location.objects.filter(
+            is_active=True, user=scope_user
+        ).order_by("order", "name")
+    location_ids = list(locations.values_list("id", flat=True))
 
-    location_data = []
-    today_counts = filter_owned(
-        VisitorCount.objects.filter(date=today), request.user, field="location__user"
+    today_counts = (
+        VisitorCount.objects.filter(
+            location__user=scope_user, date=today
+        ).select_related("updated_by")
+        if scope_user is not None
+        else VisitorCount.objects.none()
     )
-    today_map = {v.location_id: v for v in today_counts}
+    today_map = {entry.location_id: entry for entry in today_counts}
 
-    # Derniers 7 jours par espace (pour sparklines)
-    seven_days_ago = today - timedelta(days=6)
+    week_start = today - timedelta(days=6)
+    month_start = today.replace(day=1)
     last_7_days = (
-        filter_owned(
-            VisitorCount.objects.filter(date__gte=seven_days_ago, date__lte=today),
-            request.user,
-            field="location__user",
+        VisitorCount.objects.filter(
+            location__user=scope_user,
+            date__gte=week_start,
+            date__lte=today,
         )
         .values("location_id", "date")
         .annotate(total=Sum("count"))
         .order_by("date")
+        if scope_user is not None
+        else []
+    )
+    daily_by_location = {}
+    for entry in last_7_days:
+        daily_by_location.setdefault(entry["location_id"], {})[
+            entry["date"]
+        ] = entry["total"]
+
+    opening_weekdays = (
+        get_opening_weekdays(scope_user)
+        if scope_user is not None
+        else list(DEFAULT_OPENING_WEEKDAYS)
+    )
+    today_closure_map = (
+        build_closure_map(scope_user, today, today)
+        if scope_user is not None
+        else {}
+    )
+    today_closure = today_closure_map.get(today)
+    today_is_closed = (
+        scope_user is not None
+        and (
+            today_closure is not None
+            or today.weekday() not in opening_weekdays
+        )
     )
 
-    sparklines = {}
-    for entry in last_7_days:
-        sparklines.setdefault(entry["location_id"], []).append(entry["total"])
-
+    location_data = []
     for location in locations:
         count_obj = today_map.get(location.id)
-        if count_obj:
-            c = count_obj.count
-            cid = count_obj.id
-        else:
-            c = 0
-            cid = None
+        sparkline = []
+        sparkline_labels = []
+        for offset in range(6, -1, -1):
+            day = today - timedelta(days=offset)
+            sparkline.append(
+                daily_by_location.get(location.id, {}).get(day, 0)
+            )
+            sparkline_labels.append(day.strftime("%d/%m"))
         location_data.append(
             {
                 "location": location,
-                "count": c,
-                "count_id": cid,
-                "sparkline": sparklines.get(location.id, []),
+                "count": count_obj.count if count_obj else 0,
+                "count_id": count_obj.id if count_obj else None,
+                "has_pointage": count_obj is not None,
+                "is_zero": (
+                    count_obj is not None and count_obj.count == 0
+                ),
+                "updated_at": (
+                    count_obj.updated_at if count_obj else None
+                ),
+                "updated_by": (
+                    count_obj.updated_by if count_obj else None
+                ),
+                "sparkline": sparkline,
+                "sparkline_labels": sparkline_labels,
+                "workshops": [],
             }
         )
 
-    # Statistiques du jour
     total_today = sum(item["count"] for item in location_data)
+    spaces_total = len(location_data)
+    spaces_pointed = sum(
+        1 for item in location_data if item["has_pointage"]
+    )
+    spaces_missing = [
+        item for item in location_data if not item["has_pointage"]
+    ]
+    all_pointed = spaces_total > 0 and not spaces_missing
+    last_update = max(
+        (
+            item["updated_at"]
+            for item in location_data
+            if item["updated_at"] is not None
+        ),
+        default=None,
+    )
 
-    # Statistiques des 7 derniers jours (hors dimanche)
-    seven_days_ago = today - timedelta(days=6)
-    week_total = (
-        filter_owned(
+    # Ateliers de la médiathèque aujourd'hui (compteurs agrégés uniquement).
+    if location_ids:
+        from library_workshops.models import Workshop
+
+        today_workshops = (
+            Workshop.objects.filter(
+                location_id__in=location_ids,
+                status__in=["active", "cancelled"],
+            )
+            .filter(
+                Q(start_date=today)
+                | Q(start_date__lt=today, end_date__gte=today)
+            )
+            .select_related("location")
+            .annotate(
+                confirmed_count=Count(
+                    "participants",
+                    filter=Q(participants__status="confirmed"),
+                )
+            )
+            .order_by("start_time")
+        )
+        workshops_by_location = {}
+        for workshop in today_workshops:
+            workshops_by_location.setdefault(
+                workshop.location_id, []
+            ).append(workshop)
+        for item in location_data:
+            item["workshops"] = workshops_by_location.get(
+                item["location"].id, []
+            )
+
+    def period_stats(start_date):
+        closure_map = (
+            build_closure_map(scope_user, start_date, today)
+            if scope_user is not None
+            else {}
+        )
+        open_dates = (
+            get_open_dates(
+                start_date,
+                today,
+                opening_weekdays,
+                closure_map,
+            )
+            if scope_user is not None
+            else set()
+        )
+        open_total = 0
+        exceptional_total = 0
+        if scope_user is not None:
+            open_total = (
+                VisitorCount.objects.filter(
+                    location__user=scope_user,
+                    date__in=open_dates,
+                ).aggregate(total=Sum("count"))["total"]
+                or 0
+            )
+            exceptional_total = (
+                VisitorCount.objects.filter(
+                    location__user=scope_user,
+                    date__gte=start_date,
+                    date__lte=today,
+                )
+                .exclude(date__in=open_dates)
+                .aggregate(total=Sum("count"))["total"]
+                or 0
+            )
+        open_days = len(open_dates)
+        closure_days = sum(
+            1
+            for day in closure_map
+            if day.weekday() in opening_weekdays
+        )
+        return {
+            "total": open_total + exceptional_total,
+            "open_total": open_total,
+            "open_days": open_days,
+            "closure_days": closure_days,
+            "exceptional_total": exceptional_total,
+            "avg": round(open_total / open_days, 1) if open_days else 0,
+        }
+
+    week_stats = period_stats(week_start)
+    month_stats = period_stats(month_start)
+
+    # Comparaison avec le même jour de la semaine précédente.
+    last_week_day = today - timedelta(days=7)
+    last_week_closure_map = (
+        build_closure_map(scope_user, last_week_day, last_week_day)
+        if scope_user is not None
+        else {}
+    )
+    last_week_open = (
+        scope_user is not None
+        and last_week_day.weekday() in opening_weekdays
+        and last_week_day not in last_week_closure_map
+    )
+    last_week_total = None
+    today_variation = None
+    if last_week_open and not today_is_closed:
+        last_week_total = (
             VisitorCount.objects.filter(
-                date__gte=seven_days_ago, date__lte=today, location__is_active=True
-            ).exclude(date__week_day=1),
-            request.user,
-            field="location__user",
-        ).aggregate(total=Sum("count"))["total"]
-        or 0
-    )
+                location__user=scope_user, date=last_week_day
+            ).aggregate(total=Sum("count"))["total"]
+            or 0
+        )
+        if last_week_total > 0:
+            today_variation = round(
+                (total_today - last_week_total)
+                / last_week_total
+                * 100,
+                1,
+            )
 
-    # Statistiques du mois en cours (hors dimanche)
-    month_start = today.replace(day=1)
-    month_total = (
-        filter_owned(
-            VisitorCount.objects.filter(
-                date__gte=month_start, date__lte=today, location__is_active=True
-            ).exclude(date__week_day=1),
-            request.user,
-            field="location__user",
-        ).aggregate(total=Sum("count"))["total"]
-        or 0
-    )
-
-    opening_weekdays = get_opening_weekdays(request.user)
-    closure_map = build_closure_map(request.user, today, today)
-    today_closure = closure_map.get(today)
-    today_is_closed = (
-        today_closure is not None
-        or today.weekday() not in opening_weekdays
-    )
+    # Prochaine fermeture / prochaine réouverture.
+    next_closure = None
+    next_open_date = None
+    if scope_user is not None:
+        next_closure = (
+            Closure.objects.filter(
+                user=scope_user, start_date__gt=today
+            )
+            .order_by("start_date", "end_date")
+            .first()
+        )
+        if today_is_closed:
+            horizon = today + timedelta(days=366)
+            horizon_map = build_closure_map(
+                scope_user, today, horizon
+            )
+            cursor = today + timedelta(days=1)
+            while cursor <= horizon:
+                if (
+                    cursor.weekday() in opening_weekdays
+                    and cursor not in horizon_map
+                ):
+                    next_open_date = cursor
+                    break
+                cursor += timedelta(days=1)
 
     context = {
         "location_data": location_data,
         "today": today,
         "total_today": total_today,
-        "week_total": week_total,
-        "month_total": month_total,
+        "week_total": week_stats["total"],
+        "month_total": month_stats["total"],
+        "week_stats": week_stats,
+        "month_stats": month_stats,
+        "spaces_total": spaces_total,
+        "spaces_pointed": spaces_pointed,
+        "spaces_missing": spaces_missing,
+        "all_pointed": all_pointed,
+        "last_update": last_update,
         "today_closure": today_closure,
         "today_is_closed": today_is_closed,
+        "next_closure": next_closure,
+        "next_open_date": next_open_date,
+        "today_variation": today_variation,
+        "commune": commune,
+        "available_communes": available_communes,
+        "can_manage_spaces": (
+            scope_user is not None and scope_user == request.user
+        ),
         "title": "Pointage visiteurs",
     }
 
@@ -180,18 +390,22 @@ def index(request):
 @mediatheque_member_required_json
 @require_POST
 def increment_count(request, location_id, amount=1):
-    """Incrémenter le compteur d'un espace (+N visiteurs)"""
+    """Incrémenter le compteur d'un espace (+N visiteurs)."""
     today = timezone.now().date()
     location = get_object_or_404(
-        filter_location_owned(Location.objects.filter(is_active=True), request.user),
+        filter_location_owned(
+            Location.objects.filter(
+                is_active=True, user__isnull=False
+            ),
+            request.user,
+        ),
         id=location_id,
     )
 
-    # Limiter le montant entre 1 et 10 pour éviter les abus
-    amount = max(1, min(int(amount), 10))
-
-    opening_weekdays = get_opening_weekdays(request.user)
-    closure_map = build_closure_map(request.user, today, today)
+    amount = max(1, min(int(amount), 99))
+    owner = location.user
+    opening_weekdays = get_opening_weekdays(owner)
+    closure_map = build_closure_map(owner, today, today)
     if (
         today.weekday() not in opening_weekdays
         or today in closure_map
@@ -209,81 +423,133 @@ def increment_count(request, location_id, amount=1):
             status=409,
         )
 
-    count_obj, created = VisitorCount.objects.get_or_create(
-        location=location, date=today, defaults={"count": 0, "created_by": request.user}
-    )
+    with transaction.atomic():
+        count_obj, created = (
+            VisitorCount.objects.select_for_update().get_or_create(
+                location=location,
+                date=today,
+                defaults={
+                    "count": amount,
+                    "created_by": request.user,
+                    "updated_by": request.user,
+                },
+            )
+        )
+        if not created:
+            VisitorCount.objects.filter(pk=count_obj.pk).update(
+                count=F("count") + amount,
+                updated_by=request.user,
+                updated_at=timezone.now(),
+            )
+            count_obj.refresh_from_db()
 
-    count_obj.count += amount
-    count_obj.updated_by = request.user
-    count_obj.save()
-
-    # Calculer le nouveau total du jour
     total_today = (
-        filter_owned(
-            VisitorCount.objects.filter(date=today),
-            request.user,
-            field="location__user",
+        VisitorCount.objects.filter(
+            location__user=owner,
+            location__is_active=True,
+            date=today,
         ).aggregate(total=Sum("count"))["total"]
         or 0
     )
 
     return JsonResponse(
-        {"success": True, "count": count_obj.count, "total_today": total_today}
+        {
+            "success": True,
+            "count": count_obj.count,
+            "total_today": total_today,
+        }
     )
 
 
 @mediatheque_member_required_json
 @require_POST
 def decrement_count(request, location_id):
-    """Décrémenter le compteur d'un espace (-1)"""
+    """Décrémenter le compteur d'un espace (-1), sans créer de ligne."""
     today = timezone.now().date()
     location = get_object_or_404(
-        filter_location_owned(Location.objects.filter(is_active=True), request.user),
+        filter_location_owned(
+            Location.objects.filter(
+                is_active=True, user__isnull=False
+            ),
+            request.user,
+        ),
         id=location_id,
     )
+    owner = location.user
 
-    count_obj, created = VisitorCount.objects.get_or_create(
-        location=location, date=today, defaults={"count": 0, "created_by": request.user}
-    )
+    changed = False
+    count_obj = VisitorCount.objects.filter(
+        location=location, date=today
+    ).first()
+    if count_obj is not None and count_obj.count > 0:
+        changed = (
+            VisitorCount.objects.filter(
+                pk=count_obj.pk, count__gt=0
+            ).update(
+                count=F("count") - 1,
+                updated_by=request.user,
+                updated_at=timezone.now(),
+            )
+            > 0
+        )
+        count_obj.refresh_from_db()
 
-    if count_obj.count > 0:
-        count_obj.count -= 1
-        count_obj.updated_by = request.user
-        count_obj.save()
-
-    # Calculer le nouveau total du jour
     total_today = (
-        filter_owned(
-            VisitorCount.objects.filter(date=today),
-            request.user,
-            field="location__user",
+        VisitorCount.objects.filter(
+            location__user=owner,
+            location__is_active=True,
+            date=today,
         ).aggregate(total=Sum("count"))["total"]
         or 0
     )
 
     return JsonResponse(
-        {"success": True, "count": count_obj.count, "total_today": total_today}
+        {
+            "success": True,
+            "changed": changed,
+            "count": count_obj.count if count_obj else 0,
+            "total_today": total_today,
+        }
     )
 
 
 @mediatheque_member_required
 def entry_form(request):
     """Formulaire de saisie rétroactive (par date)."""
+    scope_user, commune, available_communes = _resolve_index_scope(request)
+    if scope_user is None:
+        messages.error(request, "Aucune médiathèque disponible.")
+        return redirect("visitor_tracking:index")
+
+    if request.method == "POST" and request.user.is_superuser:
+        requested_commune = (
+            request.POST.get("commune") or ""
+        ).strip()
+        if requested_commune and requested_commune != commune:
+            messages.error(
+                request,
+                "La médiathèque sélectionnée n'existe plus. "
+                "Aucune donnée n'a été enregistrée.",
+            )
+            return redirect("visitor_tracking:index")
+
     selected_date = None
     selected_closure = None
     selected_is_closed = False
-    opening_weekdays = get_opening_weekdays(request.user)
+    opening_weekdays = get_opening_weekdays(scope_user)
     first_calendar_year = getattr(
         settings, "VISITOR_REPORT_V2_FROM_YEAR", 2026
     )
 
     if request.method == "POST":
-        form = BulkVisitorCountForm(request.POST, user=request.user)
+        form = BulkVisitorCountForm(request.POST, user=scope_user)
         if form.is_valid():
             date = form.cleaned_data["date"]
             selected_date = date
             if date.year >= first_calendar_year:
-                closure_map = build_closure_map(request.user, date, date)
+                closure_map = build_closure_map(
+                    scope_user, date, date
+                )
                 selected_closure = closure_map.get(date)
                 selected_is_closed = (
                     selected_closure is not None
@@ -299,8 +565,8 @@ def entry_form(request):
                     "exceptionnelle.",
                 )
             else:
-                active_locations = filter_location_owned(
-                    Location.objects.filter(is_active=True), request.user
+                active_locations = Location.objects.filter(
+                    is_active=True, user=scope_user
                 )
 
                 submitted_ids = {
@@ -354,7 +620,10 @@ def entry_form(request):
                     f"{date.strftime('%d/%m/%Y')} "
                     f"({saved_count} espaces).",
                 )
-                return redirect("visitor_tracking:index")
+                target = reverse("visitor_tracking:index")
+                if commune:
+                    target = f"{target}?commune={commune}"
+                return redirect(target)
     else:
         initial_date = request.GET.get("date")
         form_initial = {}
@@ -368,7 +637,7 @@ def entry_form(request):
                 selected_date = date_obj
                 if date_obj.year >= first_calendar_year:
                     closure_map = build_closure_map(
-                        request.user, date_obj, date_obj
+                        scope_user, date_obj, date_obj
                     )
                     selected_closure = closure_map.get(date_obj)
                     selected_is_closed = (
@@ -376,13 +645,10 @@ def entry_form(request):
                         or date_obj.weekday() not in opening_weekdays
                     )
 
-                existing_counts = filter_owned(
-                    VisitorCount.objects.filter(
-                        date=date_obj
-                    ).select_related("location"),
-                    request.user,
-                    field="location__user",
-                )
+                existing_counts = VisitorCount.objects.filter(
+                    location__user=scope_user,
+                    date=date_obj,
+                ).select_related("location")
                 for count in existing_counts:
                     field_name = f"location_{count.location.id}"
                     form_initial[field_name] = count.count
@@ -390,15 +656,18 @@ def entry_form(request):
                 pass
 
         form = BulkVisitorCountForm(
-            user=request.user, initial=form_initial
+            user=scope_user, initial=form_initial
         )
 
     context = {
         "form": form,
-        "location_fields": form.get_location_fields(user=request.user),
+        "location_fields": form.get_location_fields(user=scope_user),
         "selected_date": selected_date,
         "selected_closure": selected_closure,
         "selected_is_closed": selected_is_closed,
+        "commune": commune,
+        "available_communes": available_communes,
+        "can_manage_spaces": scope_user == request.user,
         "title": "Saisie des visiteurs",
     }
 
@@ -2090,6 +2359,13 @@ def edit_space(request, location_id):
     location = get_object_or_404(
         filter_location_owned(Location.objects.all(), request.user), id=location_id
     )
+    commune = ""
+    if (
+        request.user.is_superuser
+        and location.user is not None
+        and location.user != request.user
+    ):
+        commune = location.user.username
 
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
@@ -2113,7 +2389,10 @@ def edit_space(request, location_id):
                 location.color = color
                 location.save(update_fields=["name", "description", "icon", "color"])
                 messages.success(request, f"Espace '{name}' modifié avec succès.")
-                return redirect("visitor_tracking:index")
+                target = reverse("visitor_tracking:index")
+                if commune:
+                    target = f"{target}?commune={commune}"
+                return redirect(target)
         else:
             messages.error(request, "Le nom de l'espace est obligatoire.")
 
@@ -2121,6 +2400,7 @@ def edit_space(request, location_id):
         "icons": SPACE_ICONS,
         "colors": SPACE_COLORS,
         "location": location,
+        "commune": commune,
         "title": f"Modifier {location.name}",
     }
     return render(request, "visitor_tracking/add_space.html", context)
