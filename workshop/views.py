@@ -2088,3 +2088,220 @@ def export_workshops_csv(request):
         ])
 
     return response
+
+
+QUARTER_MONTH_NAMES = [
+    "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+]
+
+QUARTER_WEEKDAY_NAMES = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
+
+
+def _text_color_for_bg(hex_color):
+    """Retourne #ffffff ou #1e293b selon la luminance du fond."""
+    try:
+        value = (hex_color or "#4a6fa5").lstrip("#")
+        red = int(value[0:2], 16)
+        green = int(value[2:4], 16)
+        blue = int(value[4:6], 16)
+    except (ValueError, IndexError):
+        return "#ffffff"
+    luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255
+    return "#1e293b" if luminance > 0.6 else "#ffffff"
+
+
+def _parse_quarter_params(request):
+    """Lit ?annee=&trimestre= (alias ?year=&quarter=), défaut trimestre courant."""
+    today = timezone.now().date()
+    default_quarter = (today.month - 1) // 3 + 1
+    raw_year = (
+        request.GET.get("annee") or request.GET.get("year") or today.year
+    )
+    raw_quarter = (
+        request.GET.get("trimestre") or request.GET.get("quarter")
+        or default_quarter
+    )
+    try:
+        year = int(raw_year)
+    except (ValueError, TypeError):
+        messages.warning(request, "Année invalide, affichage du trimestre en cours.")
+        return today.year, default_quarter
+    try:
+        quarter = int(raw_quarter)
+    except (ValueError, TypeError):
+        messages.warning(
+            request, "Trimestre invalide, affichage du trimestre en cours."
+        )
+        return today.year if isinstance(year, int) else today.year, default_quarter
+    if quarter not in (1, 2, 3, 4) or year < 2000 or year > 2100:
+        messages.warning(request, "Trimestre invalide, affichage du trimestre en cours.")
+        return today.year, default_quarter
+    return year, quarter
+
+
+def _quarter_bounds(year, quarter):
+    """Retourne (premier jour, dernier jour) du trimestre."""
+    first_month = (quarter - 1) * 3 + 1
+    first_day = date(year, first_month, 1)
+    last_month = first_month + 2
+    last_day_number = calendar.monthrange(year, last_month)[1]
+    return first_day, date(year, last_month, last_day_number)
+
+
+@login_required(login_url="login")
+@user_passes_test(is_staff_or_superuser_or_in_comm_group)
+def workshop_quarter(request):
+    """Vue trimestrielle : 3 calendriers mensuels, classiques par lieu."""
+    year, quarter = _parse_quarter_params(request)
+    first_day, last_day = _quarter_bounds(year, quarter)
+
+    workshops = (
+        Workshop.objects.filter(
+            class_welcome=False,
+            date__lte=last_day,
+        )
+        .filter(Q(date_end__isnull=True) | Q(date_end__gte=first_day))
+        .filter(date__lte=last_day)
+        .select_related("location")
+        .order_by("date", "start_time")
+    )
+    # Ne garde que les ateliers qui chevauchent vraiment le trimestre
+    # (date de début avant la fin ET date de fin après le début).
+    workshops = [
+        w
+        for w in workshops
+        if (w.date_end or w.date) >= first_day and w.date <= last_day
+    ]
+
+    by_day = defaultdict(list)
+    locations_in_quarter = {}
+    for workshop in workshops:
+        start = max(workshop.date, first_day)
+        end = min(workshop.date_end or workshop.date, last_day)
+        if end < start:
+            continue
+        color = (
+            getattr(workshop.location, "color", None) or "#4a6fa5"
+        )
+        entry = {
+            "id": workshop.pk,
+            "name": workshop.name,
+            "start_time": workshop.start_time,
+            "end_time": workshop.end_time,
+            "location_name": (
+                workshop.location.name if workshop.location else "Non défini"
+            ),
+            "location_city": (
+                workshop.location.city if workshop.location else ""
+            ),
+            "location_id": (
+                workshop.location.pk if workshop.location else 0
+            ),
+            "color": color,
+            "text_color": _text_color_for_bg(color),
+        }
+        if workshop.location:
+            locations_in_quarter[workshop.location.pk] = {
+                "id": workshop.location.pk,
+                "name": workshop.location.name,
+                "city": workshop.location.city,
+                "color": color,
+                "text_color": _text_color_for_bg(color),
+                "count": locations_in_quarter.get(
+                    workshop.location.pk, {}
+                ).get("count", 0),
+            }
+        day = start
+        seen_locations_days = set()
+        while day <= end:
+            by_day[day].append(entry)
+            if workshop.location:
+                key = (workshop.location.pk, day)
+                if key not in seen_locations_days:
+                    seen_locations_days.add(key)
+                    locations_in_quarter[workshop.location.pk]["count"] += 1
+            day += relativedelta(days=1)
+
+    today = timezone.now().date()
+    cal = calendar.Calendar(firstweekday=0)
+    quarter_months = []
+    for month_offset in range(3):
+        month = (quarter - 1) * 3 + 1 + month_offset
+        weeks = []
+        for week in cal.monthdatescalendar(year, month):
+            cells = []
+            for day in week:
+                day_workshops = sorted(
+                    by_day.get(day, []),
+                    key=lambda e: (
+                        e["start_time"].strftime("%H:%M")
+                        if hasattr(e["start_time"], "strftime")
+                        else str(e["start_time"]),
+                        e["name"].lower(),
+                    ),
+                )
+                cells.append(
+                    {
+                        "date": day,
+                        "day_number": day.day,
+                        "in_month": day.month == month,
+                        "is_today": day == today,
+                        "workshops": day_workshops,
+                    }
+                )
+            weeks.append(cells)
+        month_workshops = sum(
+            len(by_day.get(date(year, month, day), []))
+            for day in range(
+                1, calendar.monthrange(year, month)[1] + 1
+            )
+        )
+        quarter_months.append(
+            {
+                "month": month,
+                "label": QUARTER_MONTH_NAMES[month - 1],
+                "weeks": weeks,
+                "count": month_workshops,
+            }
+        )
+
+    legend = sorted(
+        locations_in_quarter.values(), key=lambda item: item["name"].lower()
+    )
+
+    if quarter == 1:
+        prev_year, prev_quarter = year - 1, 4
+    else:
+        prev_year, prev_quarter = year, quarter - 1
+    if quarter == 4:
+        next_year, next_quarter = year + 1, 1
+    else:
+        next_year, next_quarter = year, quarter + 1
+
+    all_years = list(
+        Workshop.objects.dates("date", "year", order="DESC").values_list(
+            "date__year", flat=True
+        )
+    )
+    if year not in all_years:
+        all_years.append(year)
+    available_years = sorted(set(all_years), reverse=True)
+
+    total_displayed = sum(len(items) for items in by_day.values())
+
+    context = {
+        "year": year,
+        "quarter": quarter,
+        "quarter_label": f"T{quarter} {year}",
+        "quarter_months": quarter_months,
+        "weekday_names": QUARTER_WEEKDAY_NAMES,
+        "legend": legend,
+        "total_displayed": total_displayed,
+        "available_years": available_years,
+        "prev_year": prev_year,
+        "prev_quarter": prev_quarter,
+        "next_year": next_year,
+        "next_quarter": next_quarter,
+    }
+    return render(request, "workshop/workshop_quarter.html", context)

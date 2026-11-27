@@ -2502,7 +2502,7 @@ def superadmin_statistics(request):
 
     def _user_color(username):
         """Couleur stable par utilisateur (déterministe, sans mapping en dur)."""
-        h = int(hashlib.md5(username.encode("utf-8")).hexdigest(), 16)
+        h = int(hashlib.md5(username.encode("utf-8"), usedforsecurity=False).hexdigest(), 16)
         return palette[h % len(palette)]
 
     for row in daily_by_user:

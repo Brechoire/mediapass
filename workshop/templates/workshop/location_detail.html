@@ -112,6 +112,13 @@
                                 <p class="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-lg">{{ location.zip_code }}</p>
                             </div>
                             <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Couleur (vue trimestrielle)</label>
+                                <p class="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-lg inline-flex items-center gap-2">
+                                    <span class="w-5 h-5 rounded-full border border-gray-200 inline-block" style="background-color: {{ location.color|default:'#4a6fa5' }};" aria-hidden="true"></span>
+                                    <code>{{ location.color|default:"#4a6fa5" }}</code>
+                                </p>
+                            </div>
+                            <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Adresse complète</label>
                                 <p class="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-lg">{{ location.address }}</p>
                             </div>

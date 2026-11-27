@@ -11,12 +11,18 @@
                 <h1 class="text-2xl font-bold text-slate-900">Ateliers</h1>
                 <p class="text-sm text-slate-600 mt-1">Gérez les ateliers de la médiathèque — {{ paginator.count }} atelier{{ paginator.count|pluralize }} en {{ selected_year }}</p>
             </div>
+            <div class="flex items-center gap-2 shrink-0 self-start">
+                <a href="{% url 'workshop_quarter' %}?annee={{ selected_year }}"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-[#4a6fa5] border border-[#dce3ef] text-sm font-medium hover:bg-[#e8eef7] transition-colors">
+                    <i class="bx bx-calendar text-sm" aria-hidden="true"></i> Vue trimestrielle
+                </a>
             {% if user.is_staff or user.is_superuser %}
-            <a href="{% url 'workshop_create' %}"
+                <a href="{% url 'workshop_create' %}"
                 class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f] transition-colors shrink-0 self-start">
                 <i class="bx bx-plus text-sm" aria-hidden="true"></i> Ajouter un atelier
             </a>
             {% endif %}
+            </div>
         </div>
     </div>
 </div>

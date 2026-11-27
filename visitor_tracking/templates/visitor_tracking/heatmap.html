@@ -94,6 +94,16 @@
   #heatmap-tip li { display: flex; justify-content: space-between; gap: 0.75rem; color: #e2e8f0; }
   #heatmap-tip li span:last-child { font-weight: 700; }
   #heatmap-tip .tip-more { color: #94a3b8; font-style: italic; }
+  /* Mois agrandi : cases et textes plus grands */
+  #month-zoom-body [data-month-grid] { gap: 0.5rem; }
+  #month-zoom-body .day-header { font-size: 0.75rem; padding-bottom: 0.5rem; }
+  #month-zoom-body .heatmap-cell { font-size: 1rem; border-radius: 0.625rem; }
+  #month-zoom-body .heatmap-cell .missing-mark { font-size: 12px; top: 3px; right: 6px; }
+  #month-zoom-body .heatmap-cell .zero-mark { font-size: 11px; bottom: 3px; right: 6px; }
+  #month-zoom-body .heatmap-cell .lock-mark { font-size: 12px; bottom: 3px; left: 6px; }
+  @media (max-width: 640px) {
+    #month-zoom-body .heatmap-cell { font-size: 0.8rem; }
+  }
 </style>
 {% endblock %}
 
@@ -260,14 +270,21 @@
       {% for month in months %}
       <div class="rounded-2xl border border-[#dce3ef] bg-white p-4 shadow-sm" data-month-card>
         <div class="mb-3 flex items-center justify-between gap-2">
-          <h2 class="text-sm font-bold text-[#1e293b]">{{ month.name }}</h2>
+          <div class="flex min-w-0 items-center gap-1">
+            <h2 class="truncate text-sm font-bold text-[#1e293b]" data-month-name>{{ month.name }}</h2>
+            <button type="button" data-month-zoom-open
+                    title="Voir {{ month.name }} en grand" aria-label="Voir {{ month.name }} en grand"
+                    class="inline-flex shrink-0 items-center justify-center rounded-lg p-1.5 text-[#5a6f80] transition-colors hover:bg-[#e8eef7] hover:text-[#4a6fa5]">
+              <i class="bx bx-expand text-base" aria-hidden="true"></i>
+            </button>
+          </div>
           {% if can_validate %}
-          <button type="button" class="select-month text-[11px] font-medium text-[#4a6fa5] hover:underline">
+          <button type="button" class="select-month shrink-0 text-[11px] font-medium text-[#4a6fa5] hover:underline">
             Sélectionner les jours non pointés
           </button>
           {% endif %}
         </div>
-        <div class="grid {% if include_sunday %}grid-cols-7{% else %}grid-cols-6{% endif %} gap-1">
+        <div class="grid {% if include_sunday %}grid-cols-7{% else %}grid-cols-6{% endif %} gap-1" data-month-grid>
           <div class="day-header">Lun</div>
           <div class="day-header">Mar</div>
           <div class="day-header">Mer</div>
@@ -373,6 +390,21 @@
     </details>
     {% endif %}
 
+  </div>
+</div>
+
+<!-- Mois en grand -->
+<div id="month-zoom" class="hidden fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-labelledby="month-zoom-title">
+  <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" data-month-zoom-close></div>
+  <div class="relative mx-auto mt-[3vh] w-[min(94vw,52rem)] max-h-[94dvh] overflow-y-auto overscroll-contain rounded-2xl bg-white shadow-2xl">
+    <div class="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[#dce3ef] bg-white/95 px-5 py-3 backdrop-blur">
+      <h2 id="month-zoom-title" class="truncate text-lg font-bold text-[#1e293b]"></h2>
+      <button type="button" id="month-zoom-close" aria-label="Fermer la vue agrandie"
+              class="inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-[#5a6f80] transition-colors hover:bg-[#e8eef7] hover:text-[#4a6fa5]">
+        <i class="bx bx-x text-2xl" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div id="month-zoom-body" class="p-4 sm:p-6"></div>
   </div>
 </div>
 
@@ -633,6 +665,57 @@ document.addEventListener('DOMContentLoaded', function () {
   var saveButton = document.getElementById('selection-save');
   if (saveButton) saveButton.addEventListener('click', saveSelection);
 
+  /* Mois en grand : déplace la carte dans la modale (écouteurs conservés), la replace à la fermeture. */
+  var zoomModal = document.getElementById('month-zoom');
+  var zoomBody = document.getElementById('month-zoom-body');
+  var zoomTitle = document.getElementById('month-zoom-title');
+  var zoomOpener = null;
+  var zoomPlaceholder = null;
+
+  function isZoomOpen() { return !!(zoomModal && !zoomModal.classList.contains('hidden')); }
+
+  function openMonthZoom(button) {
+    if (!zoomModal || !zoomBody) return;
+    var card = button.closest('[data-month-card]');
+    if (!card || isZoomOpen()) return;
+    var nameEl = card.querySelector('[data-month-name]');
+    if (zoomTitle) zoomTitle.textContent = nameEl ? nameEl.textContent : '';
+    zoomOpener = button;
+    zoomPlaceholder = document.createComment('month-zoom');
+    card.parentNode.insertBefore(zoomPlaceholder, card);
+    zoomBody.appendChild(card);
+    hideTip();
+    zoomModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    var closeBtn = document.getElementById('month-zoom-close');
+    if (closeBtn) closeBtn.focus();
+  }
+
+  function closeMonthZoom() {
+    if (!isZoomOpen()) return false;
+    var card = zoomBody.querySelector('[data-month-card]');
+    if (card && zoomPlaceholder && zoomPlaceholder.parentNode) {
+      zoomPlaceholder.parentNode.insertBefore(card, zoomPlaceholder);
+      zoomPlaceholder.parentNode.removeChild(zoomPlaceholder);
+    }
+    zoomPlaceholder = null;
+    zoomModal.classList.add('hidden');
+    document.body.style.overflow = '';
+    hideTip();
+    if (zoomOpener && document.contains(zoomOpener)) zoomOpener.focus();
+    zoomOpener = null;
+    return true;
+  }
+
+  document.querySelectorAll('[data-month-zoom-open]').forEach(function (button) {
+    button.addEventListener('click', function () { openMonthZoom(button); });
+  });
+  var zoomCloseBtn = document.getElementById('month-zoom-close');
+  if (zoomCloseBtn) zoomCloseBtn.addEventListener('click', closeMonthZoom);
+  if (zoomModal) zoomModal.querySelectorAll('[data-month-zoom-close]').forEach(function (el) {
+    el.addEventListener('click', closeMonthZoom);
+  });
+
   var clearButton = document.getElementById('selection-clear');
   if (clearButton) clearButton.addEventListener('click', clearSelection);
 
@@ -647,6 +730,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
+      if (closeMonthZoom()) return;
       if (selected.size) clearSelection();
       else hideTip();
     }

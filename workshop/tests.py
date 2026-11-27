@@ -2513,3 +2513,129 @@ class WorkshopImageOptimizationTests(SimpleTestCase):
     def test_gif_is_left_untouched(self):
         upload = self.make_upload("anim.gif", (20, 20), "GIF")
         self.assertIs(optimize_workshop_image(upload), upload)
+
+
+class WorkshopQuarterViewTests(TestCase):
+    """Tests de la vue trimestrielle des ateliers classiques."""
+
+    def setUp(self):
+        self.loc_anor = Location.objects.create(
+            name="Le 36",
+            address="1 Rue",
+            city="Anor",
+            zip_code="59186",
+            color="#ec4899",
+        )
+        self.loc_other = Location.objects.create(
+            name="Lieu B", address="2 Rue", city="Fourmies", zip_code="59610"
+        )
+        Workshop.objects.create(
+            name="Classique Janvier",
+            location=self.loc_anor,
+            date=date(2026, 1, 15),
+            start_time="09:00",
+            end_time="12:00",
+            poster_required=False,
+            class_welcome=False,
+        )
+        Workshop.objects.create(
+            name="Accueil classe Janvier",
+            location=self.loc_anor,
+            date=date(2026, 1, 16),
+            start_time="09:00",
+            end_time="12:00",
+            poster_required=False,
+            class_welcome=True,
+        )
+        Workshop.objects.create(
+            name="Chevauchement T1",
+            location=self.loc_other,
+            date=date(2026, 3, 30),
+            date_end=date(2026, 4, 2),
+            start_time="09:00",
+            end_time="12:00",
+            poster_required=False,
+            class_welcome=False,
+        )
+        self.staff = User.objects.create_user(
+            username="quarter_staff", password="pass", is_staff=True
+        )
+
+    def login(self):
+        self.client.login(username="quarter_staff", password="pass")
+
+    def test_returns_200_and_excludes_class_welcome(self):
+        self.login()
+        response = self.client.get(
+            reverse("workshop_quarter"),
+            {"annee": "2026", "trimestre": "1"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Classique Janvier")
+        self.assertContains(response, "Chevauchement T1")
+        self.assertNotContains(response, "Accueil classe Janvier")
+        self.assertEqual(response.context["quarter"], 1)
+        self.assertEqual(len(response.context["quarter_months"]), 3)
+
+    def test_multi_day_expanded_on_both_days(self):
+        self.login()
+        response = self.client.get(
+            reverse("workshop_quarter"),
+            {"annee": "2026", "trimestre": "1"},
+        )
+        march = response.context["quarter_months"][2]
+        march_30 = None
+        for week in march["weeks"]:
+            for cell in week:
+                if cell["date"] == date(2026, 3, 30) and cell["in_month"]:
+                    march_30 = cell
+        self.assertIsNotNone(march_30)
+        self.assertTrue(
+            any(
+                event["name"] == "Chevauchement T1"
+                for event in march_30["workshops"]
+            )
+        )
+
+    def test_legend_contains_anor_pink(self):
+        self.login()
+        response = self.client.get(
+            reverse("workshop_quarter"),
+            {"annee": "2026", "trimestre": "1"},
+        )
+        legend = {item["name"]: item for item in response.context["legend"]}
+        self.assertIn("Le 36", legend)
+        self.assertEqual(legend["Le 36"]["color"], "#ec4899")
+
+    def test_invalid_params_fallback_to_current_quarter(self):
+        self.login()
+        response = self.client.get(
+            reverse("workshop_quarter"),
+            {"annee": "abc", "trimestre": "9"},
+        )
+        self.assertEqual(response.status_code, 200)
+        today = timezone.now().date()
+        self.assertEqual(
+            response.context["quarter"], (today.month - 1) // 3 + 1
+        )
+
+    def test_requires_permission(self):
+        response = self.client.get(reverse("workshop_quarter"))
+        self.assertEqual(response.status_code, 302)
+        User.objects.create_user(username="basic", password="pass")
+        self.client.login(username="basic", password="pass")
+        response = self.client.get(reverse("workshop_quarter"))
+        self.assertEqual(response.status_code, 302)
+
+    def test_location_color_validator(self):
+        location = Location(
+            name="Loc",
+            address="1 Rue",
+            city="Paris",
+            zip_code="75000",
+            color="not-a-color",
+        )
+        with self.assertRaises(ValidationError):
+            location.full_clean()
+        location.color = "#ec4899"
+        location.full_clean()

@@ -478,12 +478,24 @@ class LocationForm(forms.ModelForm):
         widget=forms.TextInput(attrs={"class": "form-control"}),
         label="Ville",
     )
+    color = forms.RegexField(
+        regex=r"^#[0-9A-Fa-f]{6}$",
+        widget=forms.TextInput(attrs={"class": "form-control", "type": "color"}),
+        label="Couleur (vue trimestrielle)",
+        help_text="Ex. #ec4899 pour le rose (Anor).",
+        initial="#4a6fa5",
+        required=False,
+    )
 
     class Meta:
         """Configurez le formulaire."""
 
         model = Location
-        fields = ("name", "address", "zip_code", "city")
+        fields = ("name", "address", "zip_code", "city", "color")
+
+    def clean_color(self):
+        """Ramène une couleur vide vers le bleu par défaut."""
+        return self.cleaned_data.get("color") or "#4a6fa5"
 
     def clean_name(self):
         """Validez le nom du lieu.

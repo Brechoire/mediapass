@@ -10,12 +10,12 @@ from .naming import resolve_workshop_name
 class LocationAdmin(admin.ModelAdmin):
     """Configuration de l'administration des lieux."""
 
-    list_display = ("name", "city", "zip_code", "address")
+    list_display = ("name", "city", "zip_code", "address", "color")
     search_fields = ("name", "city")
     list_filter = ("city",)
 
     fieldsets = (
-        ("Informations principales", {"fields": ("name", "address")}),
+        ("Informations principales", {"fields": ("name", "address", "color")}),
         ("Localisation", {"fields": ("zip_code", "city")}),
     )
 

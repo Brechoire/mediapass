@@ -2,7 +2,7 @@
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 
 from app.validators import (
@@ -28,6 +28,21 @@ class Location(models.Model):
     address = models.CharField(max_length=255)
     zip_code = models.CharField(max_length=5)
     city = models.CharField(max_length=255, db_index=True)
+    color = models.CharField(
+        max_length=7,
+        default="#4a6fa5",
+        validators=[
+            RegexValidator(
+                regex=r"^#[0-9A-Fa-f]{6}$",
+                message="La couleur doit être au format hexadécimal (ex. #ec4899).",
+            )
+        ],
+        verbose_name="Couleur",
+        help_text=(
+            "Couleur utilisée dans la vue trimestrielle "
+            "(ex. #ec4899 pour le rose)."
+        ),
+    )
 
     class Meta:
         verbose_name = "Lieu"

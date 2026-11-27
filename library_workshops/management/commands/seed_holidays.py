@@ -1,4 +1,4 @@
-"""Commande d'import des vacances scolaires Zone B 2026/2027"""
+"""Commande d'import des vacances scolaires Zone B 2025/2027"""
 from datetime import date
 from django.core.management.base import BaseCommand
 from library_workshops.models import SchoolHoliday
@@ -14,6 +14,10 @@ HOLIDAYS = [
     # Zone B 2026-2027
     {"name": "Vacances d'Hiver 2027", "start": date(2027, 2, 6), "end": date(2027, 2, 21)},
     {"name": "Vacances de Printemps 2027", "start": date(2027, 4, 10), "end": date(2027, 4, 25)},
+    # Zone B 2027 (fin des cours samedi, reprise indiquée en commentaire)
+    {"name": "Vacances d'Été 2027", "start": date(2027, 7, 3), "end": date(2027, 9, 1)},  # reprise jeu. 02/09/2027
+    {"name": "Vacances de Toussaint 2027", "start": date(2027, 10, 23), "end": date(2027, 11, 7)},  # reprise lun. 08/11/2027
+    {"name": "Vacances de Noël 2027", "start": date(2027, 12, 18), "end": date(2028, 1, 2)},  # reprise lun. 03/01/2028
 ]
 
 ZONE = "B"

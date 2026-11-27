@@ -14,6 +14,7 @@ from . import views
 urlpatterns = [
     # Gestion des ateliers
     path("ateliers/", views.workshop_list, name="workshop_list"),
+    path("ateliers/trimestre/", views.workshop_quarter, name="workshop_quarter"),
     path("atelier/ajout/", views.workshop_create, name="workshop_create"),
     path(
         "atelier/<int:pk>/detail/",
