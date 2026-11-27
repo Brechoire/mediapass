@@ -101,6 +101,7 @@ TEMPLATES = [
                 "shop.context_processors.reservation_count",
                 "shop.context_processors.count_pending_structures",
                 "shop.context_processors.category_list_context",
+                "workshop.context_processors.pending_posters_count",
                 "accounts.context_processors.library_profiles_context",
             ],
         },

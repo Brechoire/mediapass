@@ -54,7 +54,7 @@
                         <a href="{% url 'distribution:index' %}" class="px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors">Distribution</a>
                         {% endif %}
                         {% if user|has_group:'communication' %}
-                        <a href="{% url 'workshops_with_poster' %}" class="px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors">Affiches</a>
+                        <a href="{% url 'workshops_with_poster' %}" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors">Affiches{% if pending_posters_count > 0 %}<span class="inline-flex items-center justify-center rounded-full bg-[#d46a78] text-white text-xs px-2 py-0.5" title="{{ pending_posters_count }} demande(s) d'affiche(s) en attente (visuel manquant)">{{ pending_posters_count }}</span>{% endif %}</a>
                         <a href="{% url 'workshop_list' %}" class="px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors">Ateliers</a>
                         <a href="{% url 'kakemono:list' %}" class="px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors">Kakemonos</a>
                         {% endif %}
@@ -196,7 +196,7 @@
                     <a href="{% url 'distribution:index' %}" class="block px-3 py-2.5 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Distribution</a>
                     {% endif %}
                     {% if user|has_group:'communication' %}
-                    <a href="{% url 'workshops_with_poster' %}" class="block px-3 py-2.5 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Demandes d'affiches</a>
+                    <a href="{% url 'workshops_with_poster' %}" class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Demandes d'affiches{% if pending_posters_count > 0 %}<span class="ml-auto inline-flex items-center justify-center rounded-full bg-[#d46a78] text-white text-xs px-2 py-0.5" title="{{ pending_posters_count }} demande(s) en attente (visuel manquant)">{{ pending_posters_count }}</span>{% endif %}</a>
                     <a href="{% url 'workshop_list' %}" class="block px-3 py-2.5 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Liste des ateliers</a>
                     <a href="{% url 'kakemono:list' %}" class="block px-3 py-2.5 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">Réservations kakemonos</a>
                     {% endif %}
