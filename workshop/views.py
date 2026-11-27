@@ -1821,7 +1821,7 @@ def workshops_with_poster(request):
     """
     q = request.GET.get("q", "").strip()
     statut = request.GET.get("statut", "all")
-    tri = request.GET.get("tri", "date")
+    tri = request.GET.get("tri", "date-desc")
     if statut not in {
         "all",
         "with-poster",
@@ -1832,7 +1832,7 @@ def workshops_with_poster(request):
     }:
         statut = "all"
     if tri not in {"date", "date-desc", "name", "lieu"}:
-        tri = "date"
+        tri = "date-desc"
 
     base_qs = Workshop.objects.filter(Q(poster_required=True)).select_related(
         "location"
@@ -1875,8 +1875,8 @@ def workshops_with_poster(request):
     else:
         ordering = ("date", "start_time")
 
-    # Les demandes restent triées par urgence (date croissante).
-    demandes = list(demandes_qs.order_by("date", "start_time"))
+    # Les deux listes suivent le tri choisi (date décroissante par défaut).
+    demandes = list(demandes_qs.order_by(*ordering))
     workshops_ordered = workshops_qs.order_by(*ordering)
 
     paginator = Paginator(workshops_ordered, 20)

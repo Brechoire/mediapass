@@ -54,7 +54,7 @@
             <h2 class="text-lg font-semibold text-[#1e293b]">À traiter en priorité — visuel manquant</h2>
             <span class="inline-flex items-center justify-center min-w-[1.5rem] h-6 px-2 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">{{ demandes|length }}</span>
         </div>
-        <p class="text-xs text-[#7a8fa0] mb-4 sm:ml-11">Triées par date : les ateliers les plus proches d'abord. Pensez au délai VDN (envoi ~10 jours avant).</p>
+        <p class="text-xs text-[#7a8fa0] mb-4 sm:ml-11">Triées par {% if tri == 'date' %}date croissante (plus proches d'abord){% elif tri == 'name' %}nom{% elif tri == 'lieu' %}lieu{% else %}date décroissante (plus récentes d'abord){% endif %} — modifiable ci-dessous. Pensez au délai VDN (envoi ~10 jours avant).</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for workshop in demandes %}
             <div class="relative bg-white rounded-2xl border-l-4 {% if workshop.urgency == 'urgent' or workshop.urgency == 'overdue' %}border-l-red-400{% elif workshop.urgency == 'soon' %}border-l-amber-400{% else %}border-l-slate-300{% endif %} border border-[#dce3ef] shadow-sm overflow-hidden hover:shadow-md transition-all">
@@ -83,6 +83,10 @@
                         <div class="flex items-center gap-2">
                             <i class="bx bx-time text-[#4a6fa5]"></i>
                             <span>{{ workshop.start_time|time:"H:i" }} — {{ workshop.end_time|time:"H:i" }}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="bx bx-user text-[#4a6fa5]"></i>
+                            <span>{{ workshop.age_range_display }}</span>
                         </div>
                     </div>
                     {% if workshop.observations %}
@@ -124,8 +128,8 @@
                 <label class="flex items-center gap-2 text-sm text-[#7a8fa0]">
                     Trier par
                     <select name="tri" onchange="this.form.submit()" class="px-3 py-2 border border-[#dce3ef] rounded-xl text-sm text-[#1e293b] bg-white focus:outline-none focus:ring-2 focus:ring-[#4a6fa5]/20 focus:border-[#4a6fa5]">
+                        <option value="date-desc" {% if tri == 'date-desc' %}selected{% endif %}>Date décroissante (plus récentes d'abord)</option>
                         <option value="date" {% if tri == 'date' %}selected{% endif %}>Date croissante (urgents d'abord)</option>
-                        <option value="date-desc" {% if tri == 'date-desc' %}selected{% endif %}>Date décroissante</option>
                         <option value="name" {% if tri == 'name' %}selected{% endif %}>Nom A → Z</option>
                         <option value="lieu" {% if tri == 'lieu' %}selected{% endif %}>Lieu A → Z</option>
                     </select>
@@ -151,7 +155,7 @@
                    class="px-3 py-1.5 text-sm font-medium rounded-full transition-all {% if statut == 'toreview' %}bg-sky-600 text-white{% else %}bg-[#f8f9fc] text-[#7a8fa0] hover:bg-[#e8eef7]{% endif %}">À valider</a>
                 <a href="?statut=validated{% if q %}&amp;q={{ q|urlencode }}{% endif %}{% if tri %}&amp;tri={{ tri }}{% endif %}"
                    class="px-3 py-1.5 text-sm font-medium rounded-full transition-all {% if statut == 'validated' %}bg-emerald-700 text-white{% else %}bg-[#f8f9fc] text-[#7a8fa0] hover:bg-[#e8eef7]{% endif %}">Validées</a>
-                {% if q or statut != 'all' or tri != 'date' %}
+                {% if q or statut != 'all' or tri != 'date-desc' %}
                 <a href="{% url 'workshops_with_poster' %}" class="px-3 py-1.5 text-sm font-medium rounded-full bg-white border border-[#dce3ef] text-[#7a8fa0] hover:text-[#1e293b]">Réinitialiser</a>
                 {% endif %}
             </div>
@@ -214,6 +218,10 @@
                             <span class="truncate">{{ workshop.location.name }}</span>
                         </div>
                         <div class="flex items-center gap-2">
+                            <i class="bx bx-user text-[#4a6fa5]"></i>
+                            <span class="truncate">{{ workshop.age_range_display }}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
                             <i class="bx bx-time text-[#4a6fa5]"></i>
                             <span>{{ workshop.start_time|time:"H:i" }} — {{ workshop.end_time|time:"H:i" }}{% if workshop.date_end %} · jusqu'au {{ workshop.date_end|date:"d/m/Y" }}{% endif %}</span>
                         </div>
@@ -250,6 +258,7 @@
                     <tr class="bg-[#f8f9fc] text-[#7a8fa0] text-xs font-medium uppercase tracking-wider">
                         <th class="px-5 py-3 text-left">Atelier</th>
                         <th class="px-5 py-3 text-left">Lieu</th>
+                        <th class="px-5 py-3 text-left">Public</th>
                         <th class="px-5 py-3 text-left">Date</th>
                         <th class="px-5 py-3 text-center">Échéance</th>
                         <th class="px-5 py-3 text-center">Affiche</th>
@@ -263,6 +272,7 @@
                             <span class="font-medium text-[#1e293b]">{{ workshop.name }}</span>
                         </td>
                         <td class="px-5 py-4 text-[#7a8fa0]">{{ workshop.location.name }}</td>
+                        <td class="px-5 py-4 text-[#7a8fa0] whitespace-nowrap">{{ workshop.age_range_display }}</td>
                         <td class="px-5 py-4 text-[#7a8fa0] whitespace-nowrap">{{ workshop.date|date:"d/m/Y" }}</td>
                         <td class="px-5 py-4 text-center whitespace-nowrap">
                             {% if workshop.urgency == 'urgent' %}<span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded-full">{{ workshop.urgency_label }}</span>
@@ -286,7 +296,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="6" class="px-5 py-10 text-center text-[#7a8fa0] text-sm">Aucun atelier ne correspond à ces critères. <a href="{% url 'workshops_with_poster' %}" class="text-[#4a6fa5] underline">Réinitialiser</a>.</td></tr>
+                    <tr><td colspan="7" class="px-5 py-10 text-center text-[#7a8fa0] text-sm">Aucun atelier ne correspond à ces critères. <a href="{% url 'workshops_with_poster' %}" class="text-[#4a6fa5] underline">Réinitialiser</a>.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
