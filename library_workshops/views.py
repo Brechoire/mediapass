@@ -11,8 +11,9 @@ from django.db.models.functions import ExtractYear
 from django.template.loader import render_to_string
 import time
 import logging
+from datetime import date as date_type
 
-from .models import Workshop, WorkshopParticipant, RecurrencePattern
+from .models import Workshop, WorkshopParticipant, RecurrencePattern, SchoolHoliday
 from .forms import (
     WorkshopForm,
     WorkshopParticipantForm,
@@ -278,9 +279,6 @@ def _edit_recurrence_pattern(request, pattern):
 @mediatheque_member_required
 def recurrence_preview(request):
     """Endpoint HTMX : retourne l'aperçu des dates générées."""
-    from .recurrence import RecurrenceService
-    from .models import SchoolHoliday
-
     if request.method == "POST":
         freq = request.POST.get("frequency")
         interval = request.POST.get("interval", 1)
