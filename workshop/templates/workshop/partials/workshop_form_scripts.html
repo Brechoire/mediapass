@@ -1,0 +1,257 @@
+<script>
+(function () {
+    "use strict";
+
+    function formatDate(value) {
+        if (!value) return "";
+        var parts = value.split("-");
+        if (parts.length !== 3) return value;
+        return parts[2] + "/" + parts[1] + "/" + parts[0];
+    }
+
+    function formatDuration(start, end) {
+        if (!start || !end) return "";
+        var startParts = start.split(":");
+        var endParts = end.split(":");
+        if (startParts.length < 2 || endParts.length < 2) return "";
+        var startMinutes =
+            parseInt(startParts[0], 10) * 60 + parseInt(startParts[1], 10);
+        var endMinutes =
+            parseInt(endParts[0], 10) * 60 + parseInt(endParts[1], 10);
+        var diff = endMinutes - startMinutes;
+        if (diff <= 0) return "Horaire à vérifier";
+        var hours = Math.floor(diff / 60);
+        var minutes = diff % 60;
+        if (hours && minutes) {
+            return hours + " h " + String(minutes).padStart(2, "0");
+        }
+        if (hours) return hours + " h";
+        return minutes + " min";
+    }
+
+    function shortTime(value) {
+        return value ? value.slice(0, 5) : "";
+    }
+
+    function initImagePreview() {
+        var input = document.getElementById("id_image");
+        var preview = document.getElementById("imagePreview");
+        if (!input || !preview) return;
+
+        input.addEventListener("change", function (event) {
+            var file = event.target.files && event.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function (loadEvent) {
+                preview.innerHTML = "";
+                var image = document.createElement("img");
+                image.id = "previewImg";
+                image.src = loadEvent.target.result;
+                image.alt = "Aperçu de l'affiche";
+                image.className = "image-preview-img";
+                preview.appendChild(image);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function initSteppers() {
+        var buttons = document.querySelectorAll("[data-stepper-target]");
+        buttons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                var target = document.getElementById(
+                    button.getAttribute("data-stepper-target")
+                );
+                if (!target) return;
+                var step = parseInt(
+                    button.getAttribute("data-stepper-step") || "1",
+                    10
+                );
+                var minimum = parseInt(
+                    button.getAttribute("data-stepper-min") || "0",
+                    10
+                );
+                var value = parseInt(target.value || "0", 10);
+                if (isNaN(value)) value = 0;
+                target.value = Math.max(minimum, value + step);
+                target.dispatchEvent(new Event("input", { bubbles: true }));
+                target.dispatchEvent(new Event("change", { bubbles: true }));
+            });
+        });
+    }
+
+    function initLivePreview() {
+        var form = document.querySelector(".workshop-form");
+        if (!form) return;
+
+        var nameInput = document.getElementById("id_name");
+        var dateInput = document.getElementById("id_date");
+        var dateEndInput = document.getElementById("id_date_end");
+        var startInput = document.getElementById("id_start_time");
+        var endInput = document.getElementById("id_end_time");
+        var locationInput = document.getElementById("id_location");
+
+        var previewName = document.getElementById("previewName");
+        var previewDate = document.getElementById("previewDate");
+        var previewTime = document.getElementById("previewTime");
+        var previewDuration = document.getElementById("previewDuration");
+        var previewLocation = document.getElementById("previewLocation");
+
+        if (
+            !nameInput ||
+            !dateInput ||
+            !startInput ||
+            !endInput ||
+            !previewName ||
+            !previewDate ||
+            !previewTime ||
+            !previewLocation
+        ) {
+            return;
+        }
+
+        function locationLabel() {
+            if (!locationInput || !locationInput.value) {
+                return "Lieu à définir";
+            }
+            var option = locationInput.options[locationInput.selectedIndex];
+            return option ? option.textContent.trim() : "Lieu à définir";
+        }
+
+        function updatePreview() {
+            previewName.textContent =
+                nameInput.value.trim() || "Nom de l'atelier";
+
+            var startDate = formatDate(dateInput.value);
+            var endDate = formatDate(
+                dateEndInput ? dateEndInput.value : ""
+            );
+            if (!startDate) {
+                previewDate.textContent = "Date à définir";
+            } else if (endDate && endDate !== startDate) {
+                previewDate.textContent =
+                    "Du " + startDate + " au " + endDate;
+            } else {
+                previewDate.textContent = "Le " + startDate;
+            }
+
+            if (startInput.value && endInput.value) {
+                previewTime.textContent =
+                    shortTime(startInput.value) +
+                    " – " +
+                    shortTime(endInput.value);
+            } else if (startInput.value) {
+                previewTime.textContent =
+                    "Début " + shortTime(startInput.value);
+            } else {
+                previewTime.textContent = "Horaire à définir";
+            }
+
+            previewDuration.textContent = formatDuration(
+                startInput.value,
+                endInput.value
+            );
+            previewLocation.textContent = locationLabel();
+        }
+
+        form.addEventListener("input", updatePreview);
+        form.addEventListener("change", updatePreview);
+
+        document.body.addEventListener("htmx:afterSwap", function (event) {
+            var target = (event.detail && event.detail.target) || event.target;
+            if (target && target.id === "id_location") {
+                updatePreview();
+            }
+        });
+
+        startInput.addEventListener("change", function () {
+            if (!startInput.value || endInput.value) return;
+            var parts = startInput.value.split(":");
+            if (parts.length < 2) return;
+            var total =
+                parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10) + 60;
+            if (total >= 24 * 60) total = 24 * 60 - 1;
+            endInput.value =
+                String(Math.floor(total / 60)).padStart(2, "0") +
+                ":" +
+                String(total % 60).padStart(2, "0");
+            endInput.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+
+        updatePreview();
+    }
+
+    function initRecurrenceToggle() {
+        var recurrenceInput = document.getElementById("id_recurrence");
+        var countWrapper = document.getElementById("recurrenceCountWrapper");
+        var hint = document.getElementById("recurrenceHint");
+        var saveAndAdd = document.getElementById("saveAndAddButton");
+        if (!recurrenceInput || !countWrapper) return;
+
+        function refresh() {
+            var active = recurrenceInput.value !== "none";
+            countWrapper.hidden = !active;
+            if (hint) hint.hidden = !active;
+            if (saveAndAdd) {
+                saveAndAdd.style.display = active ? "none" : "";
+            }
+        }
+
+        recurrenceInput.addEventListener("change", refresh);
+        refresh();
+    }
+
+    function initUnsavedAndSubmitGuard() {
+        var form = document.querySelector("[data-unsaved-warning]");
+        if (!form) return;
+
+        var dirty = false;
+        var submitting = false;
+
+        form.addEventListener("input", function () {
+            dirty = true;
+        });
+        form.addEventListener("change", function () {
+            dirty = true;
+        });
+        form.addEventListener("submit", function (event) {
+            if (submitting) {
+                event.preventDefault();
+                return;
+            }
+            submitting = true;
+            form.classList.add("is-submitting");
+            form.querySelectorAll("button[type='submit']").forEach(
+                function (button) {
+                    button.setAttribute("aria-disabled", "true");
+                }
+            );
+        });
+        window.addEventListener("beforeunload", function (event) {
+            if (!dirty || submitting) return;
+            event.preventDefault();
+            event.returnValue = "";
+        });
+    }
+
+    function focusFirstError() {
+        var firstErrorLink = document.querySelector(
+            "[data-error-summary] a[href^='#']"
+        );
+        if (!firstErrorLink) return;
+        var target = document.querySelector(
+            firstErrorLink.getAttribute("href")
+        );
+        if (target) target.focus();
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        initImagePreview();
+        initSteppers();
+        initLivePreview();
+        initRecurrenceToggle();
+        initUnsavedAndSubmitGuard();
+        focusFirstError();
+    });
+})();
+</script>

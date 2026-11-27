@@ -2,7 +2,8 @@
 
 from django.contrib import admin
 
-from .models import Location, Workshop
+from .models import Location, Workshop, WorkshopName
+from .naming import resolve_workshop_name
 
 
 @admin.register(Location)
@@ -31,6 +32,38 @@ class LocationAdmin(admin.ModelAdmin):
         return ("name",)
 
 
+@admin.register(WorkshopName)
+class WorkshopNameAdmin(admin.ModelAdmin):
+    """Configuration de la liste des noms d'ateliers."""
+
+    list_display = ("name", "created_at", "updated_at")
+    search_fields = ("name", "normalized")
+    readonly_fields = ("normalized", "created_at", "updated_at")
+    ordering = ("name",)
+
+    fieldsets = (
+        (
+            "Nom",
+            {
+                "fields": ("name",),
+                "description": (
+                    "Nom proposé dans les formulaires d'atelier. "
+                    "La casse, les accents et la ponctuation sont normalisés. "
+                    "Renommer une entrée ne modifie pas les ateliers existants : "
+                    "utilisez la commande normalize_workshop_names --apply."
+                ),
+            },
+        ),
+        (
+            "Métadonnées",
+            {
+                "fields": ("normalized", "created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+
 @admin.register(Workshop)
 class WorkshopAdmin(admin.ModelAdmin):
     """Configuration de l'administration des ateliers."""
@@ -43,14 +76,33 @@ class WorkshopAdmin(admin.ModelAdmin):
         "end_time",
         "number_registered",
     )
-    list_filter = ("location", "date", "poster_required", "class_welcome")
+    list_filter = (
+        "location",
+        "date",
+        "poster_required",
+        "class_welcome",
+    )
     search_fields = ("name", "location__name")
     date_hierarchy = "date"
+    readonly_fields = (
+        "series",
+        "series_index",
+        "created_at",
+        "updated_at",
+        "created_by",
+        "updated_by",
+    )
 
     fieldsets = (
         (
             "Informations générales",
-            {"fields": ("name", "location", "description_poster_valide")},
+            {
+                "fields": (
+                    "name",
+                    "location",
+                    "description_poster_valide",
+                )
+            },
         ),
         (
             "Dates et horaires",
@@ -81,5 +133,31 @@ class WorkshopAdmin(admin.ModelAdmin):
                 "classes": ("collapse",),
             },
         ),
-        ("Média", {"fields": ("image",), "classes": ("collapse",)}),
+        (
+            "Média",
+            {"fields": ("image",), "classes": ("collapse",)},
+        ),
+        (
+            "Suivi",
+            {
+                "fields": (
+                    "series",
+                    "series_index",
+                    "created_at",
+                    "updated_at",
+                    "created_by",
+                    "updated_by",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
     )
+
+    def save_model(self, request, obj, form, change):
+        """Canonise le nom et renseigne l'audit utilisateur."""
+        if obj.name:
+            obj.name = resolve_workshop_name(obj.name).name
+        if not change:
+            obj.created_by = request.user
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)

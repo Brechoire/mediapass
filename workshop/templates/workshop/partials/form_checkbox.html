@@ -1,0 +1,16 @@
+{% load widget_tweaks %}
+<div class="form-check-wrapper">
+    <label class="form-check-card" for="{{ field.id_for_label }}">
+        {{ field }}
+        <span class="form-check-label">{{ field.label }}</span>
+    </label>
+    {% if field.help_text %}
+    <p id="{{ field.auto_id }}_help" class="form-help">{{ field.help_text }}</p>
+    {% endif %}
+    {% if field.errors %}
+    <p id="{{ field.auto_id }}_error" class="form-error" role="alert">
+        <i class="bx bx-error-circle" aria-hidden="true"></i>
+        {{ field.errors|join:", " }}
+    </p>
+    {% endif %}
+</div>

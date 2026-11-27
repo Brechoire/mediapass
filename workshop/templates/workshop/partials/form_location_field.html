@@ -1,0 +1,40 @@
+{% load widget_tweaks %}
+<div class="form-field">
+    <div class="form-label-row">
+        <label class="form-label" for="{{ field.id_for_label }}">
+            {{ field.label }}
+            {% if field.field.required %}<span class="required-star" aria-hidden="true">*</span>{% endif %}
+        </label>
+        <span class="form-inline-actions">
+            <a href="{% url 'location_create' %}"
+               target="_blank"
+               rel="noopener"
+               class="form-inline-link">
+                <i class="bx bx-plus" aria-hidden="true"></i> Ajouter un lieu
+            </a>
+            <button type="button"
+                    class="form-inline-link form-inline-button"
+                    hx-get="{% url 'workshop_location_options' %}"
+                    hx-target="#id_location"
+                    hx-swap="innerHTML"
+                    hx-include="#id_location"
+                    title="Recharger la liste des lieux sans perdre la saisie">
+                <i class="bx bx-refresh" aria-hidden="true"></i> Actualiser
+            </button>
+        </span>
+    </div>
+    {% if field.errors %}
+        {{ field|add_class:"form-select"|attr:"aria-invalid:true" }}
+    {% else %}
+        {{ field|add_class:"form-select" }}
+    {% endif %}
+    {% if field.help_text %}
+    <p id="{{ field.auto_id }}_help" class="form-help">{{ field.help_text }}</p>
+    {% endif %}
+    {% if field.errors %}
+    <p id="{{ field.auto_id }}_error" class="form-error" role="alert">
+        <i class="bx bx-error-circle" aria-hidden="true"></i>
+        {{ field.errors|join:", " }}
+    </p>
+    {% endif %}
+</div>

@@ -26,6 +26,16 @@ urlpatterns = [
         name="workshop_update",
     ),
     path(
+        "atelier/<int:pk>/dupliquer/",
+        views.workshop_duplicate,
+        name="workshop_duplicate",
+    ),
+    path(
+        "atelier/lieux/options/",
+        views.workshop_location_options,
+        name="workshop_location_options",
+    ),
+    path(
         "atelier/<int:pk>/delete/",
         views.workshop_delete,
         name="workshop_delete",
@@ -51,6 +61,16 @@ urlpatterns = [
         "atelier-stats/partial/",
         views.workshop_stats_partial,
         name="workshop_stats_partial",
+    ),
+    path(
+        "atelier-stats/rapport/<int:year>/",
+        views.workshop_report,
+        name="workshop_report",
+    ),
+    path(
+        "atelier-stats/rapport/<int:year>/export/docx/",
+        views.workshop_report_export,
+        name="workshop_report_export",
     ),
     # Gestion des lieux
     path("lieu/list/", views.location_list, name="location_list"),

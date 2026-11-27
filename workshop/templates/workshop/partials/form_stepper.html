@@ -1,0 +1,39 @@
+{% load widget_tweaks %}
+<div class="form-field">
+    <label class="form-label" for="{{ field.id_for_label }}">
+        {{ field.label }}
+        {% if field.field.required %}<span class="required-star" aria-hidden="true">*</span>{% endif %}
+    </label>
+    <div class="stepper">
+        <button type="button"
+                class="stepper-button"
+                data-stepper-target="{{ field.auto_id }}"
+                data-stepper-step="-1"
+                data-stepper-min="0"
+                aria-label="Diminuer {{ field.label }}">
+            <i class="bx bx-minus" aria-hidden="true"></i>
+        </button>
+        {% if field.errors %}
+            {{ field|add_class:"form-input stepper-input"|attr:"aria-invalid:true" }}
+        {% else %}
+            {{ field|add_class:"form-input stepper-input" }}
+        {% endif %}
+        <button type="button"
+                class="stepper-button"
+                data-stepper-target="{{ field.auto_id }}"
+                data-stepper-step="1"
+                data-stepper-min="0"
+                aria-label="Augmenter {{ field.label }}">
+            <i class="bx bx-plus" aria-hidden="true"></i>
+        </button>
+    </div>
+    {% if field.help_text %}
+    <p id="{{ field.auto_id }}_help" class="form-help">{{ field.help_text }}</p>
+    {% endif %}
+    {% if field.errors %}
+    <p id="{{ field.auto_id }}_error" class="form-error" role="alert">
+        <i class="bx bx-error-circle" aria-hidden="true"></i>
+        {{ field.errors|join:", " }}
+    </p>
+    {% endif %}
+</div>

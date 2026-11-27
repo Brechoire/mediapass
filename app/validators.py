@@ -107,3 +107,8 @@ def library_image_upload_to(instance, filename):
 
 def library_banner_upload_to(instance, filename):
     return _validated_upload_to("newsletter/banners", filename)
+
+
+def workshop_image_upload_to(instance, filename):
+    """Nom de fichier aléatoire et validé pour les affiches d'atelier."""
+    return _validated_upload_to("ateliers_images", filename)

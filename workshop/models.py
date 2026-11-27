@@ -1,9 +1,17 @@
 """Modèles de données pour la gestion des ateliers."""
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
 
-from app.validators import validate_image_extension
+from app.validators import (
+    validate_image_content,
+    validate_image_extension,
+    validate_image_size,
+    workshop_image_upload_to,
+)
+from .naming import normalize_workshop_name
 
 
 class Location(models.Model):
@@ -35,6 +43,85 @@ class Location(models.Model):
         return self.name
 
 
+class WorkshopName(models.Model):
+    """Nom canonique d'atelier proposé dans les formulaires.
+
+    La liste est indépendante des ateliers : un nom peut être préparé à
+    l'avance, et reste disponible même si aucun atelier ne l'utilise.
+    """
+
+    name = models.CharField(
+        max_length=255,
+        unique=True,
+        verbose_name="Nom de l'atelier",
+        help_text=(
+            "Nom proposé dans les formulaires d'atelier. La casse, les "
+            "accents et la ponctuation sont normalisés pour éviter les "
+            "doublons."
+        ),
+    )
+    normalized = models.CharField(
+        max_length=512,
+        unique=True,
+        editable=False,
+        verbose_name="Clé normalisée",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Nom d'atelier"
+        verbose_name_plural = "Noms d'atelier"
+
+    def __str__(self):
+        """Retourne le libellé canonique."""
+        return self.name
+
+    def clean(self):
+        """Valide et normalise le nom avant l'enregistrement."""
+        super().clean()
+        self.name = " ".join((self.name or "").split())
+        self.normalized = normalize_workshop_name(self.name)
+        if not self.normalized:
+            raise ValidationError(
+                {
+                    "name": (
+                        "Le nom doit contenir au moins une lettre ou un "
+                        "chiffre."
+                    )
+                }
+            )
+        duplicate = (
+            WorkshopName.objects.exclude(pk=self.pk)
+            .filter(normalized=self.normalized)
+            .first()
+        )
+        if duplicate:
+            raise ValidationError(
+                {
+                    "name": (
+                        f"Ce nom existe déjà sous la forme « {duplicate.name} »."
+                    )
+                }
+            )
+
+    def save(self, *args, **kwargs):
+        """Calcule la clé normalisée avant la sauvegarde."""
+        self.name = " ".join((self.name or "").split())
+        self.normalized = normalize_workshop_name(self.name)
+        if not self.normalized:
+            raise ValidationError(
+                {
+                    "name": (
+                        "Le nom doit contenir au moins une lettre ou un "
+                        "chiffre."
+                    )
+                }
+            )
+        super().save(*args, **kwargs)
+
+
 class Workshop(models.Model):
     """Modèle représentant un atelier.
 
@@ -58,21 +145,60 @@ class Workshop(models.Model):
         poster_valide (bool): Indique si l'affiche est validée.
         description_poster_valide (str): Commentaires sur l'affiche.
         observations (str): Observations pour le bilan de l'atelier.
+        series (UUID): Identifiant commun aux ateliers d'une même série.
+        created_by (User): Utilisateur ayant créé l'atelier.
+        updated_by (User): Dernier utilisateur ayant modifié l'atelier.
     """
 
-    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="workshops", db_index=True)
+    location = models.ForeignKey(
+        Location,
+        on_delete=models.CASCADE,
+        related_name="workshops",
+        db_index=True,
+    )
     name = models.CharField(max_length=255)
     date = models.DateField(db_index=True)
     date_end = models.DateField(null=True, blank=True, db_index=True)
     start_time = models.TimeField()
     end_time = models.TimeField()
+    series = models.UUIDField(
+        null=True,
+        blank=True,
+        editable=False,
+        db_index=True,
+        verbose_name="Série",
+        help_text="Identifiant commun aux ateliers créés ensemble.",
+    )
+    series_index = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name="Position dans la série",
+    )
     poster_required = models.BooleanField(db_index=True)
     image = models.ImageField(
-        upload_to="ateliers_images", null=True, blank=True,
-        validators=[validate_image_extension]
+        upload_to=workshop_image_upload_to,
+        null=True,
+        blank=True,
+        validators=[
+            validate_image_extension,
+            validate_image_size,
+            validate_image_content,
+        ],
     )
-    number_registered = models.IntegerField(default=0, null=True, blank=True, db_index=True)
-    number_attendees = models.IntegerField(default=0, null=True, blank=True)
+    number_registered = models.IntegerField(
+        default=0,
+        null=True,
+        blank=True,
+        db_index=True,
+        validators=[MinValueValidator(0)],
+    )
+    number_attendees = models.IntegerField(
+        default=0,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+    )
     class_welcome = models.BooleanField(default=False, db_index=True)
     instagram = models.BooleanField(default=False, null=True, db_index=True)
     facebook = models.BooleanField(default=False, null=True, db_index=True)
@@ -83,6 +209,28 @@ class Workshop(models.Model):
     description_poster_valide = models.TextField(null=True, blank=True)
     observations = models.TextField(
         null=True, blank=True, verbose_name="Observations"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True, verbose_name="Créé le"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True, verbose_name="Modifié le"
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="Créé par",
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="Modifié par",
     )
 
     class Meta:
@@ -113,12 +261,23 @@ class Workshop(models.Model):
         """Vérifier les contraintes du modèle.
 
         Vérifie que :
+        - Le nom contient au moins une lettre ou un chiffre
         - La date de fin n'est pas antérieure à la date de début
         - L'heure de fin n'est pas antérieure à l'heure de début
 
         Raises:
             ValidationError: Si les contraintes ne sont pas respectées.
         """
+        if self.name and not normalize_workshop_name(self.name):
+            raise ValidationError(
+                {
+                    "name": (
+                        "Le nom de l'atelier doit contenir au moins une "
+                        "lettre ou un chiffre."
+                    )
+                }
+            )
+
         # Valider que la date de fin n'est pas antérieure à la date de début
         if self.date_end and self.date_end < self.date:
             raise ValidationError(

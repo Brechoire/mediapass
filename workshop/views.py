@@ -9,6 +9,7 @@ import csv
 import json
 from collections import defaultdict
 from datetime import date
+from urllib.parse import urlencode
 
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
@@ -17,15 +18,17 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.mail import EmailMultiAlternatives, send_mail
 from django.core.paginator import Paginator
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Avg, Count, ExpressionWrapper, F, Max, Min, Q, Sum, Value, Case, IntegerField, When
 from django.db.models.functions import Coalesce, ExtractMonth
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.html import strip_tags
+from django.utils.text import slugify
 
 from django.core.cache import cache
 from accounts.utils import is_staff_or_superuser, group_required, is_staff_or_superuser_or_in_comm_group
@@ -37,9 +40,10 @@ from .forms import (
     WorkshopPosterValidationForm,
     WorkshopStatsFilterForm,
 )
-from .models import Location, Workshop
+from .models import Location, Workshop, WorkshopName
+from .reporting import build_animation_report
+from .docx_report import build_workshop_report_docx
 from .services import (
-    generate_random_filename,
     CACHE_TIMEOUT,
     HAS_IMAGE_Q,
     NO_IMAGE_Q,
@@ -64,6 +68,7 @@ from .services import (
     get_coverage_gaps,
     get_location_load,
     build_synthese,
+    notify_poster_request,
     WEEKDAY_LABELS,
     SLOT_LABELS,
 )
@@ -145,9 +150,52 @@ def send_custom_email(
     )
 
 
-@login_required(login_url="login")
-@user_passes_test(is_staff_or_superuser_or_in_comm_group)
-def workshop_stats(request):
+def _build_report_charts(context, animation_report):
+    """Prépare les séries JSON utilisées par les graphiques de la page rapport."""
+    monthly = context.get("workshops_by_month") or []
+    month_types = context.get("report_month_type_cross") or context.get(
+        "month_type_cross"
+    ) or []
+    communes = (context.get("commune_table_data") or [])[:12]
+    groups = (animation_report.get("groups") or [])[:10]
+
+    monthly_labels = []
+    monthly_classics = []
+    monthly_accueils = []
+    for index, month in enumerate(monthly):
+        month_type = month_types[index] if index < len(month_types) else {}
+        monthly_labels.append(month.get("label", ""))
+        monthly_classics.append(int(month_type.get("classic_count") or 0))
+        monthly_accueils.append(int(month_type.get("class_count") or 0))
+
+    return {
+        "monthly": {
+            "labels": monthly_labels,
+            "classiques": monthly_classics,
+            "accueils": monthly_accueils,
+        },
+        "communes": {
+            "labels": [row.get("commune", "") for row in communes],
+            "classiques": [
+                int(row.get("ateliers_classiques") or 0) for row in communes
+            ],
+            "accueils": [int(row.get("accueils_classe") or 0) for row in communes],
+        },
+        "types": {
+            "labels": ["Classiques", "Accueils de classe"],
+            "values": [
+                int(context.get("total_workshops_except_class") or 0),
+                int(context.get("total_accueil_classe") or 0),
+            ],
+        },
+        "animations": {
+            "labels": [group.get("label", "") for group in groups],
+            "values": [int(group.get("sessions") or 0) for group in groups],
+        },
+    }
+
+
+def _workshop_stats(request):
     """Affiche les statistiques des ateliers.
 
     Args:
@@ -171,7 +219,10 @@ def workshop_stats(request):
         # Reste sur l'année demandée même sans données ; les années
         # valides restent proposées dans le filtre.
         pass
-    export_word = request.GET.get("export", "0") == "1"
+    export_mode = request.GET.get("export", "")
+    export_word = export_mode == "1"
+    export_report = export_mode == "full"
+    is_report = request.GET.get("report") == "1"
     is_htmx_partial = request.GET.get("partial") == "1"
 
     stats_filter_form = WorkshopStatsFilterForm(
@@ -191,7 +242,9 @@ def workshop_stats(request):
     # pour garder la compatibilité ?year= et le message d'avertissement.
 
     # Requête de base pour les ateliers de l'année sélectionnée + filtres
-    base_workshops = Workshop.objects.filter(date__year=selected_year)
+    base_workshops = Workshop.objects.filter(
+        date__year=selected_year
+    )
     workshops = apply_stats_filters(
         base_workshops,
         location_id=location_id,
@@ -711,7 +764,43 @@ def workshop_stats(request):
         "best_attendance": best_attendance,
         "previous_year_data": previous_year_data,
     }
-    
+
+    # Filtres à reprendre dans les liens du rapport (sans les paramètres
+    # de rendu et sans l'année, déjà présente dans l'URL du rapport).
+    report_params = request.GET.copy()
+    for key in ("report", "export", "partial", "year", "_"):
+        report_params.pop(key, None)
+    context["report_query"] = report_params.urlencode()
+
+    if is_report or export_report:
+        animation_report = build_animation_report(workshops)
+        context["animation_report"] = animation_report
+        context["report_generated_at"] = timezone.localtime()
+        context["report_title"] = (
+            f"Rapport complet des ateliers {selected_year}"
+        )
+        # Pour le rapport, les croisements mensuels doivent refléter
+        # exactement les filtres actifs (contrairement aux matrices de
+        # drill-down de la page de statistiques).
+        context["report_month_type_cross"] = get_month_type_cross(workshops)
+        context["report_charts"] = _build_report_charts(
+            context, animation_report
+        )
+        monthly_rows = []
+        month_types = context["report_month_type_cross"]
+        for index, month in enumerate(context.get("workshops_by_month") or []):
+            month_type = month_types[index] if index < len(month_types) else {}
+            monthly_rows.append(
+                {
+                    **month,
+                    "classic_count": int(
+                        month_type.get("classic_count") or 0
+                    ),
+                    "class_count": int(month_type.get("class_count") or 0),
+                }
+            )
+        context["report_monthly_rows"] = monthly_rows
+
     # Ajouter les totaux à date au contexte si disponibles
     if previous_year_data and "total_workshops_to_date" in previous_year_data:
         context["total_workshops_to_date"] = previous_year_data["total_workshops_to_date"]
@@ -883,6 +972,28 @@ def workshop_stats(request):
         }
     context["month_ranges"] = month_ranges
 
+    if export_report:
+        doc = build_workshop_report_docx(context)
+        filename = f"rapport_ateliers_{selected_year}.docx"
+        if city_filter:
+            filename = (
+                f"rapport_ateliers_{slugify(city_filter)}_{selected_year}.docx"
+            )
+        response = HttpResponse(
+            content_type=(
+                "application/vnd.openxmlformats-officedocument"
+                ".wordprocessingml.document"
+            )
+        )
+        response["Content-Disposition"] = (
+            f'attachment; filename="{filename}"'
+        )
+        doc.save(response)
+        return response
+
+    if is_report:
+        return render(request, "workshop/workshop_report.html", context)
+
     if export_word:
         # Générer le fichier Word (nom basé sur l'année sélectionnée)
         doc = save_stats_to_word(
@@ -908,6 +1019,42 @@ def workshop_stats(request):
     return render(request, "workshop/workshop_stats.html", context)
 
 
+def _stats_request_with(request, **overrides):
+    """Retourne une requête dont les paramètres GET sont surchargés."""
+    get_data = request.GET.copy()
+    for key, value in overrides.items():
+        get_data[key] = value
+    request.GET = get_data
+    return request
+
+
+@login_required(login_url="login")
+@user_passes_test(is_staff_or_superuser_or_in_comm_group)
+def workshop_stats(request):
+    """Page des statistiques des ateliers."""
+    return _workshop_stats(request)
+
+
+@login_required(login_url="login")
+@user_passes_test(is_staff_or_superuser_or_in_comm_group)
+def workshop_report(request, year):
+    """Rapport complet des ateliers, affiché dans une page dédiée."""
+    request = _stats_request_with(request, year=str(year), report="1")
+    request.GET.pop("export", None)
+    request.GET.pop("partial", None)
+    return _workshop_stats(request)
+
+
+@login_required(login_url="login")
+@user_passes_test(is_staff_or_superuser_or_in_comm_group)
+def workshop_report_export(request, year):
+    """Export DOCX du rapport complet des ateliers."""
+    request = _stats_request_with(request, year=str(year), export="full")
+    request.GET.pop("report", None)
+    request.GET.pop("partial", None)
+    return _workshop_stats(request)
+
+
 @login_required(login_url="login")
 @user_passes_test(is_staff_or_superuser_or_in_comm_group)
 def workshop_stats_partial(request):
@@ -915,7 +1062,7 @@ def workshop_stats_partial(request):
     get_data = request.GET.copy()
     get_data["partial"] = "1"
     request.GET = get_data
-    return workshop_stats(request)
+    return _workshop_stats(request)
 
 
 # Liste des ateliers
@@ -1148,6 +1295,59 @@ def workshop_list(request):
     return render(request, "workshop/workshop_list.html", context)
 
 
+def _workshop_create_initial(request):
+    """Valeurs initiales d'un formulaire de création.
+
+    Gère le préremplissage après « Enregistrer et ajouter un autre »
+    (lieu/date) et la duplication d'un atelier existant (`?from=<pk>`).
+    """
+    initial = {}
+
+    location_id = request.GET.get("location")
+    if location_id:
+        try:
+            location = Location.objects.filter(pk=int(location_id)).first()
+        except (TypeError, ValueError):
+            location = None
+        if location:
+            initial["location"] = location
+
+    date_value = request.GET.get("date")
+    if date_value:
+        try:
+            initial["date"] = date.fromisoformat(date_value)
+        except (TypeError, ValueError):
+            pass
+
+    source_id = request.GET.get("from")
+    if source_id:
+        try:
+            source = (
+                Workshop.objects.select_related("location")
+                .filter(pk=int(source_id))
+                .first()
+            )
+        except (TypeError, ValueError):
+            source = None
+        if source:
+            initial.update(
+                {
+                    "name": source.name,
+                    "start_time": source.start_time,
+                    "end_time": source.end_time,
+                    "poster_required": source.poster_required,
+                    "class_welcome": source.class_welcome,
+                    "observations": source.observations,
+                    "number_registered": 0,
+                    "number_attendees": 0,
+                }
+            )
+            if source.location_id:
+                initial["location"] = source.location
+
+    return initial
+
+
 # Ajout d'un atelier
 @login_required(login_url="login")
 @user_passes_test(is_staff_or_superuser)
@@ -1160,45 +1360,70 @@ def workshop_create(request):
     Returns:
         HttpResponse: La page de création d'atelier ou redirection.
     """
-    locations = Location.objects.all()
-    locations_count = locations.count()
-    domain = request.META.get("HTTP_HOST", "localhost")
+    locations_count = Location.objects.count()
 
     if request.method == "POST":
         form = WorkshopForm(request.POST, request.FILES)
         if form.is_valid():
-            workshop = form.save()
+            submitted_name = form.cleaned_data.get("name", "")
+            if form.has_recurrence():
+                workshops = form.save_series(user=request.user)
+                workshop = workshops[0]
+                messages.success(
+                    request,
+                    f"{len(workshops)} ateliers ont été créés avec succès "
+                    f"(série du {workshops[0].date:%d/%m/%Y} au "
+                    f"{workshops[-1].date:%d/%m/%Y}).",
+                )
+                if submitted_name != workshop.name:
+                    messages.info(
+                        request,
+                        f"Nom existant réutilisé : « {workshop.name} ».",
+                    )
+                if workshop.poster_required:
+                    transaction.on_commit(
+                        lambda: notify_poster_request(workshop)
+                    )
+                return redirect("workshop_list")
+
+            workshop = form.save(user=request.user)
             messages.success(request, "L'atelier a été créé avec succès.")
-
-            # Vérifier la case à cocher et envoyer un e-mail si nécessaire
-            if workshop.poster_required:
-                from notifications.email_service import send_notification
-                send_notification("poster_request", {"workshop": workshop})
-
-            # Gérer l'affiche
-            if request.FILES.get("image"):
-                # Supprimer l'ancienne affiche si elle existe
-                if workshop.image:
-                    workshop.image.delete()
-
-                # Générer un nom aléatoire pour la nouvelle affiche
-                filename = generate_random_filename(
-                    request.FILES["image"].name
+            if submitted_name != workshop.name:
+                messages.info(
+                    request,
+                    f"Nom existant réutilisé : « {workshop.name} ».",
                 )
 
-                # Enregistrer la nouvelle affiche avec le nouveau nom
-                workshop.image.save(filename, request.FILES["image"])
+            if workshop.poster_required:
+                transaction.on_commit(
+                    lambda: notify_poster_request(workshop)
+                )
 
+            if request.POST.get("save_and_add"):
+                query = urlencode(
+                    {
+                        "location": workshop.location_id,
+                        "date": workshop.date.isoformat(),
+                    }
+                )
+                return redirect(
+                    f"{reverse('workshop_create')}?{query}"
+                )
             return redirect("workshop_list")
     else:
-        form = WorkshopForm()
+        form = WorkshopForm(initial=_workshop_create_initial(request) or None)
     return render(
         request,
-        "workshop/workshop_create.html",
+        "workshop/workshop_form.html",
         {
             "form": form,
             "locations_count": locations_count,
-            "locations": locations,
+            "workshop_names": WorkshopName.objects.order_by("name").values_list(
+                "name", flat=True
+            ),
+            "is_edit": False,
+            "page_title": "Ajouter un atelier",
+            "cancel_url": reverse("workshop_list"),
         },
     )
 
@@ -1216,9 +1441,22 @@ def workshop_detail(request, pk):
     Returns:
         HttpResponse: La page de détails de l'atelier.
     """
-    workshop = get_object_or_404(Workshop.objects.select_related("location"), pk=pk)
+    workshop = get_object_or_404(
+        Workshop.objects.select_related(
+            "location", "created_by", "updated_by"
+        ),
+        pk=pk,
+    )
+    series_count = 0
+    if workshop.series:
+        series_count = Workshop.objects.filter(series=workshop.series).count()
     return render(
-        request, "workshop/workshop_detail.html", {"workshop": workshop}
+        request,
+        "workshop/workshop_detail.html",
+        {
+            "workshop": workshop,
+            "series_count": series_count,
+        },
     )
 
 
@@ -1235,44 +1473,71 @@ def workshop_update(request, pk):
     Returns:
         HttpResponse: La page de modification ou redirection.
     """
-    workshop = get_object_or_404(Workshop, pk=pk)
-    locations = Location.objects.all()
-    domain = request.META.get("HTTP_HOST", "localhost")
+    workshop = get_object_or_404(
+        Workshop.objects.select_related("location"), pk=pk
+    )
+    locations_count = Location.objects.count()
     if request.method == "POST":
+        was_poster_required = workshop.poster_required
         form = WorkshopForm(request.POST, request.FILES, instance=workshop)
         if form.is_valid():
-            form.save()
+            submitted_name = form.cleaned_data.get("name", "")
+            workshop = form.save(user=request.user)
             messages.success(
                 request, "L'atelier a été mis à jour avec succès."
             )
-
-            # Vérifier la case à cocher et envoyer un e-mail si nécessaire
-            if workshop.poster_required:
-                from notifications.email_service import send_notification
-                send_notification("poster_request", {"workshop": workshop})
-
-            # Gérer l'affiche
-            if request.FILES.get("image"):
-                # Supprimer l'ancienne affiche si elle existe
-                if workshop.image:
-                    workshop.image.delete()
-
-                # Générer un nom aléatoire pour la nouvelle affiche
-                filename = generate_random_filename(
-                    request.FILES["image"].name
+            if submitted_name != workshop.name:
+                messages.info(
+                    request,
+                    f"Nom existant réutilisé : « {workshop.name} ».",
                 )
 
-                # Enregistrer la nouvelle affiche avec le nouveau nom
-                workshop.image.save(filename, request.FILES["image"])
+            if workshop.poster_required and not was_poster_required:
+                transaction.on_commit(
+                    lambda: notify_poster_request(workshop)
+                )
 
             return redirect("workshop_list")
     else:
-        workshop.date = workshop.date.strftime("%Y-%m-%d")
-        form = WorkshopForm(instance=workshop)
+        form = WorkshopForm(
+            instance=workshop,
+            initial={"date": workshop.date.isoformat()},
+        )
     return render(
         request,
-        "workshop/workshop_update.html",
-        {"form": form, "locations": locations},
+        "workshop/workshop_form.html",
+        {
+            "form": form,
+            "locations_count": locations_count,
+            "workshop_names": WorkshopName.objects.order_by("name").values_list(
+                "name", flat=True
+            ),
+            "is_edit": True,
+            "page_title": f"Modifier {workshop.name}",
+            "cancel_url": reverse("workshop_list"),
+        },
+    )
+
+
+@login_required(login_url="login")
+@user_passes_test(is_staff_or_superuser)
+def workshop_duplicate(request, pk):
+    """Préremplit la création à partir d'un atelier existant."""
+    workshop = get_object_or_404(Workshop, pk=pk)
+    return redirect(f"{reverse('workshop_create')}?from={workshop.pk}")
+
+
+@login_required(login_url="login")
+@user_passes_test(is_staff_or_superuser)
+def workshop_location_options(request):
+    """Retourne les options de lieux pour rafraîchir le select sans reload."""
+    return render(
+        request,
+        "workshop/partials/location_options.html",
+        {
+            "locations": Location.objects.order_by("name"),
+            "selected": request.GET.get("location", ""),
+        },
     )
 
 
@@ -1317,6 +1582,7 @@ def workshop_valide_poster(request, pk):
             request.POST, request.FILES, instance=workshop, request=request
         )
         if form.is_valid():
+            form.instance.updated_by = request.user
             new_image = request.FILES.get("image")
             form.save()
             messages.success(
@@ -1405,7 +1671,10 @@ def workshops_with_poster(request):
     Returns:
         HttpResponse: La page des ateliers avec affiches.
     """
-    base_qs = Workshop.objects.filter(Q(poster_required=True)).select_related("location")
+    base_qs = (
+        Workshop.objects.filter(Q(poster_required=True))
+        .select_related("location")
+    )
 
     demandes = base_qs.filter(NO_IMAGE_Q).order_by('date')
     workshops = base_qs.filter(HAS_IMAGE_Q).order_by('date')
@@ -1442,6 +1711,7 @@ def workshop_delete_image(request, pk):
     if request.method == "POST":
         if workshop.image:
             workshop.image.delete()
+        workshop.updated_by = request.user
         workshop.save()
         messages.success(request, "L'image de l'atelier a été supprimée.")
         return redirect("workshop_valide_poster", pk)
@@ -1748,6 +2018,7 @@ def approve_poster_valide(request, pk):
                 from notifications.email_service import send_notification
                 send_notification("poster_rejected", {"workshop": workshop})
                 messages.info(request, "L'affiche a été refusée.")
+            workshop.updated_by = request.user
             workshop.save()
             return redirect("workshop_validate_poster_admin")
     else:

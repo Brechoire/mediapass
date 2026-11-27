@@ -1,0 +1,25 @@
+{% load widget_tweaks %}
+<div class="form-field">
+    <label class="form-label" for="{{ form.name.id_for_label }}">
+        {{ form.name.label }}
+        <span class="required-star" aria-hidden="true">*</span>
+    </label>
+    {% if form.name.errors %}
+        {{ form.name|add_class:"form-input"|attr:"aria-invalid:true" }}
+    {% else %}
+        {{ form.name|add_class:"form-input" }}
+    {% endif %}
+    <datalist id="workshop-name-options">
+        {% for workshop_name in workshop_names %}<option value="{{ workshop_name }}"></option>{% endfor %}
+    </datalist>
+    <p id="{{ form.name.auto_id }}_help" class="form-help">
+        Choisissez un nom existant ou saisissez un nouveau nom : il sera ajouté à la liste s'il n'existe pas déjà.
+        La casse, les accents et la ponctuation sont normalisés pour éviter les doublons.
+    </p>
+    {% if form.name.errors %}
+    <p id="{{ form.name.auto_id }}_error" class="form-error" role="alert">
+        <i class="bx bx-error-circle" aria-hidden="true"></i>
+        {{ form.name.errors|join:", " }}
+    </p>
+    {% endif %}
+</div>

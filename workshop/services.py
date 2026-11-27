@@ -146,6 +146,13 @@ def attendance_rate_value(attendees, registered):
     return round(attendees / registered * 100, 1)
 
 
+def notify_poster_request(workshop):
+    """Demande une affiche à l'équipe communication."""
+    from notifications.email_service import send_notification
+
+    send_notification("poster_request", {"workshop": workshop})
+
+
 def get_presence_by_group(workshops):
     """Taux de présence par lieu, commune et mois (agrégations ORM)."""
     by_location = list(

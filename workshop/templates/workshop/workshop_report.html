@@ -1,0 +1,820 @@
+{% extends "base_new.html" %}
+{% load static %}
+
+{% block title %}{{ report_title }} | {{ block.super }}{% endblock %}
+
+{% block content %}
+<style>
+  .report-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .report-kpi {
+    background: #eef3f9;
+    border: 1px solid #dce3ef;
+    border-radius: 0.75rem;
+    padding: 0.9rem 1rem;
+  }
+  .report-kpi span {
+    display: block;
+    color: #5a6f80;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .report-kpi strong {
+    display: block;
+    color: #4a6fa5;
+    font-size: 1.55rem;
+    line-height: 1.2;
+  }
+  .report-kpi small {
+    display: block;
+    color: #5a6f80;
+    font-size: 0.72rem;
+  }
+  .report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+  }
+  .report-table th,
+  .report-table td {
+    border: 1px solid #e2e8f0;
+    padding: 0.4rem 0.5rem;
+    vertical-align: top;
+  }
+  .report-table thead th {
+    background: #4a6fa5;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+  .report-table tbody th {
+    color: #1e293b;
+    font-weight: 600;
+    text-align: left;
+  }
+  .report-table td.num,
+  .report-table th.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .report-table tfoot th,
+  .report-table tfoot td {
+    background: #f8fafc;
+    font-weight: 700;
+  }
+  .report-chart {
+    position: relative;
+    height: 18rem;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+  @media print {
+    body {
+      background: #fff !important;
+    }
+    body > header,
+    body > footer,
+    #backup-modal {
+      display: none !important;
+    }
+    .no-print {
+      display: none !important;
+    }
+    .report-card {
+      break-inside: auto;
+      border-color: #cbd5e1 !important;
+      box-shadow: none !important;
+      margin-bottom: 0.6rem;
+      padding: 0.7rem;
+    }
+    .report-avoid-break {
+      break-inside: avoid;
+    }
+    .report-chart {
+      height: 55mm !important;
+    }
+    .report-table {
+      font-size: 7.5pt;
+    }
+    .overflow-x-auto {
+      overflow: visible !important;
+    }
+    .report-table th,
+    .report-table td {
+      padding: 2px 3px;
+    }
+    .report-table thead {
+      display: table-header-group;
+    }
+    .report-table thead th,
+    .report-kpi,
+    .report-bar {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .report-table tr {
+      break-inside: avoid;
+    }
+    h1,
+    h2,
+    h3 {
+      break-after: avoid;
+    }
+    .report-bar {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+</style>
+
+<div class="min-h-screen bg-slate-50 py-6 print:bg-white print:py-0">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+
+    <nav aria-label="Fil d’Ariane" class="mb-3 text-xs text-slate-500 no-print">
+      <a href="{% url 'workshop_list' %}" class="hover:text-[#4a6fa5]">Ateliers</a>
+      <span aria-hidden="true" class="mx-1">/</span>
+      <a href="{% url 'workshop_stats' %}?year={{ selected_year }}{% if report_query %}&amp;{{ report_query }}{% endif %}" class="hover:text-[#4a6fa5]">Statistiques {{ selected_year }}</a>
+      <span aria-hidden="true" class="mx-1">/</span>
+      <span aria-current="page" class="font-medium text-slate-700">Rapport complet</span>
+    </nav>
+
+    <header class="report-card report-avoid-break">
+      <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div class="min-w-0">
+          <p class="text-xs font-semibold uppercase tracking-wider text-[#4a6fa5]">
+            Médi@'pass · Communauté de communes Sud-Avesnois
+          </p>
+          <h1 class="mt-1 text-2xl font-bold text-slate-900 sm:text-3xl">
+            Rapport complet des ateliers {{ selected_year }}
+          </h1>
+          <p class="mt-2 text-sm text-slate-600">
+            {% if synthese.perimetre %}Périmètre : {{ synthese.perimetre }}.{% else %}Tous les ateliers de l’année.{% endif %}
+          </p>
+          <p class="mt-1 text-xs text-slate-500">
+            Généré le {{ report_generated_at|date:"d/m/Y à H:i" }} · Données agrégées, aucun nominatif.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 no-print">
+          <a href="{% url 'workshop_stats' %}?year={{ selected_year }}{% if report_query %}&amp;{{ report_query }}{% endif %}"
+             class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <i class="bx bx-arrow-back" aria-hidden="true"></i> Retour aux statistiques
+          </a>
+          <a href="{% url 'workshop_report_export' selected_year %}{% if report_query %}?{{ report_query }}{% endif %}"
+             class="inline-flex items-center gap-2 rounded-lg bg-[#4a6fa5] px-3 py-2 text-sm font-medium text-white hover:bg-[#3d5f8f]">
+            <i class="bx bx-download" aria-hidden="true"></i> Télécharger le DOCX
+          </a>
+          <button type="button" onclick="window.print()"
+                  class="inline-flex items-center gap-2 rounded-lg border border-[#4a6fa5] px-3 py-2 text-sm font-medium text-[#4a6fa5] hover:bg-[#e8eef7]">
+            <i class="bx bx-printer" aria-hidden="true"></i> Imprimer / PDF
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 no-print">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Année</span>
+        {% if selected_year not in available_years %}
+        <a href="{% url 'workshop_report' selected_year %}{% if report_query %}?{{ report_query }}{% endif %}"
+           aria-current="page"
+           class="rounded-lg bg-[#4a6fa5] px-2.5 py-1 text-xs font-semibold text-white">{{ selected_year }}</a>
+        {% endif %}
+        {% for year in available_years %}
+        <a href="{% url 'workshop_report' year %}{% if report_query %}?{{ report_query }}{% endif %}"
+           {% if year == selected_year %}aria-current="page"{% endif %}
+           class="rounded-lg px-2.5 py-1 text-xs font-semibold {% if year == selected_year %}bg-[#4a6fa5] text-white{% else %}border border-slate-300 text-slate-700 hover:bg-slate-50{% endif %}">{{ year }}</a>
+        {% endfor %}
+      </div>
+    </header>
+
+    <section class="report-card report-avoid-break" aria-labelledby="synthese-title">
+      <h2 id="synthese-title" class="text-lg font-bold text-slate-900">Synthèse</h2>
+      {% if synthese.phrases %}
+      <p class="mt-3 text-[15px] font-medium leading-relaxed text-slate-900">{{ synthese.phrases.0 }}</p>
+      {% if synthese.phrases|length > 1 %}
+      <ol class="mt-3 space-y-2 text-sm leading-relaxed text-slate-700">
+        {% for phrase in synthese.phrases|slice:"1:" %}
+        <li class="flex gap-2">
+          <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#4a6fa5] text-[11px] font-bold text-white" aria-hidden="true">{{ forloop.counter }}</span>
+          <span>{{ phrase }}</span>
+        </li>
+        {% endfor %}
+      </ol>
+      {% endif %}
+      {% else %}
+      <p class="mt-3 text-sm text-slate-500">Aucune donnée pour rédiger la synthèse sur ce périmètre.</p>
+      {% endif %}
+    </section>
+
+    <section aria-labelledby="kpi-title" class="mb-4">
+      <h2 id="kpi-title" class="sr-only">Indicateurs clés</h2>
+      <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div class="report-kpi report-bar">
+        <span>Ateliers</span>
+        <strong>{{ total_workshops }}</strong>
+        <small>{{ total_accueil_classe }} accueil{{ total_accueil_classe|pluralize }} de classe</small>
+      </div>
+      <div class="report-kpi report-bar">
+        <span>Ateliers classiques</span>
+        <strong>{{ total_workshops_except_class }}</strong>
+        <small>hors accueils de classe</small>
+      </div>
+      <div class="report-kpi report-bar">
+        <span>Inscrits</span>
+        <strong>{{ total_registered }}</strong>
+        <small>personnes inscrites</small>
+      </div>
+      <div class="report-kpi report-bar">
+        <span>Taux de présence</span>
+        <strong>{{ attendance_rate|floatformat:1 }} %</strong>
+        <small>présents / inscrits</small>
+      </div>
+      <div class="report-kpi report-bar">
+        <span>Communes</span>
+        <strong>{{ animation_report.totals.communes }}</strong>
+        <small>communes couvertes</small>
+      </div>
+      <div class="report-kpi report-bar">
+        <span>Animations</span>
+        <strong>{{ animation_report.totals.animations }}</strong>
+        <small>intitulés regroupés</small>
+      </div>
+      <div class="report-kpi report-bar">
+        <span>Présents</span>
+        <strong>{{ total_attendees }}</strong>
+        <small>participants effectifs</small>
+      </div>
+      <div class="report-kpi report-bar">
+        <span>Moyenne d’inscrits</span>
+        <strong>{{ avg_registered|floatformat:1 }}</strong>
+        <small>hors accueils de classe</small>
+      </div>
+      </div>
+    </section>
+
+    <section class="report-card" aria-labelledby="monthly-title">
+      <h2 id="monthly-title" class="text-lg font-bold text-slate-900">Évolution mensuelle</h2>
+      <p class="mt-1 text-sm text-slate-600">Répartition des ateliers classiques et des accueils de classe, mois par mois.</p>
+      <div class="report-chart mt-3">
+        <canvas id="report-monthly-chart" role="img"
+                aria-label="Ateliers classiques et accueils de classe par mois en {{ selected_year }}."></canvas>
+      </div>
+      <div class="mt-4 overflow-x-auto">
+        <table class="report-table">
+          <caption class="sr-only">Nombre d’ateliers, d’inscrits et de présents par mois en {{ selected_year }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Mois</th>
+              <th scope="col" class="num">Classiques</th>
+              <th scope="col" class="num">Accueils</th>
+              <th scope="col" class="num">Total</th>
+              <th scope="col" class="num">Inscrits</th>
+              <th scope="col" class="num">Présents</th>
+              <th scope="col" class="num">Taux</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in report_monthly_rows %}
+            <tr>
+              <th scope="row">{{ row.label }}</th>
+              <td class="num">{{ row.classic_count }}</td>
+              <td class="num">{{ row.class_count }}</td>
+              <td class="num">{{ row.count }}</td>
+              <td class="num">{{ row.total_registered }}</td>
+              <td class="num">{{ row.total_attendees }}</td>
+              <td class="num">{{ row.attendance_rate|floatformat:1 }} %</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-slate-500">Aucune donnée mensuelle.</td></tr>
+            {% endfor %}
+          </tbody>
+          {% if report_monthly_rows %}
+          <tfoot>
+            <tr>
+              <th scope="row">Total</th>
+              <td class="num">{{ total_workshops_except_class }}</td>
+              <td class="num">{{ total_accueil_classe }}</td>
+              <td class="num">{{ total_workshops }}</td>
+              <td class="num">{{ total_registered }}</td>
+              <td class="num">{{ total_attendees }}</td>
+              <td class="num">{{ attendance_rate|floatformat:1 }} %</td>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+    </section>
+
+    <section class="report-card" aria-labelledby="types-title">
+      <h2 id="types-title" class="text-lg font-bold text-slate-900">Répartition par type et par commune</h2>
+      <div class="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div class="report-chart report-avoid-break">
+          <canvas id="report-types-chart" role="img"
+                  aria-label="Répartition entre ateliers classiques et accueils de classe en {{ selected_year }}."></canvas>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="report-table">
+            <caption class="sr-only">Répartition des ateliers, inscrits et présents par type</caption>
+            <thead>
+              <tr>
+                <th scope="col">Type</th>
+                <th scope="col" class="num">Ateliers</th>
+                <th scope="col" class="num">Inscrits</th>
+                <th scope="col" class="num">Présents</th>
+                <th scope="col" class="num">Taux</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Classiques</th>
+                <td class="num">{{ total_workshops_except_class }}</td>
+                <td class="num">{{ animation_report.totals.classics_registered }}</td>
+                <td class="num">{{ animation_report.totals.classics_attendees }}</td>
+                <td class="num">{{ animation_report.totals.classics_attendance_rate|floatformat:1 }} %</td>
+              </tr>
+              <tr>
+                <th scope="row">Accueils de classe</th>
+                <td class="num">{{ total_accueil_classe }}</td>
+                <td class="num">{{ animation_report.totals.class_welcome_registered }}</td>
+                <td class="num">{{ animation_report.totals.class_welcome_attendees }}</td>
+                <td class="num">{{ animation_report.totals.class_welcome_attendance_rate|floatformat:1 }} %</td>
+              </tr>
+              <tr>
+                <th scope="row">Total</th>
+                <td class="num">{{ total_workshops }}</td>
+                <td class="num">{{ total_registered }}</td>
+                <td class="num">{{ total_attendees }}</td>
+                <td class="num">{{ attendance_rate|floatformat:1 }} %</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="mt-5">
+        <div class="report-chart" style="height: 20rem;">
+          <canvas id="report-communes-chart" role="img"
+                  aria-label="Ateliers classiques et accueils de classe par commune en {{ selected_year }}."></canvas>
+        </div>
+        {% if commune_table_data|length > 12 %}
+        <p class="mt-1 text-xs text-slate-500">Graphique limité aux 12 communes ayant le plus d’ateliers ; le tableau ci-dessous couvre toutes les communes.</p>
+        {% endif %}
+      </div>
+
+      <div class="mt-4 overflow-x-auto">
+        <table class="report-table">
+          <caption class="sr-only">Détail des ateliers, inscrits et présents par commune</caption>
+          <thead>
+            <tr>
+              <th scope="col">Commune</th>
+              <th scope="col" class="num">Ateliers</th>
+              <th scope="col" class="num">Classiques</th>
+              <th scope="col" class="num">Accueils</th>
+              <th scope="col" class="num">Inscrits</th>
+              <th scope="col" class="num">Présents</th>
+              <th scope="col" class="num">Taux</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for commune in commune_table_data %}
+            <tr>
+              <th scope="row">{{ commune.commune }}</th>
+              <td class="num">{{ commune.total_ateliers }}</td>
+              <td class="num">{{ commune.ateliers_classiques }}</td>
+              <td class="num">{{ commune.accueils_classe }}</td>
+              <td class="num">{{ commune.total_participants }}</td>
+              <td class="num">{{ commune.total_presents }}</td>
+              <td class="num">{{ commune.attendance_rate|floatformat:1 }} %</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-slate-500">Aucune donnée par commune.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="report-card" aria-labelledby="communes-animations-title">
+      <h2 id="communes-animations-title" class="text-lg font-bold text-slate-900">Résumé par commune et animations</h2>
+      <p class="mt-1 text-sm text-slate-600">
+        Les intitulés sont regroupés lorsqu’ils ne diffèrent que par leur format
+        (Atelier, Initiation, Découverte, Soirée, etc.). Les variantes exactes
+        figurent sous chaque animation et dans l’annexe.
+      </p>
+
+      <div class="mt-4 space-y-4">
+        {% for commune in animation_report.by_commune %}
+        <section class="report-avoid-break rounded-lg border border-slate-200 p-4"
+                 aria-labelledby="commune-title-{{ forloop.counter }}">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 id="commune-title-{{ forloop.counter }}" class="text-base font-bold text-slate-900">{{ commune.commune }}</h3>
+            <p class="text-xs text-slate-500">
+              {{ commune.total_ateliers }} atelier{{ commune.total_ateliers|pluralize }} ·
+              {{ commune.animations_count }} animation{{ commune.animations_count|pluralize }} ·
+              {{ commune.registered }} inscrit{{ commune.registered|pluralize }} ·
+              {{ commune.attendees }} présent{{ commune.attendees|pluralize }} ·
+              taux {{ commune.attendance_rate|floatformat:1 }} %
+            </p>
+          </div>
+
+          <div class="mt-3 overflow-x-auto">
+            <table class="report-table">
+              <caption class="sr-only">Animations de la commune de {{ commune.commune }}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Animation</th>
+                  <th scope="col" class="num">Séances</th>
+                  <th scope="col" class="num">Inscrits</th>
+                  <th scope="col" class="num">Présents</th>
+                  <th scope="col" class="num">Taux</th>
+                  <th scope="col">Période</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for animation in commune.animations %}
+                <tr>
+                  <th scope="row">
+                    {{ animation.label }}
+                    {% if animation.variants|length > 1 %}
+                    <span class="mt-0.5 block text-[11px] font-normal text-slate-500">Variantes : {{ animation.variants|join:" · " }}</span>
+                    {% endif %}
+                  </th>
+                  <td class="num">{{ animation.sessions }}</td>
+                  <td class="num">{{ animation.registered }}</td>
+                  <td class="num">{{ animation.attendees }}</td>
+                  <td class="num">{{ animation.attendance_rate|floatformat:1 }} %</td>
+                  <td class="whitespace-nowrap text-xs text-slate-600">
+                    {% if animation.first_date %}
+                      {% if animation.first_date == animation.last_date %}
+                        {{ animation.first_date|date:"d/m/Y" }}
+                      {% else %}
+                        {{ animation.first_date|date:"d/m/Y" }} – {{ animation.last_date|date:"d/m/Y" }}
+                      {% endif %}
+                    {% else %}—{% endif %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-slate-500">Aucune animation sur cette commune.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+        {% empty %}
+        <p class="text-sm text-slate-500">Aucune donnée par commune.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="report-card" aria-labelledby="animations-title">
+      <h2 id="animations-title" class="text-lg font-bold text-slate-900">Synthèse des animations</h2>
+      <p class="mt-1 text-sm text-slate-600">Vue consolidée de toutes les animations du périmètre, toutes communes confondues.</p>
+      <div class="report-chart mt-3" style="height: 20rem;">
+        <canvas id="report-animations-chart" role="img"
+                aria-label="Top 10 des animations par nombre de séances en {{ selected_year }}."></canvas>
+      </div>
+      <div class="mt-4 overflow-x-auto">
+        <table class="report-table">
+          <caption class="sr-only">Synthèse des animations : communes, séances, inscrits, présents et taux</caption>
+          <thead>
+            <tr>
+              <th scope="col">Animation</th>
+              <th scope="col" class="num">Communes</th>
+              <th scope="col" class="num">Séances</th>
+              <th scope="col" class="num">Inscrits</th>
+              <th scope="col" class="num">Présents</th>
+              <th scope="col" class="num">Taux</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for group in animation_report.groups %}
+            <tr>
+              <th scope="row">{{ group.label }}</th>
+              <td class="num">{{ group.communes|length }}</td>
+              <td class="num">{{ group.sessions }}</td>
+              <td class="num">{{ group.registered }}</td>
+              <td class="num">{{ group.attendees }}</td>
+              <td class="num">{{ group.attendance_rate|floatformat:1 }} %</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-slate-500">Aucune animation sur le périmètre.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="report-card" aria-labelledby="tops-title">
+      <h2 id="tops-title" class="text-lg font-bold text-slate-900">Ateliers les plus fréquentés</h2>
+      <div class="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div>
+          <h3 class="text-sm font-semibold text-slate-900">Top 5 par inscrits</h3>
+          <div class="mt-2 overflow-x-auto">
+            <table class="report-table">
+              <caption class="sr-only">Cinq ateliers avec le plus d’inscrits</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Atelier</th>
+                  <th scope="col">Lieu</th>
+                  <th scope="col" class="num">Inscrits</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for workshop in most_registered %}
+                <tr>
+                  <th scope="row" class="whitespace-nowrap">{{ workshop.date|date:"d/m/Y" }}</th>
+                  <td>{{ workshop.name }}</td>
+                  <td>{{ workshop.location.name|default:"—" }}</td>
+                  <td class="num">{{ workshop.number_registered|default_if_none:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center text-slate-500">Aucune donnée.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-slate-900">Top 5 par taux de présence</h3>
+          <div class="mt-2 overflow-x-auto">
+            <table class="report-table">
+              <caption class="sr-only">Cinq ateliers avec le meilleur taux de présence</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Atelier</th>
+                  <th scope="col" class="num">Inscrits</th>
+                  <th scope="col" class="num">Présents</th>
+                  <th scope="col" class="num">Taux</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for workshop in best_attendance %}
+                <tr>
+                  <th scope="row" class="whitespace-nowrap">{{ workshop.date|date:"d/m/Y" }}</th>
+                  <td>{{ workshop.name }}</td>
+                  <td class="num">{{ workshop.number_registered }}</td>
+                  <td class="num">{{ workshop.number_attendees }}</td>
+                  <td class="num">{{ workshop.attendance_rate|floatformat:1 }} %</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-slate-500">Aucune donnée.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="report-card" aria-labelledby="communication-title">
+      <h2 id="communication-title" class="text-lg font-bold text-slate-900">Communication et affiches</h2>
+      <div class="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div class="overflow-x-auto">
+          <table class="report-table">
+            <caption class="sr-only">Couverture des canaux de communication</caption>
+            <thead>
+              <tr>
+                <th scope="col">Canal</th>
+                <th scope="col" class="num">Ateliers relayés</th>
+                <th scope="col" class="num">Part</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">Instagram</th><td class="num">{{ communication_stats.instagram }}</td><td class="num">{{ channel_coverage.instagram.rate|floatformat:0 }} %</td></tr>
+              <tr><th scope="row">Facebook</th><td class="num">{{ communication_stats.facebook }}</td><td class="num">{{ channel_coverage.facebook.rate|floatformat:0 }} %</td></tr>
+              <tr><th scope="row">Email</th><td class="num">{{ communication_stats.mail }}</td><td class="num">{{ channel_coverage.mail.rate|floatformat:0 }} %</td></tr>
+              <tr><th scope="row">Portail</th><td class="num">{{ communication_stats.portail }}</td><td class="num">{{ channel_coverage.portail.rate|floatformat:0 }} %</td></tr>
+              <tr><th scope="row">VDN</th><td class="num">{{ communication_stats.vdn }}</td><td class="num">{{ channel_coverage.vdn.rate|floatformat:0 }} %</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="report-table">
+            <caption class="sr-only">Indicateurs sur les affiches</caption>
+            <thead>
+              <tr>
+                <th scope="col">Affiches</th>
+                <th scope="col" class="num">Nombre</th>
+                <th scope="col">Précision</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">Requises</th><td class="num">{{ poster_stats.required }}</td><td>{{ poster_stats.required_rate|floatformat:0 }} % des ateliers</td></tr>
+              <tr><th scope="row">Validées</th><td class="num">{{ poster_stats.valide }}</td><td>{{ poster_stats.valide_rate|floatformat:0 }} % des requises</td></tr>
+              <tr><th scope="row">Avec visuel</th><td class="num">{{ poster_stats.with_image }}</td><td>affiche ou visuel disponible</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="report-card" aria-labelledby="method-title">
+      <h2 id="method-title" class="text-lg font-bold text-slate-900">Méthode et définitions</h2>
+      <ul class="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-slate-700">
+        <li>Source : base de données des ateliers Médi@'pass.</li>
+        <li>Période : année {{ selected_year }}.</li>
+        <li>Périmètre : {% if synthese.perimetre %}{{ synthese.perimetre }}{% else %}tous les ateliers de l’année{% endif %}.</li>
+        <li>Inscrits : nombre de personnes inscrites renseigné pour chaque atelier. Présents : nombre de participants effectivement présents.</li>
+        <li>Taux de présence : présents divisés par inscrits. Il n’est pas calculé lorsque le nombre d’inscrits est nul.</li>
+        <li>Regroupement des intitulés : casse, accents, pluriels et mots de format (Atelier, Initiation, Découverte, Soirée, Tournoi, etc.) sont neutralisés. Les sujets différents restent séparés.</li>
+        <li>Les données sont agrégées : le rapport ne contient aucun nominatif.</li>
+      </ul>
+
+      <h3 class="mt-5 text-base font-bold text-slate-900">Annexe — Regroupement des intitulés</h3>
+      {% if animation_report.merged_groups %}
+      <div class="mt-2 overflow-x-auto">
+        <table class="report-table">
+          <caption class="sr-only">Correspondance entre les animations et leurs variantes d’intitulé</caption>
+          <thead>
+            <tr>
+              <th scope="col">Animation</th>
+              <th scope="col">Variantes regroupées</th>
+              <th scope="col" class="num">Séances</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for group in animation_report.merged_groups %}
+            <tr>
+              <th scope="row">{{ group.label }}</th>
+              <td>{{ group.variants|join:" · " }}</td>
+              <td class="num">{{ group.sessions }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="mt-2 text-sm text-slate-500">Aucun regroupement nécessaire : chaque intitulé est unique.</p>
+      {% endif %}
+    </section>
+
+    <p class="pb-4 text-center text-xs text-slate-500">
+      Médi@'pass — Rapport complet des ateliers {{ selected_year }} — généré le {{ report_generated_at|date:"d/m/Y à H:i" }}.
+    </p>
+  </div>
+</div>
+
+{{ report_charts|json_script:"report-charts-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"
+        integrity="sha384-YAshAm4KKjf8V01c4sdNbPYiwU0D0Q82fjMHhKw8VvP0ecY4fxXsZAHxC4r4Ei+T"
+        crossorigin="anonymous"></script>
+<script>
+(function () {
+  var dataNode = document.getElementById('report-charts-data');
+  if (!dataNode || typeof Chart === 'undefined') return;
+
+  var data;
+  try { data = JSON.parse(dataNode.textContent); } catch (error) { return; }
+  if (!data) return;
+
+  var primary = '#4a6fa5';
+  var primaryLight = '#7fa7d9';
+  var accent = '#d9a441';
+  var grid = '#e2e8f0';
+  var text = '#5a6f80';
+
+  function baseOptions(extra) {
+    return Object.assign({
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 12, usePointStyle: true, color: text }
+        }
+      }
+    }, extra || {});
+  }
+
+  var monthlyCanvas = document.getElementById('report-monthly-chart');
+  if (monthlyCanvas && data.monthly && data.monthly.labels.length) {
+    new Chart(monthlyCanvas, {
+      type: 'bar',
+      data: {
+        labels: data.monthly.labels,
+        datasets: [
+          {
+            label: 'Classiques',
+            data: data.monthly.classiques,
+            backgroundColor: primary,
+            borderRadius: 4,
+            maxBarThickness: 42
+          },
+          {
+            label: 'Accueils de classe',
+            data: data.monthly.accueils,
+            backgroundColor: accent,
+            borderRadius: 4,
+            maxBarThickness: 42
+          }
+        ]
+      },
+      options: baseOptions({
+        scales: {
+          x: { stacked: true, grid: { display: false }, ticks: { color: text } },
+          y: { stacked: true, beginAtZero: true, grid: { color: grid }, ticks: { color: text, precision: 0 } }
+        }
+      })
+    });
+  }
+
+  var typesCanvas = document.getElementById('report-types-chart');
+  if (typesCanvas && data.types && (data.types.values[0] || data.types.values[1])) {
+    new Chart(typesCanvas, {
+      type: 'doughnut',
+      data: {
+        labels: data.types.labels,
+        datasets: [{
+          data: data.types.values,
+          backgroundColor: [primary, accent],
+          borderColor: '#ffffff',
+          borderWidth: 3
+        }]
+      },
+      options: baseOptions({
+        cutout: '58%',
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true, color: text } }
+        }
+      })
+    });
+  }
+
+  var communesCanvas = document.getElementById('report-communes-chart');
+  if (communesCanvas && data.communes && data.communes.labels.length) {
+    new Chart(communesCanvas, {
+      type: 'bar',
+      data: {
+        labels: data.communes.labels,
+        datasets: [
+          {
+            label: 'Classiques',
+            data: data.communes.classiques,
+            backgroundColor: primary,
+            borderRadius: 4,
+            maxBarThickness: 26
+          },
+          {
+            label: 'Accueils de classe',
+            data: data.communes.accueils,
+            backgroundColor: accent,
+            borderRadius: 4,
+            maxBarThickness: 26
+          }
+        ]
+      },
+      options: baseOptions({
+        indexAxis: 'y',
+        scales: {
+          x: { stacked: true, beginAtZero: true, grid: { color: grid }, ticks: { color: text, precision: 0 } },
+          y: { stacked: true, grid: { display: false }, ticks: { color: text } }
+        }
+      })
+    });
+  }
+
+  var animationsCanvas = document.getElementById('report-animations-chart');
+  if (animationsCanvas && data.animations && data.animations.labels.length) {
+    new Chart(animationsCanvas, {
+      type: 'bar',
+      data: {
+        labels: data.animations.labels,
+        datasets: [{
+          label: 'Séances',
+          data: data.animations.values,
+          backgroundColor: primaryLight,
+          borderRadius: 4,
+          maxBarThickness: 24
+        }]
+      },
+      options: baseOptions({
+        indexAxis: 'y',
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: { beginAtZero: true, grid: { color: grid }, ticks: { color: text, precision: 0 } },
+          y: { grid: { display: false }, ticks: { color: text } }
+        }
+      })
+    });
+  }
+})();
+</script>
+{% endblock %}

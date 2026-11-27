@@ -12,22 +12,31 @@
                 <a href="{% url 'workshop_list' %}" class="inline-flex items-center gap-1 text-white/60 hover:text-white text-sm transition-colors mb-3">
                     <i class="bx bx-arrow-back"></i> Retour à la liste
                 </a>
-                <div class="flex items-center gap-3 mb-3">
+                <div class="flex flex-wrap items-center gap-3 mb-3">
                     <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                         <i class="bx bx-calendar-event text-2xl text-white"></i>
                     </div>
                     <h1 class="text-3xl sm:text-4xl font-bold text-white">{{ workshop.name }}</h1>
                 </div>
-                <p class="text-white/70 text-sm">Détails de l'atelier</p>
+                <p class="text-white/70 text-sm">
+                    Détails de l'atelier
+                    {% if series_count > 1 %} · Série de {{ series_count }} ateliers{% endif %}
+                </p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
                 <a href="{% url 'workshop_update' workshop.pk %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
-                    <i class="bx bx-edit-alt"></i> Modifier
+                    <i class="bx bx-edit-alt" aria-hidden="true"></i> Modifier
                 </a>
-                <a href="{% url 'workshop_delete' workshop.pk %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-400/20 border border-red-400/30 text-red-200 text-sm hover:bg-red-400/30 transition-colors"
-                   onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet atelier ?');">
-                    <i class="bx bx-trash"></i> Supprimer
+                <a href="{% url 'workshop_duplicate' workshop.pk %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-sm hover:bg-white/20 transition-colors">
+                    <i class="bx bx-copy" aria-hidden="true"></i> Dupliquer
                 </a>
+                <form method="post" action="{% url 'workshop_delete' workshop.pk %}" class="inline"
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet atelier ?');">
+                    {% csrf_token %}
+                    <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-400/20 border border-red-400/30 text-red-200 text-sm hover:bg-red-400/30 transition-colors cursor-pointer">
+                        <i class="bx bx-trash" aria-hidden="true"></i> Supprimer
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -105,6 +114,18 @@
                             </span>
                         </div>
                     </div>
+                </div>
+                <div class="px-6 py-4 border-t border-[#dce3ef] bg-[#f8f9fc] text-xs text-[#5a6f80] space-y-1">
+                    <p>
+                        <i class="bx bx-user-plus mr-1" aria-hidden="true"></i>
+                        Créé{% if workshop.created_by %} par {{ workshop.created_by.get_full_name|default:workshop.created_by.username }}{% endif %}
+                        le {{ workshop.created_at|date:"d/m/Y à H:i" }}
+                    </p>
+                    <p>
+                        <i class="bx bx-edit mr-1" aria-hidden="true"></i>
+                        Modifié{% if workshop.updated_by %} par {{ workshop.updated_by.get_full_name|default:workshop.updated_by.username }}{% endif %}
+                        le {{ workshop.updated_at|date:"d/m/Y à H:i" }}
+                    </p>
                 </div>
             </div>
 

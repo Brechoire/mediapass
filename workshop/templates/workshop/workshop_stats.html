@@ -28,7 +28,10 @@
         </p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <a href="?export=1&amp;year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}{% if active_weekday %}&amp;weekday={{ active_weekday }}{% endif %}{% if active_slot %}&amp;slot={{ active_slot }}{% endif %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f]">
+        <a href="{% url 'workshop_report' selected_year %}{% if report_query %}?{{ report_query }}{% endif %}" id="report-complete-link" data-report-base="{% url 'workshop_report' 0 %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#4a6fa5] text-white text-sm font-medium hover:bg-[#3d5f8f]">
+          <i class="bx bx-book-content" aria-hidden="true"></i> Rapport complet
+        </a>
+        <a href="?export=1&amp;year={{ selected_year }}{% if active_location_id %}&amp;location={{ active_location_id }}{% endif %}{% if active_city %}&amp;city={{ active_city|urlencode }}{% endif %}{% if active_class_welcome %}&amp;class_welcome={{ active_class_welcome }}{% endif %}{% if active_month %}&amp;month={{ active_month }}{% endif %}{% if active_channel %}&amp;channel={{ active_channel }}{% endif %}{% if active_weekday %}&amp;weekday={{ active_weekday }}{% endif %}{% if active_slot %}&amp;slot={{ active_slot }}{% endif %}" id="export-word-link" data-export-base="{% url 'workshop_stats' %}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[#4a6fa5] text-[#4a6fa5] text-sm font-medium hover:bg-[#e8eef7]">
           <i class="bx bx-export" aria-hidden="true"></i> Exporter Word
         </a>
         <a href="?year={{ selected_year }}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-700 hover:bg-slate-50">
@@ -497,9 +500,42 @@ function initCommuneTable() {
     filterCommuneTable();
 }
 
+function syncReportLinks() {
+    var params = new URLSearchParams(window.location.search);
+    var year = params.get('year');
+    if (!year || !/^\d+$/.test(year)) {
+        year = '{{ selected_year }}';
+    }
+
+    var reportLink = document.getElementById('report-complete-link');
+    if (reportLink) {
+        var reportParams = new URLSearchParams(params);
+        ['year', 'report', 'export', 'partial', '_'].forEach(function(key) {
+            reportParams.delete(key);
+        });
+        var base = reportLink.getAttribute('data-report-base') || '';
+        base = base.replace('/0/', '/');
+        var query = reportParams.toString();
+        reportLink.href = base + year + '/' + (query ? '?' + query : '');
+    }
+
+    var exportLink = document.getElementById('export-word-link');
+    if (exportLink) {
+        var exportParams = new URLSearchParams(params);
+        ['report', 'partial', '_'].forEach(function(key) {
+            exportParams.delete(key);
+        });
+        exportParams.set('export', '1');
+        exportParams.set('year', year);
+        var exportBase = exportLink.getAttribute('data-export-base') || window.location.pathname;
+        exportLink.href = exportBase + '?' + exportParams.toString();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     initStatsCharts();
     initCommuneTable();
+    syncReportLinks();
 });
 
 document.body.addEventListener('htmx:beforeSwap', function(e) {
@@ -510,7 +546,14 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
     if (e.detail && e.detail.target && e.detail.target.id === 'stats-content') {
         initStatsCharts();
         initCommuneTable();
+        setTimeout(syncReportLinks, 0);
     }
 });
+
+document.body.addEventListener('htmx:pushState', function() {
+    setTimeout(syncReportLinks, 0);
+});
+
+window.addEventListener('popstate', syncReportLinks);
 </script>
 {% endblock %}

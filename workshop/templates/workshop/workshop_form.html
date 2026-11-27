@@ -1,0 +1,224 @@
+{% extends "base_new.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}{{ page_title }} | {{ block.super }}{% endblock %}
+
+{% block stylesheets %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/workshop-form.css' %}" />
+{% endblock %}
+
+{% block content %}
+<section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
+    <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <a href="{% url 'workshop_list' %}" class="inline-flex items-center gap-1 text-white/70 hover:text-white text-sm transition-colors mb-3">
+                    <i class="bx bx-arrow-back" aria-hidden="true"></i> Retour à la liste
+                </a>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="bx {% if is_edit %}bx-calendar-edit{% else %}bx-calendar-plus{% endif %} text-2xl text-white" aria-hidden="true"></i>
+                    </div>
+                    <h1 class="text-3xl sm:text-4xl font-bold text-white">
+                        {{ page_title }}
+                    </h1>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {% if messages %}
+    <div class="mb-6 space-y-2" role="status">
+        {% for message in messages %}
+        <p class="rounded-xl border border-[#dce3ef] bg-white px-3 py-2 text-sm text-[#1e293b]">{{ message }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if form.errors %}
+    <div class="form-error-summary" role="alert" data-error-summary>
+        <p>Le formulaire contient {{ form.errors|length }} erreur{{ form.errors|length|pluralize }} :</p>
+        <ul>
+            {% for field in form %}
+                {% for error in field.errors %}
+                <li><a href="#{{ field.id_for_label }}">{{ field.label }} : {{ error }}</a></li>
+                {% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if locations_count == 0 %}
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-4">
+            <i class="bx bx-map text-3xl text-amber-600" aria-hidden="true"></i>
+        </div>
+        <h2 class="text-lg font-semibold text-amber-800 mb-2">Aucun lieu disponible</h2>
+        <p class="text-amber-700 text-sm mb-4">
+            Pour {% if is_edit %}modifier{% else %}ajouter{% endif %} un atelier, vous devez d'abord créer un lieu.
+        </p>
+        <a href="{% url 'location_create' %}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4a6fa5] text-white font-medium text-sm hover:bg-[#3d5f8f] transition-colors">
+            <i class="bx bx-plus" aria-hidden="true"></i> Ajouter un lieu
+        </a>
+    </div>
+    {% else %}
+    <div class="form-live-preview" aria-live="polite" data-live-preview>
+        <p class="form-live-preview-title">Aperçu de l'atelier</p>
+        <p id="previewName" class="form-live-preview-name">Nom de l'atelier</p>
+        <div class="form-live-preview-meta">
+            <span id="previewDate">Date à définir</span>
+            <span id="previewTime">Horaire à définir</span>
+            <span id="previewDuration"></span>
+            <span id="previewLocation">Lieu à définir</span>
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="workshop-form" data-unsaved-warning="true">
+        {% csrf_token %}
+
+        <div class="form-section" role="group" aria-labelledby="section-basic-title">
+            <h2 class="form-section-title" id="section-basic-title"><i class="bx bx-detail" aria-hidden="true"></i> Informations de base</h2>
+            <div class="form-section-body">
+                <div class="form-grid form-grid-2">
+                    {% include "workshop/partials/workshop_name_field.html" %}
+                    {% include "workshop/partials/form_location_field.html" with field=form.location %}
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section" role="group" aria-labelledby="section-dates-title">
+            <h2 class="form-section-title" id="section-dates-title"><i class="bx bx-time" aria-hidden="true"></i> Dates et horaires</h2>
+            <div class="form-section-body">
+                <div class="form-grid form-grid-2">
+                    {% include "workshop/partials/form_field.html" with field=form.date input_class="form-input" %}
+                    {% include "workshop/partials/form_field.html" with field=form.date_end input_class="form-input" %}
+                    {% include "workshop/partials/form_field.html" with field=form.start_time input_class="form-input" %}
+                    {% include "workshop/partials/form_field.html" with field=form.end_time input_class="form-input" %}
+                </div>
+            </div>
+        </div>
+
+        {% if not is_edit %}
+        <div class="form-section" role="group" aria-labelledby="section-recurrence-title">
+            <h2 class="form-section-title" id="section-recurrence-title"><i class="bx bx-repeat" aria-hidden="true"></i> Répétition</h2>
+            <div class="form-section-body">
+                <div class="form-grid form-grid-2">
+                    {% include "workshop/partials/form_field.html" with field=form.recurrence input_class="form-select" %}
+                    <div id="recurrenceCountWrapper">
+                        {% include "workshop/partials/form_field.html" with field=form.recurrence_count input_class="form-input" %}
+                    </div>
+                </div>
+                <p id="recurrenceHint" class="form-help mt-3" hidden>
+                    Chaque occurrence sera créée comme un atelier indépendant, avec le même lieu, les mêmes horaires et les mêmes options. L'image n'est pas dupliquée.
+                </p>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="form-section" role="group" aria-labelledby="section-participants-title">
+            <h2 class="form-section-title" id="section-participants-title"><i class="bx bx-group" aria-hidden="true"></i> Participants</h2>
+            <div class="form-section-body">
+                <div class="form-grid form-grid-2">
+                    {% include "workshop/partials/form_stepper.html" with field=form.number_registered %}
+                    {% include "workshop/partials/form_stepper.html" with field=form.number_attendees %}
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section" role="group" aria-labelledby="section-options-title">
+            <h2 class="form-section-title" id="section-options-title"><i class="bx bx-cog" aria-hidden="true"></i> Options</h2>
+            <div class="form-section-body">
+                <div class="form-grid form-grid-2">
+                    {% include "workshop/partials/form_checkbox.html" with field=form.poster_required %}
+                    {% include "workshop/partials/form_checkbox.html" with field=form.class_welcome %}
+                </div>
+                <p class="form-help mt-3">
+                    Demander une affiche envoie une notification à l'équipe communication.
+                </p>
+            </div>
+        </div>
+
+        <div class="form-section" role="group" aria-labelledby="section-notes-title">
+            <h2 class="form-section-title" id="section-notes-title"><i class="bx bx-note" aria-hidden="true"></i> Notes internes</h2>
+            <div class="form-section-body">
+                {% include "workshop/partials/form_field.html" with field=form.observations input_class="form-textarea" %}
+            </div>
+        </div>
+
+        <div class="form-section" role="group" aria-labelledby="section-image-title">
+            <h2 class="form-section-title" id="section-image-title"><i class="bx bx-image" aria-hidden="true"></i> Visuel</h2>
+            <div class="form-section-body">
+                <div class="form-field">
+                    <label class="form-label" for="{{ form.image.id_for_label }}">{{ form.image.label }}</label>
+                    <div class="image-preview" id="imagePreview">
+                        {% if form.instance.image %}
+                        <img src="{{ form.instance.image.url }}" alt="Aperçu de l'affiche" id="previewImg" class="image-preview-img">
+                        {% else %}
+                        <div class="image-preview-placeholder" id="imagePreviewPlaceholder">
+                            <i class="bx bx-image" aria-hidden="true"></i>
+                            <p>Aperçu de l'affiche</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if form.image.errors %}
+                        {{ form.image|add_class:"form-file"|attr:"aria-invalid:true" }}
+                    {% else %}
+                        {{ form.image|add_class:"form-file" }}
+                    {% endif %}
+                    {% if form.image.help_text %}
+                    <p id="{{ form.image.auto_id }}_help" class="form-help">{{ form.image.help_text }}</p>
+                    {% endif %}
+                    {% if form.image.errors %}
+                    <p id="{{ form.image.auto_id }}_error" class="form-error" role="alert">
+                        <i class="bx bx-error-circle" aria-hidden="true"></i>
+                        {{ form.image.errors|join:", " }}
+                    </p>
+                    {% endif %}
+                    {% if is_edit and form.instance.image %}
+                    <div class="form-check-wrapper mt-3">
+                        <label class="form-check-card" for="{{ form.DELETE.id_for_label }}">
+                            {{ form.DELETE }}
+                            <span class="form-check-label">{{ form.DELETE.label }}</span>
+                        </label>
+                        <p class="form-help">Un nouveau fichier sélectionné remplace cette suppression.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions form-actions-sticky">
+            <p class="form-required-note">
+                <span class="required-star" aria-hidden="true">*</span> Champs obligatoires
+            </p>
+            <div class="form-actions-buttons">
+                <a href="{{ cancel_url }}" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-[#dce3ef] text-sm font-medium text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
+                    <i class="bx bx-arrow-back" aria-hidden="true"></i> Annuler
+                </a>
+                <button type="submit" class="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#4a6fa5] text-white font-medium text-sm hover:bg-[#3d5f8f] transition-colors shadow-sm">
+                    <i class="bx bx-save" aria-hidden="true"></i>
+                    {% if is_edit %}Mettre à jour{% else %}Ajouter l'atelier{% endif %}
+                </button>
+                {% if not is_edit %}
+                <button type="submit" name="save_and_add" value="1" id="saveAndAddButton" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-[#4a6fa5] text-sm font-medium text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
+                    <i class="bx bx-plus" aria-hidden="true"></i> Enregistrer et ajouter un autre
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block javascripts %}
+{% include "workshop/partials/workshop_form_scripts.html" %}
+{% endblock %}

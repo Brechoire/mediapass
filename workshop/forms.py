@@ -1,9 +1,43 @@
 """Formulaires pour la gestion des ateliers."""
 
-from django import forms
-from django.core.exceptions import ValidationError
+import logging
+from uuid import uuid4
 
+from django import forms
+from django.db import transaction
+
+from app.validators import (
+    validate_image_content,
+    validate_image_extension,
+    validate_image_size,
+)
+from .conflicts import conflict_message, find_workshop_conflicts
+from .images import optimize_workshop_image
 from .models import Location, Workshop
+from .naming import normalize_workshop_name, resolve_workshop_name
+from .recurrence import (
+    MAX_RECURRENCE_COUNT,
+    RECURRENCE_CHOICES,
+    RECURRENCE_NONE,
+    occurrence_dates,
+)
+
+logger = logging.getLogger(__name__)
+
+
+def _delete_old_image(old_image):
+    """Supprime un ancien fichier image sans bloquer l'enregistrement."""
+    try:
+        old_image.close()
+    except Exception:
+        pass
+    try:
+        old_image.delete(save=False)
+    except Exception:
+        logger.exception(
+            "Impossible de supprimer l'ancienne image %s",
+            old_image.name,
+        )
 
 
 class WorkshopForm(forms.ModelForm):
@@ -14,13 +48,21 @@ class WorkshopForm(forms.ModelForm):
     """
 
     name = forms.CharField(
-        widget=forms.TextInput(),
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={
+                "list": "workshop-name-options",
+                "autocomplete": "off",
+                "placeholder": "Choisir ou saisir un nom d'atelier",
+            }
+        ),
         label="Nom de l'atelier",
     )
     location = forms.ModelChoiceField(
         queryset=Location.objects.all(),
         widget=forms.Select(),
         label="Lieu",
+        empty_label="Sélectionner un lieu…",
     )
     date = forms.DateField(
         widget=forms.DateInput(attrs={"type": "date"}),
@@ -29,7 +71,8 @@ class WorkshopForm(forms.ModelForm):
     date_end = forms.DateField(
         required=False,
         widget=forms.DateInput(attrs={"type": "date"}),
-        label="Date de fin",
+        label="Date de fin (plusieurs jours)",
+        help_text="Laisser vide si l'atelier dure une seule journée.",
     )
     start_time = forms.TimeField(
         widget=forms.TimeInput(attrs={"type": "time"}),
@@ -39,15 +82,42 @@ class WorkshopForm(forms.ModelForm):
         widget=forms.TimeInput(attrs={"type": "time"}),
         label="Heure de fin",
     )
+    recurrence = forms.ChoiceField(
+        required=False,
+        choices=RECURRENCE_CHOICES,
+        initial=RECURRENCE_NONE,
+        widget=forms.Select(),
+        label="Répétition",
+        help_text=(
+            "Créer plusieurs ateliers indépendants aux mêmes horaires. "
+            "La première occurrence reprend la date de début ci-dessus."
+        ),
+    )
+    recurrence_count = forms.IntegerField(
+        required=False,
+        initial=2,
+        min_value=2,
+        max_value=MAX_RECURRENCE_COUNT,
+        widget=forms.NumberInput(attrs={"min": 2, "max": MAX_RECURRENCE_COUNT}),
+        label="Nombre d'occurrences",
+        help_text=(
+            f"Entre 2 et {MAX_RECURRENCE_COUNT} occurrences. "
+            "La date de fin éventuelle est décalée d'autant."
+        ),
+    )
     number_registered = forms.IntegerField(
         required=False,
+        initial=0,
+        min_value=0,
         widget=forms.NumberInput(),
-        label="Inscrits",
+        label="Nombre d'inscrits",
     )
     number_attendees = forms.IntegerField(
         required=False,
+        initial=0,
+        min_value=0,
         widget=forms.NumberInput(),
-        label="Présents",
+        label="Nombre de présents (après l'atelier)",
     )
     class_welcome = forms.BooleanField(
         required=False,
@@ -57,13 +127,223 @@ class WorkshopForm(forms.ModelForm):
     poster_required = forms.BooleanField(
         required=False,
         widget=forms.CheckboxInput(),
-        label="Affiche requis ?",
+        label="Demander une affiche ?",
     )
     observations = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={"rows": 4}),
-        label="Observations",
+        label="Notes internes / consignes",
     )
+    image = forms.ImageField(
+        required=False,
+        widget=forms.FileInput(),
+        label="Visuel existant (facultatif)",
+    )
+    DELETE = forms.BooleanField(
+        required=False,
+        label="Supprimer l'image actuelle",
+    )
+
+    def __init__(self, *args, **kwargs):
+        """Prépare les attributs d'accessibilité et le champ image."""
+        super().__init__(*args, **kwargs)
+        image_field = self.fields.get("image")
+        if image_field:
+            image_field.widget.attrs["accept"] = (
+                ".png,.jpg,.jpeg,.gif,.webp"
+            )
+            image_field.help_text = (
+                "PNG, JPG, GIF ou WebP, 5 Mo maximum. Les grandes images "
+                "sont automatiquement redimensionnées."
+            )
+            image_field.label = (
+                "Visuel existant (facultatif)"
+                if self.instance.pk
+                else "Affiche / visuel (facultatif)"
+            )
+        location_field = self.fields.get("location")
+        if location_field:
+            location_field.label_from_instance = (
+                lambda obj: (
+                    f"{obj.name} — {obj.city}"
+                    if obj.city
+                    else obj.name
+                )
+            )
+        name_field = self.fields.get("name")
+        if name_field:
+            name_field.help_text = (
+                "Nom existant ou nouveau nom, ajouté automatiquement à la "
+                "liste. La casse, les accents et la ponctuation sont "
+                "normalisés."
+            )
+        for name, field in self.fields.items():
+            field_id = f"id_{name}"
+            described_by = []
+            if field.help_text:
+                described_by.append(f"{field_id}_help")
+            described_by.append(f"{field_id}_error")
+            field.widget.attrs["aria-describedby"] = " ".join(described_by)
+            if field.required:
+                field.widget.attrs["aria-required"] = "true"
+
+    def clean(self):
+        """Vérifie les conflits et prépare une éventuelle série."""
+        cleaned_data = super().clean()
+        location = cleaned_data.get("location")
+        date_value = cleaned_data.get("date")
+        start_time = cleaned_data.get("start_time")
+        end_time = cleaned_data.get("end_time")
+        if not all((location, date_value, start_time, end_time)):
+            return cleaned_data
+
+        candidate = Workshop(
+            pk=self.instance.pk,
+            location=location,
+            date=date_value,
+            date_end=cleaned_data.get("date_end"),
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+        if self.instance.pk:
+            previous = (
+                Workshop.objects.only(
+                    "location_id",
+                    "date",
+                    "date_end",
+                    "start_time",
+                    "end_time",
+                )
+                .filter(pk=self.instance.pk)
+                .first()
+            )
+            if previous and all(
+                (
+                    previous.location_id == candidate.location_id,
+                    previous.date == candidate.date,
+                    (previous.date_end or previous.date)
+                    == (candidate.date_end or candidate.date),
+                    previous.start_time == candidate.start_time,
+                    previous.end_time == candidate.end_time,
+                )
+            ):
+                # On autorise la modification des autres champs d'un
+                # atelier déjà en conflit sans revalider son créneau.
+                return cleaned_data
+
+        conflicts = find_workshop_conflicts(candidate)
+        if conflicts:
+            raise forms.ValidationError(conflict_message(conflicts))
+        self._validate_recurrence(cleaned_data)
+        return cleaned_data
+
+    def _validate_recurrence(self, cleaned_data):
+        """Vérifie que toutes les occurrences d'une série sont libres."""
+        self._occurrence_plan = None
+        recurrence = (
+            cleaned_data.get("recurrence") or RECURRENCE_NONE
+        )
+        if self.instance.pk or recurrence == RECURRENCE_NONE:
+            return
+        if "recurrence_count" in self.errors:
+            return
+        count = cleaned_data.get("recurrence_count")
+        if not count:
+            self.add_error(
+                "recurrence_count",
+                "Indiquez le nombre d'occurrences à créer.",
+            )
+            return
+
+        plan = occurrence_dates(
+            cleaned_data.get("date"),
+            cleaned_data.get("date_end"),
+            recurrence,
+            count,
+        )
+        self._occurrence_plan = plan
+
+        for (start_a, end_a), (start_b, _end_b) in zip(
+            plan, plan[1:]
+        ):
+            if start_b <= (end_a or start_a):
+                raise forms.ValidationError(
+                    "La durée de l'atelier chevauche l'occurrence "
+                    f"suivante ({start_b:%d/%m/%Y}). Réduisez la date de "
+                    "fin ou espacez la répétition."
+                )
+
+        conflicts = []
+        for index, (occurrence_start, occurrence_end) in enumerate(plan):
+            if index == 0:
+                # La première occurrence a déjà été contrôlée.
+                continue
+            candidate = Workshop(
+                location=cleaned_data.get("location"),
+                date=occurrence_start,
+                date_end=occurrence_end,
+                start_time=cleaned_data.get("start_time"),
+                end_time=cleaned_data.get("end_time"),
+            )
+            for other in find_workshop_conflicts(candidate):
+                conflicts.append((occurrence_start, other))
+
+        if conflicts:
+            details = "; ".join(
+                f"le {occurrence:%d/%m/%Y} avec « {other.name} »"
+                for occurrence, other in conflicts[:5]
+            )
+            suffix = "…" if len(conflicts) > 5 else ""
+            raise forms.ValidationError(
+                "La série entre en conflit avec un atelier existant : "
+                f"{details}{suffix}."
+            )
+
+    def has_recurrence(self):
+        """Indique si le formulaire crée plusieurs occurrences."""
+        return len(self.get_occurrence_dates()) > 1
+
+    def get_occurrence_dates(self):
+        """Retourne les couples (date de début, date de fin) à créer."""
+        start = self.cleaned_data.get("date")
+        if self.instance.pk or not start:
+            return [
+                (start, self.cleaned_data.get("date_end"))
+            ]
+        return occurrence_dates(
+            start,
+            self.cleaned_data.get("date_end"),
+            self.cleaned_data.get("recurrence") or RECURRENCE_NONE,
+            self.cleaned_data.get("recurrence_count"),
+        )
+
+    def clean_number_registered(self):
+        """Ramène un champ vide à zéro."""
+        return self.cleaned_data.get("number_registered") or 0
+
+    def clean_number_attendees(self):
+        """Ramène un champ vide à zéro."""
+        return self.cleaned_data.get("number_attendees") or 0
+
+    def clean_image(self):
+        """Valide puis optimise l'image téléversée."""
+        image = self.files.get("image")
+        if image:
+            validate_image_extension(image)
+            validate_image_size(image)
+            validate_image_content(image)
+            return optimize_workshop_image(image)
+        return self.cleaned_data.get("image")
+
+    def clean_name(self):
+        """Nettoie le nom et refuse une valeur sans contenu utile."""
+        name = " ".join((self.cleaned_data.get("name") or "").split())
+        if not normalize_workshop_name(name):
+            raise forms.ValidationError(
+                "Le nom doit contenir au moins une lettre ou un chiffre."
+            )
+        return name
 
     class Meta:
         """Configurez le formulaire."""
@@ -82,7 +362,98 @@ class WorkshopForm(forms.ModelForm):
             "number_attendees",
             "class_welcome",
             "observations",
+            "DELETE",
         )
+
+    def save(self, commit=True, user=None):
+        """Sauvegarde l'atelier avec le nom canonique de la liste."""
+        workshop = super().save(commit=False)
+        catalog = resolve_workshop_name(self.cleaned_data["name"])
+        workshop.name = catalog.name
+        if user is not None:
+            if not workshop.pk:
+                workshop.created_by = user
+            workshop.updated_by = user
+        new_image = self.files.get("image")
+        delete_image = self.cleaned_data.get("DELETE")
+
+        old_image = None
+        if commit and workshop.pk and (new_image or delete_image):
+            try:
+                old_image = (
+                    Workshop.objects.only("image")
+                    .get(pk=workshop.pk)
+                    .image
+                )
+            except Workshop.DoesNotExist:
+                old_image = None
+
+        if delete_image and not new_image:
+            for image in (
+                self.cleaned_data.get("image"),
+                workshop.image,
+            ):
+                if image:
+                    try:
+                        image.close()
+                    except Exception:
+                        pass
+            workshop.image = None
+
+        if commit:
+            workshop.save()
+            self.save_m2m()
+            if old_image and old_image.name and (
+                not workshop.image
+                or old_image.name != workshop.image.name
+            ):
+                transaction.on_commit(
+                    lambda: _delete_old_image(old_image)
+                )
+        return workshop
+
+    def save_series(self, user=None):
+        """Crée l'atelier puis toutes les occurrences de la série."""
+        plan = self.get_occurrence_dates()
+        with transaction.atomic():
+            first = self.save(commit=True, user=user)
+            if len(plan) <= 1:
+                return [first]
+
+            series_id = uuid4()
+            first.series = series_id
+            first.series_index = 1
+            first.save(
+                update_fields=["series", "series_index", "updated_at"]
+            )
+
+            created = [first]
+            for index, (start, end) in enumerate(plan[1:], start=2):
+                clone = Workshop(
+                    location=first.location,
+                    name=first.name,
+                    date=start,
+                    date_end=end,
+                    start_time=first.start_time,
+                    end_time=first.end_time,
+                    series=series_id,
+                    series_index=index,
+                    poster_required=first.poster_required,
+                    number_registered=first.number_registered,
+                    number_attendees=first.number_attendees,
+                    class_welcome=first.class_welcome,
+                    instagram=first.instagram,
+                    facebook=first.facebook,
+                    mail=first.mail,
+                    portail=first.portail,
+                    vdn=first.vdn,
+                    observations=first.observations,
+                    created_by=user,
+                    updated_by=user,
+                )
+                clone.save()
+                created.append(clone)
+            return created
 
 
 class LocationForm(forms.ModelForm):
@@ -146,7 +517,12 @@ class WorkshopPosterForm(forms.ModelForm):
         required=False, label="Supprimer l'image actuelle"
     )
     image = forms.ImageField(
-        widget=forms.FileInput(attrs={"class": "form-control"}),
+        widget=forms.FileInput(
+            attrs={
+                "class": "form-control",
+                "accept": ".png,.jpg,.jpeg,.gif,.webp",
+            }
+        ),
         required=False,
         label="Affiche",
     )
@@ -219,23 +595,55 @@ class WorkshopPosterForm(forms.ModelForm):
         return cleaned_data
 
     def clean_image(self):
-        """Validez l'image téléchargée.
-
-        Effectue les validations suivantes :
-        - Taille maximale autorisée
-        - Format de fichier supporté
-
-        Returns:
-            ImageField: L'image validée.
-        """
-        image = self.cleaned_data.get("image")
+        """Valide puis optimise l'image téléversée."""
+        image = self.files.get("image")
         if image:
-            max_size = 5 * 1024 * 1024  # 5 MB
-            if image.size > max_size:
-                raise ValidationError(
-                    "Le fichier dépasse la taille maximale autorisée de 5MB."
+            validate_image_extension(image)
+            validate_image_size(image)
+            validate_image_content(image)
+            return optimize_workshop_image(image)
+        return self.cleaned_data.get("image")
+
+    def save(self, commit=True):
+        """Sauvegarde l'affiche et supprime l'ancienne image si besoin."""
+        workshop = super().save(commit=False)
+        new_image = self.files.get("image")
+        delete_image = self.cleaned_data.get("DELETE")
+
+        old_image = None
+        if commit and workshop.pk and (new_image or delete_image):
+            try:
+                old_image = (
+                    Workshop.objects.only("image")
+                    .get(pk=workshop.pk)
+                    .image
                 )
-        return image
+            except Workshop.DoesNotExist:
+                old_image = None
+
+        if delete_image and not new_image:
+            for image in (
+                self.cleaned_data.get("image"),
+                workshop.image,
+            ):
+                if image:
+                    try:
+                        image.close()
+                    except Exception:
+                        pass
+            workshop.image = None
+
+        if commit:
+            workshop.save()
+            self.save_m2m()
+            if old_image and old_image.name and (
+                not workshop.image
+                or old_image.name != workshop.image.name
+            ):
+                transaction.on_commit(
+                    lambda: _delete_old_image(old_image)
+                )
+        return workshop
 
 
 class WorkshopPosterValidationForm(forms.ModelForm):

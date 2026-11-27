@@ -1,0 +1,21 @@
+{% load widget_tweaks %}
+<div class="{{ wrapper_class|default:'form-field' }}">
+    <label class="form-label" for="{{ field.id_for_label }}">
+        {{ field.label }}
+        {% if field.field.required %}<span class="required-star" aria-hidden="true">*</span>{% endif %}
+    </label>
+    {% if field.errors %}
+        {{ field|add_class:input_class|attr:"aria-invalid:true" }}
+    {% else %}
+        {{ field|add_class:input_class }}
+    {% endif %}
+    {% if field.help_text %}
+    <p id="{{ field.auto_id }}_help" class="form-help">{{ field.help_text }}</p>
+    {% endif %}
+    {% if field.errors %}
+    <p id="{{ field.auto_id }}_error" class="form-error" role="alert">
+        <i class="bx bx-error-circle" aria-hidden="true"></i>
+        {{ field.errors|join:", " }}
+    </p>
+    {% endif %}
+</div>
