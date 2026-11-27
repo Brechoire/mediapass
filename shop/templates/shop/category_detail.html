@@ -6,8 +6,8 @@
 <section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
     <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
     <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div class="flex items-start justify-between gap-4">
-            <div>
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="min-w-0">
                 <div class="flex items-center gap-3 mb-3">
                     <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                         {% if category.name == 'Numérique' %}
@@ -20,7 +20,7 @@
                             <i class="bx bx-collection text-2xl text-white"></i>
                         {% endif %}
                     </div>
-                    <h1 class="text-3xl sm:text-4xl font-bold text-white">{{ category.name }}</h1>
+                    <h1 class="text-3xl sm:text-4xl font-bold text-white min-w-0 break-words">{{ category.name }}</h1>
                 </div>
                 <div class="flex flex-wrap gap-3">
                     <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 text-white/90 text-sm">
@@ -85,7 +85,7 @@
                 <div class="relative flex items-center justify-center h-52 bg-[#f8f9fc]">
                     <img src="{{ product.image.url }}" alt="{{ product.name }}"
                         class="max-h-40 max-w-[90%] object-contain transition-transform duration-300 group-hover:scale-105" />
-                    <div class="absolute inset-0 bg-[#1e293b]/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
+                    <div class="absolute inset-0 bg-[#1e293b]/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100 flex items-center justify-center transition-opacity duration-200 [@media(hover:none)]:hidden">
                         <a href="{% url 'product_detail' product.pk %}"
                             class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-[#4a6fa5] font-medium text-sm hover:bg-[#e8eef7] transition-colors shadow-lg">
                             <i class="bx bx-show"></i> Voir détails

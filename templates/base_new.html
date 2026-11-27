@@ -19,22 +19,22 @@
 <body class="bg-[#f7f8fa] text-[#1e293b] antialiased min-h-screen flex flex-col" style="font-family: Inter, system-ui, -apple-system, sans-serif;">
     <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-[#dce3ef]">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center gap-3">
-                    <button id="mobile-menu-toggle" class="md:hidden p-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer" aria-label="Menu">
+            <div class="flex items-center justify-between h-16 gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <button id="mobile-menu-toggle" class="md:hidden p-2 -ml-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer shrink-0" aria-label="Menu" aria-expanded="false" aria-controls="mobile-menu">
                         <i class="bx bx-menu text-xl text-[#4a6fa5]"></i>
                     </button>
-                    <a href="{% url 'home' %}" class="flex items-center gap-2.5">
-                        <img src="{% static 'img/logo/logo.png' %}" alt="Médiapass" class="h-8 w-auto" />
-                        <span class="text-xl font-bold text-[#4a6fa5]">Médi@'pass</span>
+                    <a href="{% url 'home' %}" class="flex items-center gap-2 min-w-0">
+                        <img src="{% static 'img/logo/logo.png' %}" alt="Médiapass" class="h-7 sm:h-8 w-auto shrink-0" />
+                        <span class="hidden min-[380px]:inline text-lg sm:text-xl font-bold text-[#4a6fa5] whitespace-nowrap truncate">Médi@'pass</span>
                     </a>
                 </div>
 
                 <nav class="hidden md:flex items-center gap-1 text-sm font-medium text-[#4a6fa5]">
                     <a href="{% url 'home' %}" class="px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors">Accueil</a>
-                    <div class="relative group">
-                        <button class="flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer">Ressources <i class="bx bx-chevron-down text-base"></i></button>
-                        <div class="absolute left-0 top-full z-50 hidden group-hover:block bg-white border border-[#dce3ef] rounded-xl shadow-lg py-1.5 min-w-[200px]">
+                    <div class="relative group" data-dropdown>
+                        <button type="button" data-dropdown-button aria-haspopup="true" aria-expanded="false" class="flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer">Ressources <i class="bx bx-chevron-down text-base"></i></button>
+                        <div data-dropdown-panel class="absolute left-0 top-full z-50 hidden group-hover:block group-focus-within:block bg-white border border-[#dce3ef] rounded-xl shadow-lg py-1.5 min-w-[200px]">
                             {% for category in category_list %}
                             <a href="{% url 'category_detail' category.pk %}" class="block px-4 py-2 text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">{{ category.name }}</a>
                             {% endfor %}
@@ -129,12 +129,12 @@
                     {% endif %}
                 </nav>
 
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1 sm:gap-2 shrink-0">
                     <div class="relative group">
                         <button id="search-toggle" class="p-2 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer" aria-label="Rechercher">
                             <i class="bx bx-search text-xl text-[#4a6fa5]"></i>
                         </button>
-                        <div id="search-dropdown" class="hidden absolute right-0 top-full z-50 bg-white border border-[#dce3ef] rounded-xl shadow-lg p-4 w-80 mt-1">
+                        <div id="search-dropdown" class="hidden absolute right-0 top-full z-50 bg-white border border-[#dce3ef] rounded-xl shadow-lg p-4 w-80 max-w-[calc(100vw-2rem)] mt-1">
                             <form method="get" action="{% url 'search' %}">
                                 <div class="relative">
                                     <i class="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-[#5a6f80]"></i>
@@ -145,13 +145,13 @@
                     </div>
 
                     {% if user.is_authenticated %}
-                    <div class="relative group">
-                        <button class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer">
+                    <div class="relative group" data-dropdown>
+                        <button type="button" data-dropdown-button aria-haspopup="true" aria-expanded="false" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#e8eef7] transition-colors cursor-pointer">
                             <img src="{% static 'img/logo/logo.png' %}" alt="" class="h-7 w-7 rounded-full object-cover" />
                             <span class="text-sm font-medium text-[#4a6fa5] hidden sm:inline">{{ user.username }}</span>
                             <i class="bx bx-chevron-down text-[#5a6f80]"></i>
                         </button>
-                        <div class="absolute right-0 top-full w-56 bg-white rounded-xl shadow-lg border border-[#dce3ef] py-1.5 z-50 hidden group-hover:block">
+                        <div data-dropdown-panel class="absolute right-0 top-full w-56 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-lg border border-[#dce3ef] py-1.5 z-50 hidden group-hover:block group-focus-within:block">
                             {% if user|has_group:'mediatheque' %}
                             <a href="{% url 'newsletter:ma_fiche' %}" class="flex items-center gap-2.5 px-4 py-2 text-sm text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors">
                                 <i class="bx bx-library text-[#5a6f80]"></i> Ma fiche médiathèque
@@ -173,7 +173,7 @@
             </div>
         </div>
 
-        <div id="mobile-menu" class="hidden md:hidden border-t border-[#dce3ef] bg-white">
+        <div id="mobile-menu" class="hidden md:hidden border-t border-[#dce3ef] bg-white max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain">
             <nav class="mx-auto max-w-7xl px-4 py-3 space-y-1">
                 <a href="{% url 'home' %}" class="block px-3 py-2.5 rounded-lg text-[#4a6fa5] hover:bg-[#e8eef7] transition-colors font-medium">Accueil</a>
                 <div class="px-3 py-2">
@@ -304,24 +304,33 @@
             const isHidden = mobileMenu.classList.contains('hidden');
             if (isHidden) {
               mobileMenu.classList.remove('hidden');
+              mobileMenuToggle.setAttribute('aria-expanded', 'true');
+              // Verrouille le scroll de la page : seul le menu scrolle.
+              document.body.style.overflow = 'hidden';
               const icon = mobileMenuToggle.querySelector('i');
               if (icon) icon.className = 'bx bx-x text-xl text-[#4a6fa5]';
             } else {
-              mobileMenu.classList.add('hidden');
-              const icon = mobileMenuToggle.querySelector('i');
-              if (icon) icon.className = 'bx bx-menu text-xl text-[#4a6fa5]';
+              closeMobileMenu();
             }
+          }
+          function closeMobileMenu() {
+            mobileMenu.classList.add('hidden');
+            mobileMenuToggle.setAttribute('aria-expanded', 'false');
+            document.body.style.overflow = '';
+            const icon = mobileMenuToggle.querySelector('i');
+            if (icon) icon.className = 'bx bx-menu text-xl text-[#4a6fa5]';
           }
           mobileMenuToggle.addEventListener('click', function(e) {
             e.preventDefault();
             toggleMobileMenu();
           });
           document.addEventListener('click', function(e) {
-            if (!mobileMenuToggle.contains(e.target) && !mobileMenu.contains(e.target)) {
-              mobileMenu.classList.add('hidden');
-              const icon = mobileMenuToggle.querySelector('i');
-              if (icon) icon.className = 'bx bx-menu text-xl text-[#4a6fa5]';
+            if (!mobileMenuToggle.contains(e.target) && !mobileMenu.contains(e.target) && !mobileMenu.classList.contains('hidden')) {
+              closeMobileMenu();
             }
+          });
+          document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && !mobileMenu.classList.contains('hidden')) closeMobileMenu();
           });
         }
 
@@ -423,6 +432,74 @@
             if (!adminPanel.classList.contains('hidden') && !e.target.closest('[data-admin-menu]')) setAdminOpen(false);
           });
         }
+
+        // Dropdowns tactiles/clavier génériques (Ressources, menu utilisateur) :
+        // le hover seul ne suffit pas au tactile ni au clavier.
+        document.querySelectorAll('[data-dropdown]').forEach(function(drop){
+          const btn = drop.querySelector('[data-dropdown-button]');
+          const panel = drop.querySelector('[data-dropdown-panel]');
+          if (!btn || !panel) return;
+          function setOpen(open){
+            // Neutralise le mode hover-only : on force l'état via style inline.
+            panel.classList.remove('hidden');
+            panel.style.display = open ? 'block' : '';
+            panel.classList.toggle('hidden', !open);
+            if (!open) panel.style.display = '';
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          }
+          function isOpen(){ return !panel.classList.contains('hidden'); }
+          btn.addEventListener('click', function(e){
+            e.stopPropagation();
+            // Ferme les autres dropdowns génériques
+            document.querySelectorAll('[data-dropdown]').forEach(function(other){
+              if (other !== drop){
+                const op = other.querySelector('[data-dropdown-panel]');
+                const ob = other.querySelector('[data-dropdown-button]');
+                if (op) { op.classList.add('hidden'); op.style.display = ''; }
+                if (ob) ob.setAttribute('aria-expanded', 'false');
+              }
+            });
+            setOpen(!isOpen());
+          });
+          btn.addEventListener('keydown', function(e){
+            if ((e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') && !isOpen()){
+              e.preventDefault();
+              setOpen(true);
+            }
+          });
+        });
+        document.addEventListener('click', function(e){
+          document.querySelectorAll('[data-dropdown]').forEach(function(drop){
+            if (!drop.contains(e.target)){
+              const panel = drop.querySelector('[data-dropdown-panel]');
+              const btn = drop.querySelector('[data-dropdown-button]');
+              if (panel && !panel.classList.contains('hidden')) { panel.classList.add('hidden'); panel.style.display = ''; }
+              if (btn) btn.setAttribute('aria-expanded', 'false');
+            }
+          });
+        });
+        document.addEventListener('keydown', function(e){
+          if (e.key === 'Escape'){
+            document.querySelectorAll('[data-dropdown]').forEach(function(drop){
+              const panel = drop.querySelector('[data-dropdown-panel]');
+              const btn = drop.querySelector('[data-dropdown-button]');
+              if (panel && !panel.classList.contains('hidden')) {
+                panel.classList.add('hidden'); panel.style.display = '';
+                if (btn) { btn.setAttribute('aria-expanded', 'false'); btn.focus(); }
+              }
+            });
+          }
+        });
+        document.addEventListener('focusin', function(e){
+          document.querySelectorAll('[data-dropdown]').forEach(function(drop){
+            const panel = drop.querySelector('[data-dropdown-panel]');
+            const btn = drop.querySelector('[data-dropdown-button]');
+            if (panel && !panel.classList.contains('hidden') && !drop.contains(e.target)){
+              panel.classList.add('hidden'); panel.style.display = '';
+              if (btn) btn.setAttribute('aria-expanded', 'false');
+            }
+          });
+        });
       });
     </script>
     <script>

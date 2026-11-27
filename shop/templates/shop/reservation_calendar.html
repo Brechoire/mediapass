@@ -96,17 +96,17 @@
                     <caption class="sr-only">D&eacute;parts pr&eacute;vus, regroup&eacute;s par jour</caption>
                     <thead class="bg-[#f8f9fc]">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Heure</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Cr&eacute;neau d&eacute;p&ocirc;t</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Structure</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider hidden sm:table-cell">Produit</th>
-                            <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Qt&eacute;</th>
+                            <th scope="col" class="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Heure</th>
+                            <th scope="col" class="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Cr&eacute;neau d&eacute;p&ocirc;t</th>
+                            <th scope="col" class="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Structure</th>
+                            <th scope="col" class="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider hidden sm:table-cell">Produit</th>
+                            <th scope="col" class="px-4 sm:px-6 py-3 text-center text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Qt&eacute;</th>
                         </tr>
                     </thead>
                     {% for g in departures_groups %}
                     <tbody class="day-group divide-y divide-[#dce3ef]/60" data-day="{{ g.date|date:'Y-m-d' }}" data-kind="departure">
                         <tr class="bg-[#f8f9fc]">
-                            <td colspan="5" class="px-6 py-2 text-xs font-semibold text-[#2f4d75]">
+                            <td colspan="5" class="px-4 sm:px-6 py-2 text-xs font-semibold text-[#2f4d75]">
                                 {% if g.date == today_date %}<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 mr-2">Aujourd'hui</span>
                                 {% elif g.date == tomorrow_date %}Demain {{ g.date|date:"d/m" }}
                                 {% else %}{{ g.date|date:"d/m/Y" }}{% endif %}
@@ -115,11 +115,11 @@
                         </tr>
                         {% for r in g.items %}
                         <tr class="hover:bg-[#f8f9fc] transition-colors">
-                            <td class="px-6 py-3 whitespace-nowrap text-sm text-[#5a6f80] font-mono">{{ r.start_date|date:"H:i" }}</td>
-                            <td class="px-6 py-3 whitespace-nowrap text-sm text-[#5a6f80] font-mono">{{ r.deposit_time|date:"H:i"|default:"&mdash;" }}</td>
-                            <td class="px-6 py-3 whitespace-nowrap text-sm font-medium"><a href="{% url 'reservation_details' r.pk %}" class="text-[#4a6fa5] hover:underline focus:outline-none focus:ring-2 focus:ring-[#4a6fa5] rounded" title="Voir la fiche réservation">{{ r.structure.name|truncatechars:20 }}</a></td>
-                            <td class="px-6 py-3 whitespace-nowrap text-sm text-[#5a6f80] hidden sm:table-cell">{{ r.product.name|truncatechars:20 }}</td>
-                            <td class="px-6 py-3 whitespace-nowrap text-center"><span class="text-xs font-medium bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{{ r.quantity }}</span></td>
+                            <td class="px-4 sm:px-6 py-3 whitespace-nowrap text-sm text-[#5a6f80] font-mono">{{ r.start_date|date:"H:i" }}</td>
+                            <td class="px-4 sm:px-6 py-3 whitespace-nowrap text-sm text-[#5a6f80] font-mono">{{ r.deposit_time|date:"H:i"|default:"&mdash;" }}</td>
+                            <td class="px-4 sm:px-6 py-3 whitespace-nowrap text-sm font-medium"><a href="{% url 'reservation_details' r.pk %}" class="text-[#4a6fa5] hover:underline focus:outline-none focus:ring-2 focus:ring-[#4a6fa5] rounded" title="Voir la fiche réservation">{{ r.structure.name|truncatechars:20 }}</a></td>
+                            <td class="px-4 sm:px-6 py-3 whitespace-nowrap text-sm text-[#5a6f80] hidden sm:table-cell">{{ r.product.name|truncatechars:20 }}</td>
+                            <td class="px-4 sm:px-6 py-3 whitespace-nowrap text-center"><span class="text-xs font-medium bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{{ r.quantity }}</span></td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -141,17 +141,17 @@
                     <caption class="sr-only">Retours pr&eacute;vus, regroup&eacute;s par jour</caption>
                     <thead class="bg-[#f8f9fc]">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Heure</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Cr&eacute;neau retrait</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Structure</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider hidden sm:table-cell">Produit</th>
-                            <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Qt&eacute;</th>
+                            <th scope="col" class="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Heure</th>
+                            <th scope="col" class="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Cr&eacute;neau retrait</th>
+                            <th scope="col" class="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Structure</th>
+                            <th scope="col" class="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-[#5a6f80] uppercase tracking-wider hidden sm:table-cell">Produit</th>
+                            <th scope="col" class="px-4 sm:px-6 py-3 text-center text-xs font-semibold text-[#5a6f80] uppercase tracking-wider">Qt&eacute;</th>
                         </tr>
                     </thead>
                     {% for g in returns_groups %}
                     <tbody class="day-group divide-y divide-[#dce3ef]/60" data-day="{{ g.date|date:'Y-m-d' }}" data-kind="return">
                         <tr class="bg-[#f8f9fc]">
-                            <td colspan="5" class="px-6 py-2 text-xs font-semibold text-[#2f4d75]">
+                            <td colspan="5" class="px-4 sm:px-6 py-2 text-xs font-semibold text-[#2f4d75]">
                                 {% if g.date == today_date %}<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 mr-2">Aujourd'hui</span>
                                 {% elif g.date == tomorrow_date %}Demain {{ g.date|date:"d/m" }}
                                 {% else %}{{ g.date|date:"d/m/Y" }}{% endif %}
@@ -160,11 +160,11 @@
                         </tr>
                         {% for r in g.items %}
                         <tr class="hover:bg-[#f8f9fc] transition-colors">
-                            <td class="px-6 py-3 whitespace-nowrap text-sm text-[#5a6f80] font-mono">{{ r.end_date|date:"H:i" }}</td>
-                            <td class="px-6 py-3 whitespace-nowrap text-sm text-[#5a6f80] font-mono">{{ r.pickup_time|date:"H:i"|default:"&mdash;" }}</td>
-                            <td class="px-6 py-3 whitespace-nowrap text-sm font-medium"><a href="{% url 'reservation_details' r.pk %}" class="text-[#4a6fa5] hover:underline focus:outline-none focus:ring-2 focus:ring-[#4a6fa5] rounded" title="Voir la fiche réservation">{{ r.structure.name|truncatechars:20 }}</a></td>
-                            <td class="px-6 py-3 whitespace-nowrap text-sm text-[#5a6f80] hidden sm:table-cell">{{ r.product.name|truncatechars:20 }}</td>
-                            <td class="px-6 py-3 whitespace-nowrap text-center"><span class="text-xs font-medium bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{{ r.quantity }}</span></td>
+                            <td class="px-4 sm:px-6 py-3 whitespace-nowrap text-sm text-[#5a6f80] font-mono">{{ r.end_date|date:"H:i" }}</td>
+                            <td class="px-4 sm:px-6 py-3 whitespace-nowrap text-sm text-[#5a6f80] font-mono">{{ r.pickup_time|date:"H:i"|default:"&mdash;" }}</td>
+                            <td class="px-4 sm:px-6 py-3 whitespace-nowrap text-sm font-medium"><a href="{% url 'reservation_details' r.pk %}" class="text-[#4a6fa5] hover:underline focus:outline-none focus:ring-2 focus:ring-[#4a6fa5] rounded" title="Voir la fiche réservation">{{ r.structure.name|truncatechars:20 }}</a></td>
+                            <td class="px-4 sm:px-6 py-3 whitespace-nowrap text-sm text-[#5a6f80] hidden sm:table-cell">{{ r.product.name|truncatechars:20 }}</td>
+                            <td class="px-4 sm:px-6 py-3 whitespace-nowrap text-center"><span class="text-xs font-medium bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{{ r.quantity }}</span></td>
                         </tr>
                         {% endfor %}
                     </tbody>

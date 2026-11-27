@@ -6,8 +6,8 @@
 <section class="relative overflow-hidden bg-gradient-to-br from-[#4a6fa5] via-[#3d5f8f] to-[#2f4d75]">
     <div class="absolute inset-0 opacity-[0.08]" style="background-image: radial-gradient(circle at 30% 50%, white 0%, transparent 60%), radial-gradient(circle at 70% 20%, white 0%, transparent 40%);"></div>
     <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div class="flex items-start justify-between gap-4">
-            <div>
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="min-w-0">
                 <a href="{% url 'category_detail' product.category.pk %}" class="inline-flex items-center gap-1 text-white/60 hover:text-white text-sm transition-colors mb-3">
                     <i class="bx bx-arrow-back"></i> Retour à {{ product.category.name }}
                 </a>
@@ -25,7 +25,7 @@
                         {% endif %}
                     </div>
                     {% endwith %}
-                    <h1 class="text-3xl sm:text-4xl font-bold text-white">{{ product.name }}</h1>
+                    <h1 class="text-3xl sm:text-4xl font-bold text-white min-w-0 break-words">{{ product.name }}</h1>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 text-white/90 text-sm">
@@ -371,13 +371,12 @@
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+                    right: 'dayGridMonth,timeGridWeek,listWeek'
                 },
                 buttonText: {
                     today: "Aujourd'hui",
                     month: 'Mois',
                     week: 'Semaine',
-                    day: 'Jour',
                     list: 'Liste'
                 },
                 locale: 'fr',
