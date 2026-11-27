@@ -55,7 +55,7 @@ jobs:
 
       - name: Check for debug print statements
         run: |
-          ! grep -rn "print(" --include="*.py" app/ accounts/ shop/ workshop/ notifications/ kakemono/ distribution/ analytics/ home/ visitor_tracking/ library_workshops/ | grep -v "__str__\|#.*print"
+          ! grep -rn "print(" --include="*.py" app/ accounts/ shop/ workshop/ notifications/ kakemono/ distribution/ analytics/ home/ visitor_tracking/ library_workshops/ | grep -v "__str__\|#.*print" | grep -v "def .*print("
 
       - name: Run tests
         run: |
