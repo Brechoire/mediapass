@@ -19,6 +19,9 @@ class CustomLoginView(LoginView):
     template_name = "accounts/login.html"
     authentication_form = LoginForm
 
+    # Durée de la session persistante (« Rester connecté ») : 90 jours.
+    REMEMBER_ME_SESSION_AGE = 90 * 24 * 3600
+
     def get_success_url(self):
         user = self.request.user
         if is_distribution_agent(user) and not is_distribution_manager(user):
@@ -32,7 +35,7 @@ class CustomLoginView(LoginView):
         if not remember_me:
             self.request.session.set_expiry(0)
         else:
-            self.request.session.set_expiry(1209600)
+            self.request.session.set_expiry(self.REMEMBER_ME_SESSION_AGE)
         return response
 
 

@@ -31,6 +31,38 @@ class LoginViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("form", response.context)
 
+    def test_remember_me_checked_by_default(self):
+        response = self.client.get(reverse("login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="remember_me" checked')
+
+    def test_login_with_remember_me_sets_long_expiry(self):
+        from .views import CustomLoginView
+
+        response = self.client.post(
+            reverse("login"),
+            {
+                "username": "testuser",
+                "password": "testpass123",
+                "remember_me": "on",
+            },
+        )
+        self.assertIn(response.status_code, [302, 200])
+        self.assertFalse(self.client.session.get_expire_at_browser_close())
+        self.assertAlmostEqual(
+            self.client.session.get_expiry_age(),
+            CustomLoginView.REMEMBER_ME_SESSION_AGE,
+            delta=5,
+        )
+
+    def test_login_without_remember_me_expires_at_browser_close(self):
+        response = self.client.post(
+            reverse("login"),
+            {"username": "testuser", "password": "testpass123"},
+        )
+        self.assertIn(response.status_code, [302, 200])
+        self.assertTrue(self.client.session.get_expire_at_browser_close())
+
     def test_logout_requires_post(self):
         response = self.client.get(reverse("logout"))
         self.assertEqual(response.status_code, 405)
