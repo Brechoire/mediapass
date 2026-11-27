@@ -19,7 +19,20 @@ from django.core.mail import EmailMultiAlternatives, send_mail
 from django.core.paginator import Paginator
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models, transaction
-from django.db.models import Avg, Count, ExpressionWrapper, F, Max, Min, Q, Sum, Value, Case, IntegerField, When
+from django.db.models import (
+    Avg,
+    Count,
+    ExpressionWrapper,
+    F,
+    Max,
+    Min,
+    Q,
+    Sum,
+    Value,
+    Case,
+    IntegerField,
+    When,
+)
 from django.db.models.functions import Coalesce, ExtractMonth
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -31,7 +44,11 @@ from django.utils.html import strip_tags
 from django.utils.text import slugify
 
 from django.core.cache import cache
-from accounts.utils import is_staff_or_superuser, group_required, is_staff_or_superuser_or_in_comm_group
+from accounts.utils import (
+    is_staff_or_superuser,
+    group_required,
+    is_staff_or_superuser_or_in_comm_group,
+)
 from .forms import (
     LocationForm,
     WorkshopForm,
@@ -153,9 +170,9 @@ def send_custom_email(
 def _build_report_charts(context, animation_report):
     """Prépare les séries JSON utilisées par les graphiques de la page rapport."""
     monthly = context.get("workshops_by_month") or []
-    month_types = context.get("report_month_type_cross") or context.get(
-        "month_type_cross"
-    ) or []
+    month_types = (
+        context.get("report_month_type_cross") or context.get("month_type_cross") or []
+    )
     communes = (context.get("commune_table_data") or [])[:12]
     groups = (animation_report.get("groups") or [])[:10]
 
@@ -213,7 +230,11 @@ def _workshop_stats(request):
         messages.warning(request, "Année invalide, affichage de l'année en cours.")
 
     # Récupérer les années disponibles pour le filtre
-    available_years = Workshop.objects.dates('date', 'year').values_list('date__year', flat=True).distinct()
+    available_years = (
+        Workshop.objects.dates("date", "year")
+        .values_list("date__year", flat=True)
+        .distinct()
+    )
     available_years = sorted(list(available_years), reverse=True)
     if available_years and selected_year not in available_years:
         # Reste sur l'année demandée même sans données ; les années
@@ -242,9 +263,7 @@ def _workshop_stats(request):
     # pour garder la compatibilité ?year= et le message d'avertissement.
 
     # Requête de base pour les ateliers de l'année sélectionnée + filtres
-    base_workshops = Workshop.objects.filter(
-        date__year=selected_year
-    )
+    base_workshops = Workshop.objects.filter(date__year=selected_year)
     workshops = apply_stats_filters(
         base_workshops,
         location_id=location_id,
@@ -256,7 +275,13 @@ def _workshop_stats(request):
         slot=slot_filter,
     )
     has_active_filters = bool(
-        location_id or city_filter or class_welcome_filter or month_filter or channel_filter or weekday_filter or slot_filter
+        location_id
+        or city_filter
+        or class_welcome_filter
+        or month_filter
+        or channel_filter
+        or weekday_filter
+        or slot_filter
     )
     # Base sans les axes de croisement (mois/canal/jour/créneau) : sert aux
     # matrices croisées pour garder du contexte en drill-down.
@@ -278,19 +303,23 @@ def _workshop_stats(request):
         total_attendees=Coalesce(Sum("number_attendees"), 0),
         no_class_avg_registered=Coalesce(
             Avg("number_registered", filter=Q(class_welcome=False)),
-            0.0, output_field=models.FloatField()
+            0.0,
+            output_field=models.FloatField(),
         ),
         no_class_avg_attendees=Coalesce(
             Avg("number_attendees", filter=Q(class_welcome=False)),
-            0.0, output_field=models.FloatField()
+            0.0,
+            output_field=models.FloatField(),
         ),
         no_class_max_registered=Coalesce(
             Max("number_registered", filter=Q(class_welcome=False)),
-            0, output_field=models.IntegerField()
+            0,
+            output_field=models.IntegerField(),
         ),
         no_class_min_registered=Coalesce(
             Min("number_registered", filter=Q(class_welcome=False)),
-            0, output_field=models.IntegerField()
+            0,
+            output_field=models.IntegerField(),
         ),
         instagram=Count("id", filter=Q(instagram=True)),
         facebook=Count("id", filter=Q(facebook=True)),
@@ -304,10 +333,16 @@ def _workshop_stats(request):
     total_workshops_except_class = total_workshops - total_accueil_classe
     total_registered = stats["total_registered"]
     total_registered_only_class_welcome = stats["total_registered_class_welcome"]
-    total_registered_except_class = total_registered - total_registered_only_class_welcome
+    total_registered_except_class = (
+        total_registered - total_registered_only_class_welcome
+    )
     total_attendees = stats["total_attendees"]
 
-    attendance_rate = round((total_attendees / total_registered * 100), 1) if total_registered > 0 else 0
+    attendance_rate = (
+        round((total_attendees / total_registered * 100), 1)
+        if total_registered > 0
+        else 0
+    )
     avg_registered = stats["no_class_avg_registered"]
     avg_attendees = stats["no_class_avg_attendees"]
     max_registered = stats["no_class_max_registered"]
@@ -355,20 +390,22 @@ def _workshop_stats(request):
     commune_table_data = []
     for commune in workshops_by_commune:
         city = commune["location__city"] or "Non défini"
-        commune_table_data.append({
-            'commune': city,
-            'total_ateliers': commune['total_count'],
-            'ateliers_classiques': commune['standard_count'],
-            'accueils_classe': commune['class_welcome_count'],
-            'total_participants': commune['total_registered'],
-            'participants_classiques': commune['standard_registered'],
-            'participants_accueils': commune['class_welcome_registered'],
-            'total_presents': commune.get('total_attendees', 0),
-            'attendance_rate': attendance_rate_value(
-                commune.get('total_attendees', 0), commune['total_registered']
-            ),
-            'workshops': commune_workshops.get(city, []),
-        })
+        commune_table_data.append(
+            {
+                "commune": city,
+                "total_ateliers": commune["total_count"],
+                "ateliers_classiques": commune["standard_count"],
+                "accueils_classe": commune["class_welcome_count"],
+                "total_participants": commune["total_registered"],
+                "participants_classiques": commune["standard_registered"],
+                "participants_accueils": commune["class_welcome_registered"],
+                "total_presents": commune.get("total_attendees", 0),
+                "attendance_rate": attendance_rate_value(
+                    commune.get("total_attendees", 0), commune["total_registered"]
+                ),
+                "workshops": commune_workshops.get(city, []),
+            }
+        )
 
     # Top 5 des ateliers les plus fréquentés
     most_registered = (
@@ -378,14 +415,19 @@ def _workshop_stats(request):
     )
 
     # Top 5 des ateliers avec le meilleur taux de présence
-    best_attendance = workshops.select_related("location").exclude(class_welcome=True)\
-        .exclude(number_registered=0)\
-        .exclude(number_registered__isnull=True)\
-        .annotate(attendance_rate=ExpressionWrapper(
-            100.0 * F('number_attendees') / F('number_registered'),
-            output_field=models.FloatField()
-        ))\
-        .order_by('-attendance_rate')[:5]
+    best_attendance = (
+        workshops.select_related("location")
+        .exclude(class_welcome=True)
+        .exclude(number_registered=0)
+        .exclude(number_registered__isnull=True)
+        .annotate(
+            attendance_rate=ExpressionWrapper(
+                100.0 * F("number_attendees") / F("number_registered"),
+                output_field=models.FloatField(),
+            )
+        )
+        .order_by("-attendance_rate")[:5]
+    )
 
     # Statistiques mensuelles
     monthly_stats = (
@@ -401,25 +443,35 @@ def _workshop_stats(request):
 
     # Créer un dictionnaire avec tous les mois
     month_labels = [
-        "Jan", "Fév", "Mar", "Avr", "Mai", "Juin",
-        "Juil", "Août", "Sep", "Oct", "Nov", "Déc",
+        "Jan",
+        "Fév",
+        "Mar",
+        "Avr",
+        "Mai",
+        "Juin",
+        "Juil",
+        "Août",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Déc",
     ]
     workshops_by_month = []
     for month in range(1, 13):
-        month_data = next(
-            (x for x in monthly_stats if x["month"] == month), None
-        )
+        month_data = next((x for x in monthly_stats if x["month"] == month), None)
         if month_data:
-            workshops_by_month.append({
-                "month": month,
-                "label": month_labels[month - 1],
-                "count": month_data["count"],
-                "total_registered": month_data["total_registered"],
-                "total_attendees": month_data["total_attendees"],
-                "attendance_rate": attendance_rate_value(
-                    month_data["total_attendees"], month_data["total_registered"]
-                ),
-            })
+            workshops_by_month.append(
+                {
+                    "month": month,
+                    "label": month_labels[month - 1],
+                    "count": month_data["count"],
+                    "total_registered": month_data["total_registered"],
+                    "total_attendees": month_data["total_attendees"],
+                    "attendance_rate": attendance_rate_value(
+                        month_data["total_attendees"], month_data["total_registered"]
+                    ),
+                }
+            )
         else:
             workshops_by_month.append(
                 {
@@ -437,36 +489,41 @@ def _workshop_stats(request):
     previous_year_data = None
     previous_year_data_class = None
     previous_year_data_no_class = None
-    
+
     if not export_word and selected_year > 0:
         previous_year = selected_year - 1
-        
+
         # Obtenir la date actuelle
         current_date = timezone.now().date()
-        
+
         # Créer la même date pour l'année sélectionnée et l'année précédente
-        end_date_current_year = date(selected_year, current_date.month, current_date.day)
+        end_date_current_year = date(
+            selected_year, current_date.month, current_date.day
+        )
         start_date_current_year = date(selected_year, 1, 1)
-        
-        end_date_previous_year = date(previous_year, current_date.month, current_date.day)
+
+        end_date_previous_year = date(
+            previous_year, current_date.month, current_date.day
+        )
         start_date_previous_year = date(previous_year, 1, 1)
-        
-        period_str = f"(1 jan - {current_date.day} {calendar.month_name[current_date.month]})"
-        
+
+        period_str = (
+            f"(1 jan - {current_date.day} {calendar.month_name[current_date.month]})"
+        )
+
         # 1. TOUS LES ATELIERS
         # Filtrer les ateliers de l'année en cours jusqu'à la date actuelle
         current_year_workshops_to_date = workshops.filter(
-            date__gte=start_date_current_year,
-            date__lte=end_date_current_year
+            date__gte=start_date_current_year, date__lte=end_date_current_year
         )
-        
+
         # Filtrer les ateliers de l'année précédente sur la même période
         # (avec les mêmes filtres pour une comparaison cohérente)
         previous_workshops = apply_stats_filters(
             Workshop.objects.filter(
                 date__year=previous_year,
                 date__gte=start_date_previous_year,
-                date__lte=end_date_previous_year
+                date__lte=end_date_previous_year,
             ),
             location_id=location_id,
             city=city_filter,
@@ -476,7 +533,7 @@ def _workshop_stats(request):
             weekday=weekday_filter,
             slot=slot_filter,
         )
-        
+
         if previous_workshops.exists():
             # 1 seule requête pour les stats de l'année en cours à date
             cy_stats = current_year_workshops_to_date.aggregate(
@@ -507,31 +564,39 @@ def _workshop_stats(request):
                     total_attendees_to_date, total_registered_to_date
                 ),
                 "period": period_str,
-                "type": "all"
+                "type": "all",
             }
-            
+
             # Calcul des variations en pourcentage en utilisant les totaux sur la même période
             if previous_year_data["total_workshops"] > 0:
-                previous_year_data["workshops_variation"] = ((total_workshops_to_date - previous_year_data["total_workshops"]) / previous_year_data["total_workshops"]) * 100
+                previous_year_data["workshops_variation"] = (
+                    (total_workshops_to_date - previous_year_data["total_workshops"])
+                    / previous_year_data["total_workshops"]
+                ) * 100
             else:
                 previous_year_data["workshops_variation"] = 100
-                
+
             if previous_year_data["total_registered"] > 0:
-                previous_year_data["registered_variation"] = ((total_registered_to_date - previous_year_data["total_registered"]) / previous_year_data["total_registered"]) * 100
+                previous_year_data["registered_variation"] = (
+                    (total_registered_to_date - previous_year_data["total_registered"])
+                    / previous_year_data["total_registered"]
+                ) * 100
             else:
                 previous_year_data["registered_variation"] = 100
-                
+
             # Ajouter les totaux à date dans les données de l'année précédente pour le contexte
             previous_year_data["total_workshops_to_date"] = total_workshops_to_date
             previous_year_data["total_registered_to_date"] = total_registered_to_date
-        
+
         # 2. ATELIERS CLASSIQUES (HORS ACCUEIL CLASSE)
         # Filtrer les ateliers classiques de l'année en cours jusqu'à la date actuelle
-        current_year_no_class_to_date = current_year_workshops_to_date.filter(class_welcome=False)
-        
+        current_year_no_class_to_date = current_year_workshops_to_date.filter(
+            class_welcome=False
+        )
+
         # Filtrer les ateliers classiques de l'année précédente sur la même période
         previous_no_class = previous_workshops.filter(class_welcome=False)
-        
+
         if previous_no_class.exists():
             # 1 seule requête pour les 2 stats de l'année en cours
             nc_stats = current_year_no_class_to_date.aggregate(
@@ -552,31 +617,49 @@ def _workshop_stats(request):
                 "total_workshops": pnc_stats["total"],
                 "total_registered": pnc_stats["registered"],
                 "period": period_str,
-                "type": "no_class"
+                "type": "no_class",
             }
-            
+
             # Calcul des variations en pourcentage en utilisant les totaux sur la même période
             if previous_year_data_no_class["total_workshops"] > 0:
-                previous_year_data_no_class["workshops_variation"] = ((total_no_class_to_date - previous_year_data_no_class["total_workshops"]) / previous_year_data_no_class["total_workshops"]) * 100
+                previous_year_data_no_class["workshops_variation"] = (
+                    (
+                        total_no_class_to_date
+                        - previous_year_data_no_class["total_workshops"]
+                    )
+                    / previous_year_data_no_class["total_workshops"]
+                ) * 100
             else:
                 previous_year_data_no_class["workshops_variation"] = 100
-                
+
             if previous_year_data_no_class["total_registered"] > 0:
-                previous_year_data_no_class["registered_variation"] = ((total_registered_no_class_to_date - previous_year_data_no_class["total_registered"]) / previous_year_data_no_class["total_registered"]) * 100
+                previous_year_data_no_class["registered_variation"] = (
+                    (
+                        total_registered_no_class_to_date
+                        - previous_year_data_no_class["total_registered"]
+                    )
+                    / previous_year_data_no_class["total_registered"]
+                ) * 100
             else:
                 previous_year_data_no_class["registered_variation"] = 100
-                
+
             # Ajouter les totaux à date dans les données de l'année précédente pour le contexte
-            previous_year_data_no_class["total_workshops_to_date"] = total_no_class_to_date
-            previous_year_data_no_class["total_registered_to_date"] = total_registered_no_class_to_date
-        
+            previous_year_data_no_class["total_workshops_to_date"] = (
+                total_no_class_to_date
+            )
+            previous_year_data_no_class["total_registered_to_date"] = (
+                total_registered_no_class_to_date
+            )
+
         # 3. ACCUEILS DE CLASSE
         # Filtrer les accueils de classe de l'année en cours jusqu'à la date actuelle
-        current_year_class_to_date = current_year_workshops_to_date.filter(class_welcome=True)
-        
+        current_year_class_to_date = current_year_workshops_to_date.filter(
+            class_welcome=True
+        )
+
         # Filtrer les accueils de classe de l'année précédente sur la même période
         previous_class = previous_workshops.filter(class_welcome=True)
-        
+
         if previous_class.exists():
             # 1 seule requête pour les 2 stats de l'année en cours
             c_stats = current_year_class_to_date.aggregate(
@@ -597,24 +680,35 @@ def _workshop_stats(request):
                 "total_workshops": pc_stats["total"],
                 "total_registered": pc_stats["registered"],
                 "period": period_str,
-                "type": "class"
+                "type": "class",
             }
-            
+
             # Calcul des variations en pourcentage en utilisant les totaux sur la même période
             if previous_year_data_class["total_workshops"] > 0:
-                previous_year_data_class["workshops_variation"] = ((total_class_to_date - previous_year_data_class["total_workshops"]) / previous_year_data_class["total_workshops"]) * 100
+                previous_year_data_class["workshops_variation"] = (
+                    (total_class_to_date - previous_year_data_class["total_workshops"])
+                    / previous_year_data_class["total_workshops"]
+                ) * 100
             else:
                 previous_year_data_class["workshops_variation"] = 100
-                
+
             if previous_year_data_class["total_registered"] > 0:
-                previous_year_data_class["registered_variation"] = ((total_registered_class_to_date - previous_year_data_class["total_registered"]) / previous_year_data_class["total_registered"]) * 100
+                previous_year_data_class["registered_variation"] = (
+                    (
+                        total_registered_class_to_date
+                        - previous_year_data_class["total_registered"]
+                    )
+                    / previous_year_data_class["total_registered"]
+                ) * 100
             else:
                 previous_year_data_class["registered_variation"] = 100
-                
+
             # Ajouter les totaux à date dans les données de l'année précédente pour le contexte
             previous_year_data_class["total_workshops_to_date"] = total_class_to_date
-            previous_year_data_class["total_registered_to_date"] = total_registered_class_to_date
-    
+            previous_year_data_class["total_registered_to_date"] = (
+                total_registered_class_to_date
+            )
+
     # Préparation des données de contexte
     cache_key = get_stats_cache_key(
         selected_year,
@@ -684,7 +778,9 @@ def _workshop_stats(request):
         "active_month": month_filter,
         "active_channel": channel_filter,
         "active_weekday": weekday_filter,
-        "active_weekday_label": WEEKDAY_LABELS.get(int(weekday_filter), "") if weekday_filter else "",
+        "active_weekday_label": (
+            WEEKDAY_LABELS.get(int(weekday_filter), "") if weekday_filter else ""
+        ),
         "active_slot": slot_filter,
         "active_slot_label": SLOT_LABELS.get(slot_filter, "") if slot_filter else "",
         "is_htmx_partial": is_htmx_partial,
@@ -693,16 +789,12 @@ def _workshop_stats(request):
             "data": [total_workshops_except_class, total_accueil_classe],
         },
         "chart_locations": {
-            "labels": [
-                r["location__name"] or "Inconnu" for r in workshops_by_location
-            ],
+            "labels": [r["location__name"] or "Inconnu" for r in workshops_by_location],
             "ateliers": [r["count"] for r in workshops_by_location],
             "inscrits": [r["total_registered"] for r in workshops_by_location],
         },
         "chart_communes": {
-            "labels": [
-                r["location__city"] or "Inconnu" for r in workshops_by_commune
-            ],
+            "labels": [r["location__city"] or "Inconnu" for r in workshops_by_commune],
             "accueils": [r["class_welcome_count"] for r in workshops_by_commune],
             "classiques": [r["standard_count"] for r in workshops_by_commune],
         },
@@ -710,9 +802,7 @@ def _workshop_stats(request):
         "total_accueil_classe": total_accueil_classe,
         "total_workshops_except_class": total_workshops_except_class,
         "total_registered": total_registered,
-        "total_registered_only_class_welcome": (
-            total_registered_only_class_welcome
-        ),
+        "total_registered_only_class_welcome": (total_registered_only_class_welcome),
         "total_registered_except_class": total_registered_except_class,
         "total_attendees": total_attendees,
         "attendance_rate": attendance_rate,
@@ -731,17 +821,29 @@ def _workshop_stats(request):
         "channel_cross": cached_extra.get("channel_cross", []),
         "month_type_cross": cached_extra.get("month_type_cross", []),
         "commune_month_matrix": cached_extra.get(
-            "commune_month_matrix", {"cities": [], "matrix": [], "months": list(range(1, 13))}
+            "commune_month_matrix",
+            {"cities": [], "matrix": [], "months": list(range(1, 13))},
         ),
-        "fill_tranches": cached_extra.get("fill_tranches", {"tranches": {}, "total": 0}),
+        "fill_tranches": cached_extra.get(
+            "fill_tranches", {"tranches": {}, "total": 0}
+        ),
         "noshow_top": cached_extra.get("noshow_top", []),
-        "zero_registered": cached_extra.get("zero_registered", {"total": 0, "sample": []}),
-        "pareto": cached_extra.get("pareto", {"top_count": 0, "total_count": 0, "top_share": 0.0, "total_registered": 0}),
+        "zero_registered": cached_extra.get(
+            "zero_registered", {"total": 0, "sample": []}
+        ),
+        "pareto": cached_extra.get(
+            "pareto",
+            {"top_count": 0, "total_count": 0, "top_share": 0.0, "total_registered": 0},
+        ),
         "recurrence": cached_extra.get("recurrence", []),
         "weekday_stats": cached_extra.get("weekday_stats", []),
         "slot_stats": cached_extra.get("slot_stats", []),
-        "duration_stats": cached_extra.get("duration_stats", {"count": 0, "avg": 0.0, "median": 0.0}),
-        "coverage_gaps": cached_extra.get("coverage_gaps", {"gaps": [], "shares": [], "total_registered": 0}),
+        "duration_stats": cached_extra.get(
+            "duration_stats", {"count": 0, "avg": 0.0, "median": 0.0}
+        ),
+        "coverage_gaps": cached_extra.get(
+            "coverage_gaps", {"gaps": [], "shares": [], "total_registered": 0}
+        ),
         "location_load": cached_extra.get("location_load", []),
         "communication_stats": {
             "instagram": stats["instagram"],
@@ -776,16 +878,12 @@ def _workshop_stats(request):
         animation_report = build_animation_report(workshops)
         context["animation_report"] = animation_report
         context["report_generated_at"] = timezone.localtime()
-        context["report_title"] = (
-            f"Rapport complet des ateliers {selected_year}"
-        )
+        context["report_title"] = f"Rapport complet des ateliers {selected_year}"
         # Pour le rapport, les croisements mensuels doivent refléter
         # exactement les filtres actifs (contrairement aux matrices de
         # drill-down de la page de statistiques).
         context["report_month_type_cross"] = get_month_type_cross(workshops)
-        context["report_charts"] = _build_report_charts(
-            context, animation_report
-        )
+        context["report_charts"] = _build_report_charts(context, animation_report)
         monthly_rows = []
         month_types = context["report_month_type_cross"]
         for index, month in enumerate(context.get("workshops_by_month") or []):
@@ -793,9 +891,7 @@ def _workshop_stats(request):
             monthly_rows.append(
                 {
                     **month,
-                    "classic_count": int(
-                        month_type.get("classic_count") or 0
-                    ),
+                    "classic_count": int(month_type.get("classic_count") or 0),
                     "class_count": int(month_type.get("class_count") or 0),
                 }
             )
@@ -803,28 +899,47 @@ def _workshop_stats(request):
 
     # Ajouter les totaux à date au contexte si disponibles
     if previous_year_data and "total_workshops_to_date" in previous_year_data:
-        context["total_workshops_to_date"] = previous_year_data["total_workshops_to_date"]
-        context["total_registered_to_date"] = previous_year_data["total_registered_to_date"]
-    
+        context["total_workshops_to_date"] = previous_year_data[
+            "total_workshops_to_date"
+        ]
+        context["total_registered_to_date"] = previous_year_data[
+            "total_registered_to_date"
+        ]
+
     # Ajouter les données de comparaison pour les ateliers classiques et accueils de classe
     context["previous_year_data_no_class"] = previous_year_data_no_class
     context["previous_year_data_class"] = previous_year_data_class
 
     # Données pour le bilan détaillé
     bilan_data = {
-        'current_year': selected_year,
-        'previous_year': selected_year - 1 if selected_year > 0 else None,
-        'total_communes': len(commune_table_data),
-        'top_communes': sorted(commune_table_data, key=lambda x: x['total_ateliers'], reverse=True)[:5],
-        'communes_with_most_classics': sorted(commune_table_data, key=lambda x: x['ateliers_classiques'], reverse=True)[:3],
-        'communes_with_most_accueils': sorted(commune_table_data, key=lambda x: x['accueils_classe'], reverse=True)[:3],
-        'communes_with_most_participants': sorted(commune_table_data, key=lambda x: x['total_participants'], reverse=True)[:3],
-        'communes_without_activities': [c for c in commune_table_data if c['total_ateliers'] == 0],
-        'new_animations_this_year': [],  # À implémenter si on a des données sur les nouveaux types d'ateliers
-        'mediatheque_36_impact': {
-            'was_closed': selected_year >= 2024,  # Supposons que la médiathèque du 36 a fermé en 2024
-            'impact_description': 'Fermeture de la médiathèque du 36' if selected_year >= 2024 else 'Médiathèque du 36 opérationnelle'
-        }
+        "current_year": selected_year,
+        "previous_year": selected_year - 1 if selected_year > 0 else None,
+        "total_communes": len(commune_table_data),
+        "top_communes": sorted(
+            commune_table_data, key=lambda x: x["total_ateliers"], reverse=True
+        )[:5],
+        "communes_with_most_classics": sorted(
+            commune_table_data, key=lambda x: x["ateliers_classiques"], reverse=True
+        )[:3],
+        "communes_with_most_accueils": sorted(
+            commune_table_data, key=lambda x: x["accueils_classe"], reverse=True
+        )[:3],
+        "communes_with_most_participants": sorted(
+            commune_table_data, key=lambda x: x["total_participants"], reverse=True
+        )[:3],
+        "communes_without_activities": [
+            c for c in commune_table_data if c["total_ateliers"] == 0
+        ],
+        "new_animations_this_year": [],  # À implémenter si on a des données sur les nouveaux types d'ateliers
+        "mediatheque_36_impact": {
+            "was_closed": selected_year
+            >= 2024,  # Supposons que la médiathèque du 36 a fermé en 2024
+            "impact_description": (
+                "Fermeture de la médiathèque du 36"
+                if selected_year >= 2024
+                else "Médiathèque du 36 opérationnelle"
+            ),
+        },
     }
 
     # Calculer les variations par commune si on a des données de l'année précédente
@@ -852,32 +967,53 @@ def _workshop_stats(request):
                 )
                 .order_by("-total_count")
             )
-            
+
             for commune in previous_commune_stats:
-                previous_commune_data[commune['location__city'] or 'Non défini'] = commune
+                previous_commune_data[commune["location__city"] or "Non défini"] = (
+                    commune
+                )
 
         # Calculer les variations pour chaque commune
         for commune in commune_table_data:
-            commune_name = commune['commune']
+            commune_name = commune["commune"]
             if commune_name in previous_commune_data:
                 prev_data = previous_commune_data[commune_name]
-                commune['variation_ateliers'] = commune['total_ateliers'] - prev_data['total_count']
-                commune['variation_participants'] = commune['total_participants'] - prev_data['total_registered']
-                commune['variation_percentage'] = (
-                    ((commune['total_ateliers'] - prev_data['total_count']) / prev_data['total_count'] * 100)
-                    if prev_data['total_count'] > 0 else 100
+                commune["variation_ateliers"] = (
+                    commune["total_ateliers"] - prev_data["total_count"]
+                )
+                commune["variation_participants"] = (
+                    commune["total_participants"] - prev_data["total_registered"]
+                )
+                commune["variation_percentage"] = (
+                    (
+                        (commune["total_ateliers"] - prev_data["total_count"])
+                        / prev_data["total_count"]
+                        * 100
+                    )
+                    if prev_data["total_count"] > 0
+                    else 100
                 )
             else:
-                commune['variation_ateliers'] = commune['total_ateliers']
-                commune['variation_participants'] = commune['total_participants']
-                commune['variation_percentage'] = 100  # Nouvelle commune
+                commune["variation_ateliers"] = commune["total_ateliers"]
+                commune["variation_participants"] = commune["total_participants"]
+                commune["variation_percentage"] = 100  # Nouvelle commune
 
     context["bilan_data"] = bilan_data
 
     # Libellés mois (utilisés par la synthèse et les filtres).
     month_names = [
-        "Jan", "Fév", "Mar", "Avr", "Mai", "Juin",
-        "Juil", "Août", "Sep", "Oct", "Nov", "Déc",
+        "Jan",
+        "Fév",
+        "Mar",
+        "Avr",
+        "Mai",
+        "Juin",
+        "Juil",
+        "Août",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Déc",
     ]
     context["month_names"] = month_names
 
@@ -926,7 +1062,9 @@ def _workshop_stats(request):
         except ValueError:
             pass
     if slot_filter:
-        perimetre_parts.append(f"créneau {SLOT_LABELS.get(slot_filter, slot_filter).lower()}")
+        perimetre_parts.append(
+            f"créneau {SLOT_LABELS.get(slot_filter, slot_filter).lower()}"
+        )
     context["synthese"] = build_synthese(
         {
             "year": selected_year,
@@ -944,8 +1082,7 @@ def _workshop_stats(request):
                 reverse=True,
             ),
             "months": [
-                {"label": m["label"], "count": m["count"]}
-                for m in workshops_by_month
+                {"label": m["label"], "count": m["count"]} for m in workshops_by_month
             ],
             "weekdays": cached_extra.get("weekday_stats", []),
             "slots": cached_extra.get("slot_stats", []),
@@ -976,18 +1113,14 @@ def _workshop_stats(request):
         doc = build_workshop_report_docx(context)
         filename = f"rapport_ateliers_{selected_year}.docx"
         if city_filter:
-            filename = (
-                f"rapport_ateliers_{slugify(city_filter)}_{selected_year}.docx"
-            )
+            filename = f"rapport_ateliers_{slugify(city_filter)}_{selected_year}.docx"
         response = HttpResponse(
             content_type=(
                 "application/vnd.openxmlformats-officedocument"
                 ".wordprocessingml.document"
             )
         )
-        response["Content-Disposition"] = (
-            f'attachment; filename="{filename}"'
-        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
         doc.save(response)
         return response
 
@@ -996,9 +1129,7 @@ def _workshop_stats(request):
 
     if export_word:
         # Générer le fichier Word (nom basé sur l'année sélectionnée)
-        doc = save_stats_to_word(
-            context, f"statistiques_ateliers_{selected_year}.docx"
-        )
+        doc = save_stats_to_word(context, f"statistiques_ateliers_{selected_year}.docx")
 
         # Préparer la réponse HTTP
         response = HttpResponse(
@@ -1090,9 +1221,9 @@ def workshop_list(request):
     years_list = [date.year for date in all_years]
 
     # Requête de base avec select_related pour éviter les N+1
-    workshops = Workshop.objects.filter(
-        date__year=selected_year
-    ).select_related("location")
+    workshops = Workshop.objects.filter(date__year=selected_year).select_related(
+        "location"
+    )
 
     # Appliquer les filtres supplémentaires
     filter_form = WorkshopFilterForm(request.GET)
@@ -1217,53 +1348,73 @@ def workshop_list(request):
     if filter_form.is_valid():
         cd = filter_form.cleaned_data
         if cd.get("q"):
-            filter_chips.append({
-                "icon": "bx-search",
-                "text": f'"{cd["q"]}"',
-                "remove_url": _chip_remove_url("q"),
-            })
+            filter_chips.append(
+                {
+                    "icon": "bx-search",
+                    "text": f'"{cd["q"]}"',
+                    "remove_url": _chip_remove_url("q"),
+                }
+            )
         loc = cd.get("location")
         if loc:
-            filter_chips.append({
-                "icon": "bx-map-pin",
-                "text": loc.name,
-                "remove_url": _chip_remove_url("location"),
-            })
+            filter_chips.append(
+                {
+                    "icon": "bx-map-pin",
+                    "text": loc.name,
+                    "remove_url": _chip_remove_url("location"),
+                }
+            )
         if cd.get("city"):
-            filter_chips.append({
-                "icon": "bx-map",
-                "text": cd["city"],
-                "remove_url": _chip_remove_url("city"),
-            })
+            filter_chips.append(
+                {
+                    "icon": "bx-map",
+                    "text": cd["city"],
+                    "remove_url": _chip_remove_url("city"),
+                }
+            )
         if cd.get("date_from"):
-            filter_chips.append({
-                "icon": "bx-calendar",
-                "text": f'Du {cd["date_from"]:%d/%m/%Y}',
-                "remove_url": _chip_remove_url("date_from"),
-            })
+            filter_chips.append(
+                {
+                    "icon": "bx-calendar",
+                    "text": f'Du {cd["date_from"]:%d/%m/%Y}',
+                    "remove_url": _chip_remove_url("date_from"),
+                }
+            )
         if cd.get("date_to"):
-            filter_chips.append({
-                "icon": "bx-calendar",
-                "text": f'Au {cd["date_to"]:%d/%m/%Y}',
-                "remove_url": _chip_remove_url("date_to"),
-            })
+            filter_chips.append(
+                {
+                    "icon": "bx-calendar",
+                    "text": f'Au {cd["date_to"]:%d/%m/%Y}',
+                    "remove_url": _chip_remove_url("date_to"),
+                }
+            )
         yes_no_labels = {
             "class_welcome": ("bx-chalkboard", "Accueil classe", "Sans accueil classe"),
             "poster_required": ("bx-image", "Affiche requise", "Sans affiche requise"),
             "has_image": ("bx-check-circle", "Avec affiche", "Sans affiche"),
-            "poster_valide": ("bx-check-shield", "Affiche validée", "Affiche non validée"),
+            "poster_valide": (
+                "bx-check-shield",
+                "Affiche validée",
+                "Affiche non validée",
+            ),
         }
         for key, (icon, label_yes, label_no) in yes_no_labels.items():
             if cd.get(key) == "yes":
-                filter_chips.append({
-                    "icon": icon, "text": label_yes,
-                    "remove_url": _chip_remove_url(key),
-                })
+                filter_chips.append(
+                    {
+                        "icon": icon,
+                        "text": label_yes,
+                        "remove_url": _chip_remove_url(key),
+                    }
+                )
             elif cd.get(key) == "no":
-                filter_chips.append({
-                    "icon": icon, "text": label_no,
-                    "remove_url": _chip_remove_url(key),
-                })
+                filter_chips.append(
+                    {
+                        "icon": icon,
+                        "text": label_no,
+                        "remove_url": _chip_remove_url(key),
+                    }
+                )
         range_labels = [
             ("number_registered_min", "Inscrits ≥"),
             ("number_registered_max", "Inscrits ≤"),
@@ -1272,11 +1423,13 @@ def workshop_list(request):
         ]
         for key, prefix in range_labels:
             if cd.get(key) is not None:
-                filter_chips.append({
-                    "icon": "bx-user" if "registered" in key else "bx-user-check",
-                    "text": f"{prefix} {cd[key]}",
-                    "remove_url": _chip_remove_url(key),
-                })
+                filter_chips.append(
+                    {
+                        "icon": "bx-user" if "registered" in key else "bx-user-check",
+                        "text": f"{prefix} {cd[key]}",
+                        "remove_url": _chip_remove_url(key),
+                    }
+                )
 
     context = {
         "workshops": workshops_page,
@@ -1337,6 +1490,9 @@ def _workshop_create_initial(request):
                     "end_time": source.end_time,
                     "poster_required": source.poster_required,
                     "class_welcome": source.class_welcome,
+                    "is_all_ages": source.is_all_ages,
+                    "min_age": source.min_age,
+                    "max_age": source.max_age,
                     "observations": source.observations,
                     "number_registered": 0,
                     "number_attendees": 0,
@@ -1381,9 +1537,7 @@ def workshop_create(request):
                         f"Nom existant réutilisé : « {workshop.name} ».",
                     )
                 if workshop.poster_required:
-                    transaction.on_commit(
-                        lambda: notify_poster_request(workshop)
-                    )
+                    transaction.on_commit(lambda: notify_poster_request(workshop))
                 return redirect("workshop_list")
 
             workshop = form.save(user=request.user)
@@ -1395,9 +1549,7 @@ def workshop_create(request):
                 )
 
             if workshop.poster_required:
-                transaction.on_commit(
-                    lambda: notify_poster_request(workshop)
-                )
+                transaction.on_commit(lambda: notify_poster_request(workshop))
 
             if request.POST.get("save_and_add"):
                 query = urlencode(
@@ -1406,9 +1558,7 @@ def workshop_create(request):
                         "date": workshop.date.isoformat(),
                     }
                 )
-                return redirect(
-                    f"{reverse('workshop_create')}?{query}"
-                )
+                return redirect(f"{reverse('workshop_create')}?{query}")
             return redirect("workshop_list")
     else:
         form = WorkshopForm(initial=_workshop_create_initial(request) or None)
@@ -1442,9 +1592,7 @@ def workshop_detail(request, pk):
         HttpResponse: La page de détails de l'atelier.
     """
     workshop = get_object_or_404(
-        Workshop.objects.select_related(
-            "location", "created_by", "updated_by"
-        ),
+        Workshop.objects.select_related("location", "created_by", "updated_by"),
         pk=pk,
     )
     series_count = 0
@@ -1473,9 +1621,7 @@ def workshop_update(request, pk):
     Returns:
         HttpResponse: La page de modification ou redirection.
     """
-    workshop = get_object_or_404(
-        Workshop.objects.select_related("location"), pk=pk
-    )
+    workshop = get_object_or_404(Workshop.objects.select_related("location"), pk=pk)
     locations_count = Location.objects.count()
     if request.method == "POST":
         was_poster_required = workshop.poster_required
@@ -1483,9 +1629,7 @@ def workshop_update(request, pk):
         if form.is_valid():
             submitted_name = form.cleaned_data.get("name", "")
             workshop = form.save(user=request.user)
-            messages.success(
-                request, "L'atelier a été mis à jour avec succès."
-            )
+            messages.success(request, "L'atelier a été mis à jour avec succès.")
             if submitted_name != workshop.name:
                 messages.info(
                     request,
@@ -1493,9 +1637,7 @@ def workshop_update(request, pk):
                 )
 
             if workshop.poster_required and not was_poster_required:
-                transaction.on_commit(
-                    lambda: notify_poster_request(workshop)
-                )
+                transaction.on_commit(lambda: notify_poster_request(workshop))
 
             return redirect("workshop_list")
     else:
@@ -1592,13 +1734,9 @@ def workshop_valide_poster(request, pk):
             if new_image:
                 send_email_notification(workshop, domain)
 
-            # Vérifier les champs requis et poster_valide
-            requis = ["facebook", "instagram", "mail", "portail", "vdn"]
-            all_filled = all(form.cleaned_data.get(field) for field in requis)
-
-            workshop.poster_required = not (
-                workshop.poster_valide and all_filled
-            )
+            # L'affiche reste requise tant qu'elle n'est pas validée
+            # par l'administrateur (la diffusion n'est plus gérée ici).
+            workshop.poster_required = not workshop.poster_valide
 
             workshop.save()
 
@@ -1617,6 +1755,7 @@ def send_email_notification(workshop, domain):
     image est ajoutée ou modifiée.
     """
     from notifications.email_service import send_notification
+
     send_notification("poster_image_uploaded", {"workshop": workshop})
 
 
@@ -1638,10 +1777,14 @@ def workshop_month(request):
     end_date = start_date + relativedelta(months=1)
 
     # Filtrer les ateliers du mois en cours
-    workshops = Workshop.objects.filter(
-        Q(date__gte=start_date),
-        Q(date__lt=end_date),
-    ).select_related("location").order_by("date")
+    workshops = (
+        Workshop.objects.filter(
+            Q(date__gte=start_date),
+            Q(date__lt=end_date),
+        )
+        .select_related("location")
+        .order_by("date")
+    )
 
     # Pagination
     paginator = Paginator(workshops, 8)
@@ -1665,32 +1808,138 @@ def workshop_month(request):
 def workshops_with_poster(request):
     """Lister les ateliers avec affiches.
 
+    La recherche, le filtre par statut et le tri sont gérés côté serveur
+    (paramètres GET `q`, `statut`, `tri`) pour rester accessibles sans
+    JavaScript et compatibles avec la pagination. Alpine.js ne sert qu'à
+    basculer l'affichage grille / liste.
+
     Args:
         request: La requête HTTP.
 
     Returns:
         HttpResponse: La page des ateliers avec affiches.
     """
-    base_qs = (
-        Workshop.objects.filter(Q(poster_required=True))
-        .select_related("location")
+    q = request.GET.get("q", "").strip()
+    statut = request.GET.get("statut", "all")
+    tri = request.GET.get("tri", "date")
+    if statut not in {
+        "all",
+        "with-poster",
+        "without-poster",
+        "required",
+        "validated",
+        "toreview",
+    }:
+        statut = "all"
+    if tri not in {"date", "date-desc", "name", "lieu"}:
+        tri = "date"
+
+    base_qs = Workshop.objects.filter(Q(poster_required=True)).select_related(
+        "location"
     )
 
-    demandes = base_qs.filter(NO_IMAGE_Q).order_by('date')
-    workshops = base_qs.filter(HAS_IMAGE_Q).order_by('date')
+    # Compteurs globaux (hors filtres) pour la barre de progression.
+    total_required = base_qs.count()
+    total_deposees = base_qs.filter(HAS_IMAGE_Q).count()
+    total_validees = base_qs.filter(poster_valide=True).count()
+    progress_percent = (
+        round(total_deposees / total_required * 100) if total_required else 0
+    )
 
-    paginator = Paginator(workshops, 20)
+    demandes_qs = base_qs.filter(NO_IMAGE_Q)
+    workshops_qs = base_qs.filter(HAS_IMAGE_Q)
+
+    if q:
+        search_q = Q(name__icontains=q) | Q(location__name__icontains=q)
+        demandes_qs = demandes_qs.filter(search_q)
+        workshops_qs = workshops_qs.filter(search_q)
+
+    # Filtre par statut : agit sur les deux listes.
+    if statut == "with-poster":
+        demandes_qs = demandes_qs.none()
+    elif statut in {"without-poster", "required"}:
+        workshops_qs = workshops_qs.none()
+    elif statut == "validated":
+        demandes_qs = demandes_qs.filter(poster_valide=True)
+        workshops_qs = workshops_qs.filter(poster_valide=True)
+    elif statut == "toreview":
+        demandes_qs = demandes_qs.none()
+        workshops_qs = workshops_qs.filter(poster_valide=False)
+
+    if tri == "date-desc":
+        ordering = ("-date", "start_time")
+    elif tri == "name":
+        ordering = ("name", "date")
+    elif tri == "lieu":
+        ordering = ("location__name", "date")
+    else:
+        ordering = ("date", "start_time")
+
+    # Les demandes restent triées par urgence (date croissante).
+    demandes = list(demandes_qs.order_by("date", "start_time"))
+    workshops_ordered = workshops_qs.order_by(*ordering)
+
+    paginator = Paginator(workshops_ordered, 20)
     page_number = request.GET.get("page")
     workshops_page = paginator.get_page(page_number)
+
+    today = date.today()
+    for workshop in list(demandes) + list(workshops_page.object_list):
+        workshop = _enrich_poster_workshop(workshop, today)
+
+    # Conserver les paramètres de filtre dans la pagination.
+    query_params = request.GET.copy()
+    query_params.pop("page", None)
+    querystring = query_params.urlencode()
 
     context = {
         "demandes": demandes,
         "workshops": workshops_page,
         "page_obj": workshops_page,
         "paginator": paginator,
+        "q": q,
+        "statut": statut,
+        "tri": tri,
+        "querystring": querystring,
+        "total_required": total_required,
+        "total_deposees": total_deposees,
+        "total_validees": total_validees,
+        "progress_percent": progress_percent,
+        "today": today,
     }
 
     return render(request, "workshop/workshops_with_poster.html", context)
+
+
+def _enrich_poster_workshop(workshop, today):
+    """Ajoute les indicateurs d'urgence à un atelier."""
+    if workshop.date:
+        delta = (workshop.date - today).days
+    else:
+        delta = None
+    workshop.days_until = delta
+    if delta is None:
+        workshop.urgency = "ok"
+        workshop.urgency_label = "Date à confirmer"
+    elif delta < 0:
+        workshop.urgency = "overdue"
+        workshop.urgency_label = "Atelier passé"
+    elif delta == 0:
+        workshop.urgency = "urgent"
+        workshop.urgency_label = "Aujourd'hui"
+    elif delta == 1:
+        workshop.urgency = "urgent"
+        workshop.urgency_label = "Demain"
+    elif delta <= 7:
+        workshop.urgency = "urgent"
+        workshop.urgency_label = f"J-{delta}"
+    elif delta <= 21:
+        workshop.urgency = "soon"
+        workshop.urgency_label = f"J-{delta}"
+    else:
+        workshop.urgency = "ok"
+        workshop.urgency_label = f"J-{delta}"
+    return workshop
 
 
 # Suppression de l'image d'un atelier
@@ -1732,9 +1981,7 @@ def location_list(request):
         HttpResponse: La page de liste des lieux.
     """
     locations = Location.objects.all()
-    return render(
-        request, "workshop/location_list.html", {"locations": locations}
-    )
+    return render(request, "workshop/location_list.html", {"locations": locations})
 
 
 # Ajout d'un lieu
@@ -1753,9 +2000,7 @@ def location_create(request):
         form = LocationForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(
-                request, "La localisation a été créée avec succès."
-            )
+            messages.success(request, "La localisation a été créée avec succès.")
             return redirect("location_list")
     else:
         form = LocationForm()
@@ -1780,9 +2025,7 @@ def location_detail(request, pk):
     # Récupérer les ateliers de l'année en cours
     current_year = timezone.now().year
     selected_year = int(request.GET.get("year", current_year))
-    workshops_qs = Workshop.objects.filter(
-        location=location, date__year=selected_year
-    )
+    workshops_qs = Workshop.objects.filter(location=location, date__year=selected_year)
 
     # Agrégations en une seule requête
     stats = workshops_qs.aggregate(
@@ -1792,8 +2035,12 @@ def location_detail(request, pk):
         classic=Count("id", filter=Q(class_welcome=False)),
         class_welcome_count=Count("id", filter=Q(class_welcome=True)),
         poster_required=Count("id", filter=Q(poster_required=True)),
-        classic_registered=Coalesce(Sum("number_registered", filter=Q(class_welcome=False)), 0),
-        class_welcome_registered=Coalesce(Sum("number_registered", filter=Q(class_welcome=True)), 0),
+        classic_registered=Coalesce(
+            Sum("number_registered", filter=Q(class_welcome=False)), 0
+        ),
+        class_welcome_registered=Coalesce(
+            Sum("number_registered", filter=Q(class_welcome=True)), 0
+        ),
         instagram=Count("id", filter=Q(instagram=True)),
         facebook=Count("id", filter=Q(facebook=True)),
         mail=Count("id", filter=Q(mail=True)),
@@ -1804,20 +2051,30 @@ def location_detail(request, pk):
     total_workshops = stats["total"]
     total_registered = stats["registered"]
     total_attendees = stats["attendees"]
-    attendance_rate = round((total_attendees / total_registered * 100), 1) if total_registered > 0 else 0
+    attendance_rate = (
+        round((total_attendees / total_registered * 100), 1)
+        if total_registered > 0
+        else 0
+    )
     classic_count = stats["classic"]
     class_welcome_count = stats["class_welcome_count"]
     poster_required_count = stats["poster_required"]
     classic_registered = stats["classic_registered"]
     class_welcome_registered = stats["class_welcome_registered"]
 
-    communication_stats = {k: stats[k] for k in ("instagram", "facebook", "mail", "portail", "vdn")}
+    communication_stats = {
+        k: stats[k] for k in ("instagram", "facebook", "mail", "portail", "vdn")
+    }
 
     # Top 5 des ateliers par nombre d'inscrits
-    top_workshops = workshops_qs.order_by('-number_registered')[:5]
+    top_workshops = workshops_qs.order_by("-number_registered")[:5]
 
     # Années disponibles
-    available_years = list(workshops_qs.values_list("date__year", flat=True).distinct().order_by("-date__year")) or [current_year]
+    available_years = list(
+        workshops_qs.values_list("date__year", flat=True)
+        .distinct()
+        .order_by("-date__year")
+    ) or [current_year]
 
     # Statistiques mensuelles (1 requête au lieu de 12 filtres)
     monthly_stats = (
@@ -1832,7 +2089,9 @@ def location_detail(request, pk):
     )
     monthly_map = {m["month"]: m for m in monthly_stats if m["month"]}
     workshops_by_month = [
-        monthly_map.get(m, {"month": m, "count": 0, "total_registered": 0, "total_attendees": 0})
+        monthly_map.get(
+            m, {"month": m, "count": 0, "total_registered": 0, "total_attendees": 0}
+        )
         for m in range(1, 13)
     ]
 
@@ -1854,17 +2113,24 @@ def location_detail(request, pk):
 
     variations = {}
     if prev_stats["total"] > 0:
-        variations["workshops"] = round((total_workshops - prev_stats["total"]) / prev_stats["total"] * 100, 1)
+        variations["workshops"] = round(
+            (total_workshops - prev_stats["total"]) / prev_stats["total"] * 100, 1
+        )
     else:
         variations["workshops"] = 100 if total_workshops > 0 else 0
 
     if prev_stats["registered"] > 0:
-        variations["registered"] = round((total_registered - prev_stats["registered"]) / prev_stats["registered"] * 100, 1)
+        variations["registered"] = round(
+            (total_registered - prev_stats["registered"])
+            / prev_stats["registered"]
+            * 100,
+            1,
+        )
     else:
         variations["registered"] = 100 if total_registered > 0 else 0
 
     # Données pour les graphiques (limité à 50 ateliers)
-    workshops_for_graph = workshops_qs.order_by('-date')[:50]
+    workshops_for_graph = workshops_qs.order_by("-date")[:50]
     workshops_data = [
         {
             "id": w.id,
@@ -1886,11 +2152,11 @@ def location_detail(request, pk):
     ]
 
     # Pagination pour la liste des ateliers
-    workshops = workshops_qs.order_by('-date')
+    workshops = workshops_qs.order_by("-date")
     paginator = Paginator(workshops, 20)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     workshops = paginator.get_page(page_number)
-    
+
     context = {
         "location": location,
         "workshops": workshops,
@@ -1911,7 +2177,7 @@ def location_detail(request, pk):
         "variations": variations,
         "current_year": current_year,
     }
-    
+
     return render(request, "workshop/location_detail.html", context)
 
 
@@ -1933,9 +2199,7 @@ def location_update(request, pk):
         form = LocationForm(request.POST, instance=location)
         if form.is_valid():
             form.save()
-            messages.success(
-                request, "La localisation a été mis à jour avec succès."
-            )
+            messages.success(request, "La localisation a été mis à jour avec succès.")
             return redirect("location_list")
     else:
         form = LocationForm(instance=location)
@@ -1973,9 +2237,11 @@ def workshop_list_validate_poster_admin(request):
     Returns:
         HttpResponse: La page de validation des affiches.
     """
-    workshops = Workshop.objects.filter(
-        poster_required=True, poster_valide=False
-    ).filter(HAS_IMAGE_Q).select_related("location")
+    workshops = (
+        Workshop.objects.filter(poster_required=True, poster_valide=False)
+        .filter(HAS_IMAGE_Q)
+        .select_related("location")
+    )
     return render(
         request,
         "workshop/workshop_validate_poster_admin.html",
@@ -2000,22 +2266,20 @@ def approve_poster_valide(request, pk):
     if request.method == "POST":
         form = WorkshopPosterValidationForm(request.POST, instance=workshop)
         if form.is_valid():
-            workshop.description = form.cleaned_data[
-                "description_poster_valide"
-            ]
+            workshop.description = form.cleaned_data["description_poster_valide"]
             if "approve" in request.POST:
                 workshop.poster_valide = True
                 workshop.description_poster_valide = None
-                messages.success(
-                    request, "L'affiche a été validée avec succès."
-                )
+                messages.success(request, "L'affiche a été validée avec succès.")
                 # email d'envois pour avertir que l'image est validé
                 from notifications.email_service import send_notification
+
                 send_notification("poster_validated", {"workshop": workshop})
             elif "reject" in request.POST:
                 workshop.poster_valide = False
                 # email d'envois pour avertir que l'image n'est pas validé
                 from notifications.email_service import send_notification
+
                 send_notification("poster_rejected", {"workshop": workshop})
                 messages.info(request, "L'affiche a été refusée.")
             workshop.updated_by = request.user
@@ -2045,54 +2309,70 @@ def export_workshops_csv(request):
     response["Content-Disposition"] = 'attachment; filename="workshops.csv"'
 
     writer = csv.writer(response)
-    writer.writerow([
-        "Nom",
-        "Affiche",
-        "Lieu",
-        "Date",
-        "Heure début",
-        "Heure fin",
-        "Participant(s)",
-        "Inscrit(s)",
-    ])
+    writer.writerow(
+        [
+            "Nom",
+            "Affiche",
+            "Lieu",
+            "Date",
+            "Heure début",
+            "Heure fin",
+            "Participant(s)",
+            "Inscrit(s)",
+        ]
+    )
 
     current_year = date.today().year
-    workshops = Workshop.objects.filter(date__year=current_year).select_related("location")
+    workshops = Workshop.objects.filter(date__year=current_year).select_related(
+        "location"
+    )
     for workshop in workshops:
-        writer.writerow([
-            workshop.name,
-            (
-                workshop.class_welcome
-                if workshop.class_welcome
-                else (
-                    workshop.image.url
-                    if workshop.image
+        writer.writerow(
+            [
+                workshop.name,
+                (
+                    workshop.class_welcome
+                    if workshop.class_welcome
                     else (
-                        "Affiche requise"
-                        if workshop.poster_required
-                        else "Aucune affiche requise"
+                        workshop.image.url
+                        if workshop.image
+                        else (
+                            "Affiche requise"
+                            if workshop.poster_required
+                            else "Aucune affiche requise"
+                        )
                     )
-                )
-            ),
-            workshop.location.name,
-            workshop.date.strftime("%d/%m/%Y")
-            + (
-                " au " + workshop.date_end.strftime("%d/%m/%Y")
-                if workshop.date_end
-                else ""
-            ),
-            workshop.start_time.strftime("%H:%M"),
-            workshop.end_time.strftime("%H:%M"),
-            workshop.number_registered,
-            workshop.number_attendees,
-        ])
+                ),
+                workshop.location.name,
+                workshop.date.strftime("%d/%m/%Y")
+                + (
+                    " au " + workshop.date_end.strftime("%d/%m/%Y")
+                    if workshop.date_end
+                    else ""
+                ),
+                workshop.start_time.strftime("%H:%M"),
+                workshop.end_time.strftime("%H:%M"),
+                workshop.number_registered,
+                workshop.number_attendees,
+            ]
+        )
 
     return response
 
 
 QUARTER_MONTH_NAMES = [
-    "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+    "Janvier",
+    "Février",
+    "Mars",
+    "Avril",
+    "Mai",
+    "Juin",
+    "Juillet",
+    "Août",
+    "Septembre",
+    "Octobre",
+    "Novembre",
+    "Décembre",
 ]
 
 QUARTER_WEEKDAY_NAMES = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
@@ -2115,12 +2395,9 @@ def _parse_quarter_params(request):
     """Lit ?annee=&trimestre= (alias ?year=&quarter=), défaut trimestre courant."""
     today = timezone.now().date()
     default_quarter = (today.month - 1) // 3 + 1
-    raw_year = (
-        request.GET.get("annee") or request.GET.get("year") or today.year
-    )
+    raw_year = request.GET.get("annee") or request.GET.get("year") or today.year
     raw_quarter = (
-        request.GET.get("trimestre") or request.GET.get("quarter")
-        or default_quarter
+        request.GET.get("trimestre") or request.GET.get("quarter") or default_quarter
     )
     try:
         year = int(raw_year)
@@ -2135,7 +2412,9 @@ def _parse_quarter_params(request):
         )
         return today.year if isinstance(year, int) else today.year, default_quarter
     if quarter not in (1, 2, 3, 4) or year < 2000 or year > 2100:
-        messages.warning(request, "Trimestre invalide, affichage du trimestre en cours.")
+        messages.warning(
+            request, "Trimestre invalide, affichage du trimestre en cours."
+        )
         return today.year, default_quarter
     return year, quarter
 
@@ -2181,9 +2460,7 @@ def workshop_quarter(request):
         end = min(workshop.date_end or workshop.date, last_day)
         if end < start:
             continue
-        color = (
-            getattr(workshop.location, "color", None) or "#4a6fa5"
-        )
+        color = getattr(workshop.location, "color", None) or "#4a6fa5"
         entry = {
             "id": workshop.pk,
             "name": workshop.name,
@@ -2192,12 +2469,8 @@ def workshop_quarter(request):
             "location_name": (
                 workshop.location.name if workshop.location else "Non défini"
             ),
-            "location_city": (
-                workshop.location.city if workshop.location else ""
-            ),
-            "location_id": (
-                workshop.location.pk if workshop.location else 0
-            ),
+            "location_city": (workshop.location.city if workshop.location else ""),
+            "location_id": (workshop.location.pk if workshop.location else 0),
             "color": color,
             "text_color": _text_color_for_bg(color),
         }
@@ -2208,9 +2481,9 @@ def workshop_quarter(request):
                 "city": workshop.location.city,
                 "color": color,
                 "text_color": _text_color_for_bg(color),
-                "count": locations_in_quarter.get(
-                    workshop.location.pk, {}
-                ).get("count", 0),
+                "count": locations_in_quarter.get(workshop.location.pk, {}).get(
+                    "count", 0
+                ),
             }
         day = start
         seen_locations_days = set()
@@ -2235,9 +2508,11 @@ def workshop_quarter(request):
                 day_workshops = sorted(
                     by_day.get(day, []),
                     key=lambda e: (
-                        e["start_time"].strftime("%H:%M")
-                        if hasattr(e["start_time"], "strftime")
-                        else str(e["start_time"]),
+                        (
+                            e["start_time"].strftime("%H:%M")
+                            if hasattr(e["start_time"], "strftime")
+                            else str(e["start_time"])
+                        ),
                         e["name"].lower(),
                     ),
                 )
@@ -2253,9 +2528,7 @@ def workshop_quarter(request):
             weeks.append(cells)
         month_workshops = sum(
             len(by_day.get(date(year, month, day), []))
-            for day in range(
-                1, calendar.monthrange(year, month)[1] + 1
-            )
+            for day in range(1, calendar.monthrange(year, month)[1] + 1)
         )
         quarter_months.append(
             {

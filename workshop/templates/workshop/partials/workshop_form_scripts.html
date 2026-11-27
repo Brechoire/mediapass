@@ -245,12 +245,197 @@
         if (target) target.focus();
     }
 
+    function initAgeRange() {
+        var isAllAgesCheckbox = document.getElementById("id_is_all_ages");
+        var agePresets = document.getElementById("age-presets");
+        var ageSliderContainer = document.getElementById(
+            "age-slider-container"
+        );
+        var minAgeInput = document.getElementById("id_min_age");
+        var maxAgeInput = document.getElementById("id_max_age");
+        var sliderMin = document.querySelector(".age-slider-min");
+        var sliderMax = document.querySelector(".age-slider-max");
+        var minValue = document.querySelector(".age-min-value");
+        var maxValue = document.querySelector(".age-max-value");
+        var track = document.querySelector(".age-slider-track");
+        var summaryValue = document.querySelector(".age-summary-value");
+        if (
+            !isAllAgesCheckbox ||
+            !agePresets ||
+            !ageSliderContainer ||
+            !sliderMin ||
+            !sliderMax
+        ) {
+            return;
+        }
+
+        var minAge = parseInt(sliderMin.value, 10) || 0;
+        var maxAge = parseInt(sliderMax.value, 10) || 100;
+
+        function updateSliderTrack() {
+            if (!track) return;
+            var minPercent = (minAge / 100) * 100;
+            var maxPercent = (maxAge / 100) * 100;
+            track.style.background =
+                "linear-gradient(to right, #e5e7eb 0%, #e5e7eb " +
+                minPercent +
+                "%, #4a6fa5 " +
+                minPercent +
+                "%, #4a6fa5 " +
+                maxPercent +
+                "%, #e5e7eb " +
+                maxPercent +
+                "%, #e5e7eb 100%)";
+        }
+
+        function summaryText() {
+            if (isAllAgesCheckbox.checked) return "Tout public";
+            if (minAge === maxAge) return minAge + " ans";
+            return "De " + minAge + " à " + maxAge + " ans";
+        }
+
+        function updateValues() {
+            if (minValue) minValue.textContent = minAge + " ans";
+            if (maxValue) maxValue.textContent = maxAge + " ans";
+            if (summaryValue) summaryValue.textContent = summaryText();
+            if (minAgeInput) minAgeInput.value = minAge;
+            if (maxAgeInput) maxAgeInput.value = maxAge;
+            updateSliderTrack();
+        }
+
+        function setSliderValues(min, max) {
+            minAge = min;
+            maxAge = max;
+            sliderMin.value = min;
+            sliderMax.value = max;
+            updateValues();
+        }
+
+        function toggleAgeFields() {
+            if (isAllAgesCheckbox.checked) {
+                agePresets.style.display = "none";
+                ageSliderContainer.style.display = "none";
+                if (minAgeInput) minAgeInput.value = "";
+                if (maxAgeInput) maxAgeInput.value = "";
+            } else {
+                agePresets.style.display = "";
+                ageSliderContainer.style.display = "";
+            }
+            if (summaryValue) summaryValue.textContent = summaryText();
+        }
+
+        // La poignée touchée passe au premier plan : les deux restent
+        // attrapables même quand elles se chevauchent.
+        function bringToFront(active, other) {
+            active.style.zIndex = 5;
+            other.style.zIndex = 3;
+        }
+        sliderMin.addEventListener("pointerdown", function () {
+            bringToFront(sliderMin, sliderMax);
+        });
+        sliderMax.addEventListener("pointerdown", function () {
+            bringToFront(sliderMax, sliderMin);
+        });
+        sliderMin.addEventListener("focus", function () {
+            bringToFront(sliderMin, sliderMax);
+        });
+        sliderMax.addEventListener("focus", function () {
+            bringToFront(sliderMax, sliderMin);
+        });
+
+        isAllAgesCheckbox.addEventListener("change", toggleAgeFields);
+
+        function clearPresetState() {
+            agePresets
+                .querySelectorAll(".age-preset.is-active")
+                .forEach(function (active) {
+                    active.classList.remove("is-active");
+                    active.setAttribute("aria-pressed", "false");
+                });
+        }
+
+        sliderMin.addEventListener("input", function () {
+            var newMin = parseInt(this.value, 10);
+            if (newMin <= maxAge) {
+                minAge = newMin;
+                clearPresetState();
+                updateValues();
+            } else {
+                this.value = maxAge;
+            }
+        });
+
+        sliderMax.addEventListener("input", function () {
+            var newMax = parseInt(this.value, 10);
+            if (newMax >= minAge) {
+                maxAge = newMax;
+                clearPresetState();
+                updateValues();
+            } else {
+                this.value = minAge;
+            }
+        });
+
+        agePresets
+            .querySelectorAll(".age-preset")
+            .forEach(function (button) {
+                button.addEventListener("click", function () {
+                    if (isAllAgesCheckbox.checked) {
+                        isAllAgesCheckbox.checked = false;
+                        toggleAgeFields();
+                    }
+                    setSliderValues(
+                        parseInt(button.getAttribute("data-min"), 10),
+                        parseInt(button.getAttribute("data-max"), 10)
+                    );
+                    agePresets
+                        .querySelectorAll(".age-preset")
+                        .forEach(function (other) {
+                            other.classList.remove("is-active");
+                            other.setAttribute("aria-pressed", "false");
+                        });
+                    button.classList.add("is-active");
+                    button.setAttribute("aria-pressed", "true");
+                });
+            });
+
+        if (
+            minAgeInput &&
+            minAgeInput.value !== "" &&
+            maxAgeInput &&
+            maxAgeInput.value !== ""
+        ) {
+            setSliderValues(
+                parseInt(minAgeInput.value, 10),
+                parseInt(maxAgeInput.value, 10)
+            );
+            agePresets
+                .querySelectorAll(".age-preset")
+                .forEach(function (button) {
+                    var matches =
+                        parseInt(button.getAttribute("data-min"), 10) ===
+                            minAge &&
+                        parseInt(button.getAttribute("data-max"), 10) ===
+                            maxAge;
+                    button.classList.toggle("is-active", matches);
+                    button.setAttribute(
+                        "aria-pressed",
+                        matches ? "true" : "false"
+                    );
+                });
+        } else {
+            updateValues();
+        }
+        toggleAgeFields();
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
         initImagePreview();
         initSteppers();
         initLivePreview();
         initRecurrenceToggle();
         initUnsavedAndSubmitGuard();
+        initAgeRange();
         focusFirstError();
     });
 })();

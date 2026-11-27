@@ -220,36 +220,26 @@ class WorkshopListViewTests(TestCase):
     def test_delete_requires_post(self):
         """La suppression exige POST : le lien GET historique répond 405."""
         self.login()
-        response = self.client.get(
-            reverse("workshop_delete", args=[self.workshop.pk])
-        )
+        response = self.client.get(reverse("workshop_delete", args=[self.workshop.pk]))
         self.assertEqual(response.status_code, 405)
-        self.assertTrue(
-            Workshop.objects.filter(pk=self.workshop.pk).exists()
-        )
+        self.assertTrue(Workshop.objects.filter(pk=self.workshop.pk).exists())
 
     def test_delete_post_removes_workshop(self):
         self.login()
-        response = self.client.post(
-            reverse("workshop_delete", args=[self.workshop.pk])
-        )
+        response = self.client.post(reverse("workshop_delete", args=[self.workshop.pk]))
         self.assertEqual(response.status_code, 302)
-        self.assertFalse(
-            Workshop.objects.filter(pk=self.workshop.pk).exists()
-        )
+        self.assertFalse(Workshop.objects.filter(pk=self.workshop.pk).exists())
 
     def test_delete_button_is_post_form_with_csrf(self):
         from django.urls import reverse as url_reverse
 
         self.login()
         response = self.client.get(reverse("workshop_list"))
-        delete_url = url_reverse(
-            "workshop_delete", args=[self.workshop.pk]
-        )
+        delete_url = url_reverse("workshop_delete", args=[self.workshop.pk])
         self.assertContains(response, f'action="{delete_url}"')
         self.assertContains(response, 'method="post"')
         self.assertContains(response, "csrfmiddlewaretoken")
-        self.assertNotContains(response, "onclick=\"return confirm")
+        self.assertNotContains(response, 'onclick="return confirm')
 
     def test_comm_group_hides_admin_actions(self):
         from django.contrib.auth.models import Group
@@ -262,9 +252,7 @@ class WorkshopListViewTests(TestCase):
         response = self.client.get(reverse("workshop_list"))
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "Ajouter un atelier")
-        self.assertNotContains(
-            response, url_reverse("workshop_create")
-        )
+        self.assertNotContains(response, url_reverse("workshop_create"))
         self.assertNotContains(
             response, url_reverse("workshop_update", args=[self.workshop.pk])
         )
@@ -353,16 +341,12 @@ class LocationDetailViewTests(TestCase):
 
     def test_returns_200(self):
         self.login()
-        response = self.client.get(
-            reverse("location_detail", args=[self.location.pk])
-        )
+        response = self.client.get(reverse("location_detail", args=[self.location.pk]))
         self.assertEqual(response.status_code, 200)
 
     def test_aggregate_counts(self):
         self.login()
-        response = self.client.get(
-            reverse("location_detail", args=[self.location.pk])
-        )
+        response = self.client.get(reverse("location_detail", args=[self.location.pk]))
         self.assertEqual(response.context["total_workshops"], 2)
         self.assertEqual(response.context["classic_count"], 1)
         self.assertEqual(response.context["class_welcome_count"], 1)
@@ -370,9 +354,7 @@ class LocationDetailViewTests(TestCase):
         self.assertEqual(response.context["total_attendees"], 28)
 
     def test_redirects_when_not_logged_in(self):
-        response = self.client.get(
-            reverse("location_detail", args=[self.location.pk])
-        )
+        response = self.client.get(reverse("location_detail", args=[self.location.pk]))
         self.assertEqual(response.status_code, 302)
 
 
@@ -614,9 +596,7 @@ class WorkshopStatsViewTests(TestCase):
 
     def test_returns_200(self):
         self.login_staff()
-        response = self.client.get(
-            reverse("workshop_stats"), {"year": self.year}
-        )
+        response = self.client.get(reverse("workshop_stats"), {"year": self.year})
         self.assertEqual(response.status_code, 200)
 
     def test_invalid_year_does_not_500(self):
@@ -636,9 +616,7 @@ class WorkshopStatsViewTests(TestCase):
         group, _ = Group.objects.get_or_create(name="communication")
         self.basic.groups.add(group)
         self.client.login(username="basic", password="pass")
-        response = self.client.get(
-            reverse("workshop_stats"), {"year": self.year}
-        )
+        response = self.client.get(reverse("workshop_stats"), {"year": self.year})
         self.assertEqual(response.status_code, 200)
 
     def test_export_filename_uses_selected_year(self):
@@ -655,9 +633,7 @@ class WorkshopStatsViewTests(TestCase):
 
     def test_new_context_keys(self):
         self.login_staff()
-        response = self.client.get(
-            reverse("workshop_stats"), {"year": self.year}
-        )
+        response = self.client.get(reverse("workshop_stats"), {"year": self.year})
         for key in (
             "presence_by_location",
             "distribution_stats",
@@ -696,15 +672,11 @@ class WorkshopStatsViewTests(TestCase):
             reverse("workshop_stats_partial"), {"year": self.year}
         )
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(
-            response, "workshop/partials/stats_content.html"
-        )
+        self.assertTemplateUsed(response, "workshop/partials/stats_content.html")
 
     def test_top_flop_threshold(self):
         self.login_staff()
-        response = self.client.get(
-            reverse("workshop_stats"), {"year": self.year}
-        )
+        response = self.client.get(reverse("workshop_stats"), {"year": self.year})
         top_flop = response.context["top_flop_communes"]
         self.assertEqual(top_flop["min_ateliers"], 3)
         # Avesnes n'a que 2 ateliers : exclue du top/flop
@@ -749,9 +721,7 @@ class WorkshopStatsViewTests(TestCase):
 
     def test_new_abc_context_keys(self):
         self.login_staff()
-        response = self.client.get(
-            reverse("workshop_stats"), {"year": self.year}
-        )
+        response = self.client.get(reverse("workshop_stats"), {"year": self.year})
         for key in (
             "fill_tranches",
             "noshow_top",
@@ -773,9 +743,7 @@ class WorkshopStatsViewTests(TestCase):
 
     def test_synthese_content(self):
         self.login_staff()
-        response = self.client.get(
-            reverse("workshop_stats"), {"year": self.year}
-        )
+        response = self.client.get(reverse("workshop_stats"), {"year": self.year})
         synthese = response.context["synthese"]
         phrases = synthese["phrases"]
         # ~10 lignes, ton naturel, déterministe.
@@ -855,9 +823,7 @@ class AnimationGroupingTests(SimpleTestCase):
         )
         self.assertNotEqual(
             canonical_animation_key("Dessins de Pâques sur tablette"),
-            canonical_animation_key(
-                "Dessins sur tablette spécial halloween !"
-            ),
+            canonical_animation_key("Dessins sur tablette spécial halloween !"),
         )
         self.assertNotEqual(
             canonical_animation_key("Tournoi FIFA"),
@@ -896,9 +862,7 @@ class AnimationGroupingTests(SimpleTestCase):
             "jeux video",
         )
         self.assertEqual(
-            canonical_animation_key(
-                "Atelier InterCentre Tournoi Mario Kart"
-            ),
+            canonical_animation_key("Atelier InterCentre Tournoi Mario Kart"),
             "mario kart",
         )
 
@@ -991,9 +955,7 @@ class AnimationReportAggregationTests(TestCase):
         )
 
     def test_global_totals(self):
-        report = build_animation_report(
-            Workshop.objects.filter(date__year=self.year)
-        )
+        report = build_animation_report(Workshop.objects.filter(date__year=self.year))
         self.assertTrue(report["has_data"])
         self.assertEqual(report["totals"]["sessions"], 7)
         self.assertEqual(report["totals"]["animations"], 5)
@@ -1008,9 +970,7 @@ class AnimationReportAggregationTests(TestCase):
         self.assertEqual(report["totals"]["classics_attendees"], 21)
 
     def test_groups_and_variants(self):
-        report = build_animation_report(
-            Workshop.objects.filter(date__year=self.year)
-        )
+        report = build_animation_report(Workshop.objects.filter(date__year=self.year))
         groups = {group["key"]: group for group in report["groups"]}
         self.assertEqual(groups["jeux video"]["sessions"], 2)
         self.assertEqual(groups["jeux video"]["registered"], 15)
@@ -1020,34 +980,22 @@ class AnimationReportAggregationTests(TestCase):
         self.assertEqual(groups["canva"]["label"], "Canva")
         self.assertEqual(groups["canva"]["registered"], 10)
         self.assertEqual(groups["canva"]["attendees"], 9)
-        self.assertEqual(
-            groups["canva"]["communes"], ["Avesnes", "Fourmies"]
-        )
+        self.assertEqual(groups["canva"]["communes"], ["Avesnes", "Fourmies"])
         self.assertIn("Découverte Canva", groups["canva"]["variants"])
         self.assertIn("Initiation Canva", groups["canva"]["variants"])
-        self.assertIn(
-            "jeux video", {group["key"] for group in report["merged_groups"]}
-        )
-        self.assertIn(
-            "canva", {group["key"] for group in report["merged_groups"]}
-        )
+        self.assertIn("jeux video", {group["key"] for group in report["merged_groups"]})
+        self.assertIn("canva", {group["key"] for group in report["merged_groups"]})
 
     def test_by_commune_totals_and_animations(self):
-        report = build_animation_report(
-            Workshop.objects.filter(date__year=self.year)
-        )
+        report = build_animation_report(Workshop.objects.filter(date__year=self.year))
         by_city = {row["commune"]: row for row in report["by_commune"]}
         self.assertEqual(by_city["Avesnes"]["total_ateliers"], 3)
         self.assertEqual(by_city["Avesnes"]["animations_count"], 2)
         self.assertEqual(by_city["Fourmies"]["total_ateliers"], 3)
         self.assertEqual(by_city["Fourmies"]["animations_count"], 3)
         self.assertEqual(by_city["Non défini"]["total_ateliers"], 1)
-        self.assertEqual(
-            sum(row["registered"] for row in report["by_commune"]), 31
-        )
-        self.assertEqual(
-            sum(row["attendees"] for row in report["by_commune"]), 25
-        )
+        self.assertEqual(sum(row["registered"] for row in report["by_commune"]), 31)
+        self.assertEqual(sum(row["attendees"] for row in report["by_commune"]), 25)
         self.assertEqual(
             sum(len(row["animations"]) for row in report["by_commune"]),
             6,
@@ -1118,9 +1066,7 @@ class WorkshopReportViewTests(TestCase):
         self.staff = User.objects.create_user(
             username="report_staff", password="pass", is_staff=True
         )
-        self.basic = User.objects.create_user(
-            username="report_basic", password="pass"
-        )
+        self.basic = User.objects.create_user(username="report_basic", password="pass")
 
     def tearDown(self):
         cache.clear()
@@ -1130,9 +1076,7 @@ class WorkshopReportViewTests(TestCase):
 
     def test_report_page_returns_200_and_contains_sections(self):
         self.login_staff()
-        response = self.client.get(
-            reverse("workshop_report", args=[self.year])
-        )
+        response = self.client.get(reverse("workshop_report", args=[self.year]))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "workshop/workshop_report.html")
         self.assertContains(response, "Rapport complet des ateliers")
@@ -1140,28 +1084,20 @@ class WorkshopReportViewTests(TestCase):
         self.assertContains(response, "Découverte Canva")
         self.assertContains(response, "Atelier Jeux vidéo")
         self.assertIn("animation_report", response.context)
-        self.assertEqual(
-            response.context["animation_report"]["totals"]["sessions"], 4
-        )
+        self.assertEqual(response.context["animation_report"]["totals"]["sessions"], 4)
 
     def test_report_requires_permission(self):
-        response = self.client.get(
-            reverse("workshop_report", args=[self.year])
-        )
+        response = self.client.get(reverse("workshop_report", args=[self.year]))
         self.assertEqual(response.status_code, 302)
         self.client.login(username="report_basic", password="pass")
-        response = self.client.get(
-            reverse("workshop_report", args=[self.year])
-        )
+        response = self.client.get(reverse("workshop_report", args=[self.year]))
         self.assertEqual(response.status_code, 302)
 
     def test_comm_group_allowed(self):
         group, _ = Group.objects.get_or_create(name="communication")
         self.basic.groups.add(group)
         self.client.login(username="report_basic", password="pass")
-        response = self.client.get(
-            reverse("workshop_report", args=[self.year])
-        )
+        response = self.client.get(reverse("workshop_report", args=[self.year]))
         self.assertEqual(response.status_code, 200)
 
     def test_report_city_filter(self):
@@ -1174,9 +1110,7 @@ class WorkshopReportViewTests(TestCase):
         self.assertEqual(response.context["active_city"], "Avesnes")
         by_commune = response.context["animation_report"]["by_commune"]
         self.assertEqual([row["commune"] for row in by_commune], ["Avesnes"])
-        self.assertEqual(
-            response.context["animation_report"]["totals"]["sessions"], 2
-        )
+        self.assertEqual(response.context["animation_report"]["totals"]["sessions"], 2)
         self.assertContains(response, "Découverte Canva")
         self.assertNotContains(response, "Atelier Jeux vidéo")
 
@@ -1195,9 +1129,7 @@ class WorkshopReportViewTests(TestCase):
 
     def test_report_charts_payload(self):
         self.login_staff()
-        response = self.client.get(
-            reverse("workshop_report", args=[self.year])
-        )
+        response = self.client.get(reverse("workshop_report", args=[self.year]))
         charts = response.context["report_charts"]
         self.assertEqual(len(charts["monthly"]["labels"]), 12)
         self.assertEqual(len(charts["types"]["values"]), 2)
@@ -1213,19 +1145,13 @@ class WorkshopReportViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         rows = response.context["report_monthly_rows"]
         self.assertEqual(rows[2]["count"], 1)
-        self.assertEqual(
-            rows[2]["classic_count"] + rows[2]["class_count"], 1
-        )
+        self.assertEqual(rows[2]["classic_count"] + rows[2]["class_count"], 1)
         self.assertEqual(rows[0]["count"], 0)
-        self.assertEqual(
-            rows[0]["classic_count"] + rows[0]["class_count"], 0
-        )
+        self.assertEqual(rows[0]["classic_count"] + rows[0]["class_count"], 0)
 
     def test_report_docx_export(self):
         self.login_staff()
-        response = self.client.get(
-            reverse("workshop_report_export", args=[self.year])
-        )
+        response = self.client.get(reverse("workshop_report_export", args=[self.year]))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response["Content-Type"],
@@ -1239,17 +1165,14 @@ class WorkshopReportViewTests(TestCase):
         self.assertTrue(response.content.startswith(b"PK"))
 
         document = Document(BytesIO(response.content))
-        paragraphs = "\n".join(
-            paragraph.text for paragraph in document.paragraphs
-        )
+        paragraphs = "\n".join(paragraph.text for paragraph in document.paragraphs)
         self.assertIn("Rapport complet", paragraphs)
         self.assertIn("Résumé par commune et animations", paragraphs)
         self.assertGreaterEqual(len(document.tables), 5)
         self.assertGreaterEqual(len(document.inline_shapes), 3)
 
         headers = [
-            [cell.text for cell in table.rows[0].cells]
-            for table in document.tables
+            [cell.text for cell in table.rows[0].cells] for table in document.tables
         ]
         self.assertTrue(any("Commune" in row for row in headers))
         self.assertTrue(any("Animation" in row for row in headers))
@@ -1268,14 +1191,10 @@ class WorkshopReportViewTests(TestCase):
 
     def test_empty_year_report_does_not_500(self):
         self.login_staff()
-        response = self.client.get(
-            reverse("workshop_report", args=[1999])
-        )
+        response = self.client.get(reverse("workshop_report", args=[1999]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Aucune donnée")
-        response = self.client.get(
-            reverse("workshop_report_export", args=[1999])
-        )
+        response = self.client.get(reverse("workshop_report_export", args=[1999]))
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.content.startswith(b"PK"))
 
@@ -1292,9 +1211,7 @@ class ReportChartTests(SimpleTestCase):
             {"classic_count": 1, "class_count": 1},
             {"classic_count": 1, "class_count": 0},
         ]
-        buffer = render_monthly_chart(
-            monthly, month_types, "Ateliers par mois"
-        )
+        buffer = render_monthly_chart(monthly, month_types, "Ateliers par mois")
         self.assertTrue(buffer.getvalue().startswith(b"\x89PNG\r\n\x1a\n"))
         image = Image.open(buffer)
         self.assertEqual(image.format, "PNG")
@@ -1380,9 +1297,7 @@ class WorkshopNameModelTests(TestCase):
     """Tests du modèle de liste des noms d'ateliers."""
 
     def test_save_computes_normalized_and_cleans_name(self):
-        entry = WorkshopName.objects.create(
-            name="  Atelier   Jeux vidéo "
-        )
+        entry = WorkshopName.objects.create(name="  Atelier   Jeux vidéo ")
         self.assertEqual(entry.name, "Atelier Jeux vidéo")
         self.assertEqual(entry.normalized, "atelier jeux video")
 
@@ -1451,29 +1366,21 @@ class WorkshopCreateNameTests(TestCase):
         response = self.post_workshop("Atelier Test Unique")
         self.assertRedirects(response, reverse("workshop_list"))
         self.assertTrue(
-            WorkshopName.objects.filter(
-                normalized="atelier test unique"
-            ).exists()
+            WorkshopName.objects.filter(normalized="atelier test unique").exists()
         )
-        self.assertTrue(
-            Workshop.objects.filter(name="Atelier Test Unique").exists()
-        )
+        self.assertTrue(Workshop.objects.filter(name="Atelier Test Unique").exists())
 
     def test_existing_variant_reuses_canonical_name(self):
         WorkshopName.objects.create(name="Atelier Jeux vidéo")
         response = self.post_workshop("atelier jeux video")
         self.assertContains(response, "Nom existant réutilisé")
-        self.assertTrue(
-            Workshop.objects.filter(name="Atelier Jeux vidéo").exists()
-        )
+        self.assertTrue(Workshop.objects.filter(name="Atelier Jeux vidéo").exists())
         self.assertEqual(WorkshopName.objects.count(), 1)
 
     def test_whitespace_is_normalized(self):
         self.post_workshop("  Atelier   Test  ")
         self.assertTrue(Workshop.objects.filter(name="Atelier Test").exists())
-        self.assertTrue(
-            WorkshopName.objects.filter(normalized="atelier test").exists()
-        )
+        self.assertTrue(WorkshopName.objects.filter(normalized="atelier test").exists())
 
     def test_punctuation_only_name_rejected(self):
         response = self.post_workshop("!!!")
@@ -1530,9 +1437,7 @@ class WorkshopUpdateNameTests(TestCase):
 
     def test_update_form_displays_datalist(self):
         WorkshopName.objects.create(name="Atelier Jeux vidéo")
-        response = self.client.get(
-            reverse("workshop_update", args=[self.workshop.pk])
-        )
+        response = self.client.get(reverse("workshop_update", args=[self.workshop.pk]))
         self.assertContains(response, 'id="workshop-name-options"')
         self.assertContains(response, 'value="Atelier Jeux vidéo"')
 
@@ -1568,24 +1473,16 @@ class NormalizeWorkshopNamesCommandTests(TestCase):
 
     def test_dry_run_does_not_write(self):
         output = self.run_command()
-        self.assertIn(
-            "Atelier jeux vidéo -> Atelier Jeux vidéo", output
-        )
+        self.assertIn("Atelier jeux vidéo -> Atelier Jeux vidéo", output)
         self.assertIn("Mode diagnostic", output)
         self.assertFalse(WorkshopName.objects.exists())
-        self.assertEqual(
-            Workshop.objects.filter(name="Atelier jeux vidéo").count(), 2
-        )
+        self.assertEqual(Workshop.objects.filter(name="Atelier jeux vidéo").count(), 2)
 
     def test_apply_creates_catalog_and_renames(self):
         output = self.run_command("--apply")
         self.assertIn("Terminé", output)
-        self.assertEqual(
-            Workshop.objects.filter(name="Atelier Jeux vidéo").count(), 12
-        )
-        self.assertEqual(
-            Workshop.objects.filter(name="Just Dance").count(), 3
-        )
+        self.assertEqual(Workshop.objects.filter(name="Atelier Jeux vidéo").count(), 12)
+        self.assertEqual(Workshop.objects.filter(name="Just Dance").count(), 3)
         self.assertTrue(
             WorkshopName.objects.filter(
                 normalized="atelier jeux video",
@@ -1628,9 +1525,7 @@ class WorkshopPunctuationNameTests(TestCase):
 def _png_upload(filename="poster.png", color="red", size=(20, 20)):
     buffer = BytesIO()
     Image.new("RGB", size, color).save(buffer, format="PNG")
-    return SimpleUploadedFile(
-        filename, buffer.getvalue(), content_type="image/png"
-    )
+    return SimpleUploadedFile(filename, buffer.getvalue(), content_type="image/png")
 
 
 class WorkshopImageTests(TestCase):
@@ -1688,15 +1583,11 @@ class WorkshopImageTests(TestCase):
                 workshop.image.name,
                 r"^ateliers_images/[0-9a-f]{32}\.png$",
             )
-            self.assertTrue(
-                workshop.image.storage.exists(workshop.image.name)
-            )
+            self.assertTrue(workshop.image.storage.exists(workshop.image.name))
 
     def test_create_resizes_large_image(self):
         buffer = BytesIO()
-        Image.new("RGB", (3000, 1200), "green").save(
-            buffer, format="JPEG"
-        )
+        Image.new("RGB", (3000, 1200), "green").save(buffer, format="JPEG")
         upload = SimpleUploadedFile(
             "large.jpg", buffer.getvalue(), content_type="image/jpeg"
         )
@@ -1715,22 +1606,16 @@ class WorkshopImageTests(TestCase):
             old_storage = workshop.image.storage
 
             with self.captureOnCommitCallbacks(execute=True):
-                response = self.post_update(
-                    workshop, _png_upload("new.png", "blue")
-                )
+                response = self.post_update(workshop, _png_upload("new.png", "blue"))
             self.assertEqual(response.status_code, 200)
             workshop.refresh_from_db()
             self.assertNotEqual(workshop.image.name, old_name)
             self.assertFalse(old_storage.exists(old_name))
-            self.assertTrue(
-                workshop.image.storage.exists(workshop.image.name)
-            )
+            self.assertTrue(workshop.image.storage.exists(workshop.image.name))
 
     def test_invalid_image_content_is_rejected(self):
         response = self.post_create(
-            SimpleUploadedFile(
-                "bad.png", b"not-an-image", content_type="image/png"
-            )
+            SimpleUploadedFile("bad.png", b"not-an-image", content_type="image/png")
         )
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Workshop.objects.filter(name="Atelier Image").exists())
@@ -1803,9 +1688,7 @@ class WorkshopParticipantDefaultsTests(TestCase):
 
     def test_negative_participants_are_rejected(self):
         form = WorkshopForm(
-            data=self.form_data(
-                number_registered="-2", number_attendees="-1"
-            )
+            data=self.form_data(number_registered="-2", number_attendees="-1")
         )
         self.assertFalse(form.is_valid())
         self.assertIn("number_registered", form.errors)
@@ -1916,13 +1799,11 @@ class SharedWorkshopFormTemplateTests(TestCase):
             end_time="10:00",
             poster_required=False,
         )
-        response = self.client.get(
-            reverse("workshop_update", args=[workshop.pk])
-        )
+        response = self.client.get(reverse("workshop_update", args=[workshop.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "workshop/workshop_form.html")
         self.assertContains(response, "Mettre à jour")
-        self.assertContains(response, "id=\"imagePreview\"")
+        self.assertContains(response, 'id="imagePreview"')
 
     def test_invalid_form_shows_error_summary_and_associations(self):
         response = self.client.post(
@@ -1932,9 +1813,7 @@ class SharedWorkshopFormTemplateTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "form-error-summary")
         self.assertContains(response, 'aria-invalid="true"')
-        self.assertContains(
-            response, 'aria-describedby="id_name_help id_name_error"'
-        )
+        self.assertContains(response, 'aria-describedby="id_name_help id_name_error"')
 
 
 class WorkshopPosterFormImageTests(TestCase):
@@ -2040,9 +1919,7 @@ class WorkshopConflictTests(TestCase):
         self.assertIn("existe déjà", " ".join(form.non_field_errors()))
 
     def test_adjacent_slot_is_allowed(self):
-        form = WorkshopForm(
-            data=self.form_data(start_time="10:00", end_time="11:00")
-        )
+        form = WorkshopForm(data=self.form_data(start_time="10:00", end_time="11:00"))
         self.assertTrue(form.is_valid(), form.errors)
 
     def test_other_location_is_allowed(self):
@@ -2081,9 +1958,7 @@ class WorkshopConflictTests(TestCase):
     def test_multi_day_overlap_is_detected(self):
         self.existing.date_end = date(2026, 12, 22)
         self.existing.save()
-        form = WorkshopForm(
-            data=self.form_data(date="2026-12-21")
-        )
+        form = WorkshopForm(data=self.form_data(date="2026-12-21"))
         self.assertFalse(form.is_valid())
         self.assertIn("existe déjà", " ".join(form.non_field_errors()))
 
@@ -2114,13 +1989,9 @@ class WorkshopDuplicateTests(TestCase):
         self.client.login(username="duplicate_admin", password="pass")
 
     def test_duplicate_redirects_to_prefilled_create(self):
-        response = self.client.get(
-            reverse("workshop_duplicate", args=[self.source.pk])
-        )
+        response = self.client.get(reverse("workshop_duplicate", args=[self.source.pk]))
         self.assertEqual(response.status_code, 302)
-        self.assertIn(
-            f"/atelier/ajout/?from={self.source.pk}", response.url
-        )
+        self.assertIn(f"/atelier/ajout/?from={self.source.pk}", response.url)
 
         response = self.client.get(response.url)
         self.assertEqual(response.status_code, 200)
@@ -2137,9 +2008,7 @@ class WorkshopDuplicateTests(TestCase):
 
     def test_duplicate_requires_permission(self):
         self.client.logout()
-        response = self.client.get(
-            reverse("workshop_duplicate", args=[self.source.pk])
-        )
+        response = self.client.get(reverse("workshop_duplicate", args=[self.source.pk]))
         self.assertEqual(response.status_code, 302)
 
 
@@ -2166,9 +2035,7 @@ class WorkshopSaveAndAddTests(TestCase):
         }
 
     def test_redirects_to_prefilled_create(self):
-        response = self.client.post(
-            reverse("workshop_create"), self.data()
-        )
+        response = self.client.post(reverse("workshop_create"), self.data())
         self.assertEqual(response.status_code, 302)
         self.assertIn(f"location={self.location.pk}", response.url)
         self.assertIn("date=2026-12-20", response.url)
@@ -2246,9 +2113,7 @@ class WorkshopLot2TemplateTests(TestCase):
                 poster_required=False,
                 image=_png_upload(),
             )
-            response = self.client.get(
-                reverse("workshop_update", args=[workshop.pk])
-            )
+            response = self.client.get(reverse("workshop_update", args=[workshop.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'name="DELETE"')
         self.assertContains(response, "image actuelle")
@@ -2279,9 +2144,7 @@ class RecurrenceDatesTests(SimpleTestCase):
         )
 
     def test_monthly_clamps_short_months(self):
-        occurrences = occurrence_dates(
-            date(2026, 1, 31), None, RECURRENCE_MONTHLY, 3
-        )
+        occurrences = occurrence_dates(date(2026, 1, 31), None, RECURRENCE_MONTHLY, 3)
         self.assertEqual(
             [d for d, _ in occurrences],
             [date(2026, 1, 31), date(2026, 2, 28), date(2026, 3, 31)],
@@ -2325,9 +2188,7 @@ class WorkshopRecurrenceTests(TestCase):
         return payload
 
     def test_create_weekly_series(self):
-        response = self.client.post(
-            reverse("workshop_create"), self.data()
-        )
+        response = self.client.post(reverse("workshop_create"), self.data())
         self.assertRedirects(response, reverse("workshop_list"))
         workshops = list(Workshop.objects.order_by("series_index"))
         self.assertEqual(len(workshops), 3)
@@ -2337,9 +2198,7 @@ class WorkshopRecurrenceTests(TestCase):
         )
         self.assertEqual(len({w.series for w in workshops}), 1)
         self.assertIsNotNone(workshops[0].series)
-        self.assertEqual(
-            [w.series_index for w in workshops], [1, 2, 3]
-        )
+        self.assertEqual([w.series_index for w in workshops], [1, 2, 3])
         self.assertEqual(workshops[0].created_by, self.user)
         self.assertEqual(workshops[0].updated_by, self.user)
 
@@ -2352,9 +2211,7 @@ class WorkshopRecurrenceTests(TestCase):
             end_time="10:00",
             poster_required=False,
         )
-        response = self.client.post(
-            reverse("workshop_create"), self.data()
-        )
+        response = self.client.post(reverse("workshop_create"), self.data())
         self.assertEqual(response.status_code, 200)
         form = response.context["form"]
         self.assertTrue(form.errors)
@@ -2388,13 +2245,9 @@ class WorkshopRecurrenceTests(TestCase):
         self.assertIsNone(workshop.series_index)
 
     def test_detail_mentions_series_size(self):
-        self.client.post(
-            reverse("workshop_create"), self.data()
-        )
+        self.client.post(reverse("workshop_create"), self.data())
         first = Workshop.objects.order_by("series_index").first()
-        response = self.client.get(
-            reverse("workshop_detail", args=[first.pk])
-        )
+        response = self.client.get(reverse("workshop_detail", args=[first.pk]))
         self.assertContains(response, "Série de 3 ateliers")
 
 
@@ -2424,9 +2277,7 @@ class WorkshopAuditTests(TestCase):
         return payload
 
     def test_create_sets_audit_users(self):
-        response = self.client.post(
-            reverse("workshop_create"), self.data()
-        )
+        response = self.client.post(reverse("workshop_create"), self.data())
         self.assertRedirects(response, reverse("workshop_list"))
         workshop = Workshop.objects.get()
         self.assertEqual(workshop.created_by, self.user)
@@ -2460,9 +2311,7 @@ class WorkshopAuditTests(TestCase):
             created_by=self.user,
             updated_by=self.user,
         )
-        response = self.client.get(
-            reverse("workshop_detail", args=[workshop.pk])
-        )
+        response = self.client.get(reverse("workshop_detail", args=[workshop.pk]))
         self.assertContains(response, "Créé")
         self.assertContains(response, "Modifié")
 
@@ -2472,10 +2321,10 @@ class WorkshopAuditTests(TestCase):
         for channel in ("facebook", "instagram", "mail", "portail", "vdn"):
             self.assertNotIn(channel, form.fields)
 
-    def test_poster_form_keeps_diffusion_channels(self):
+    def test_poster_form_has_no_diffusion_channels(self):
         form = WorkshopPosterForm()
         for channel in ("facebook", "instagram", "mail", "portail", "vdn"):
-            self.assertIn(channel, form.fields)
+            self.assertNotIn(channel, form.fields)
 
 
 class WorkshopImageOptimizationTests(SimpleTestCase):
@@ -2489,9 +2338,7 @@ class WorkshopImageOptimizationTests(SimpleTestCase):
             "PNG": "image/png",
             "GIF": "image/gif",
         }[image_format]
-        return SimpleUploadedFile(
-            name, buffer.getvalue(), content_type=content_type
-        )
+        return SimpleUploadedFile(name, buffer.getvalue(), content_type=content_type)
 
     def test_large_image_is_resized(self):
         upload = self.make_upload("large.jpg", (3000, 1200), "JPEG")
@@ -2591,10 +2438,7 @@ class WorkshopQuarterViewTests(TestCase):
                     march_30 = cell
         self.assertIsNotNone(march_30)
         self.assertTrue(
-            any(
-                event["name"] == "Chevauchement T1"
-                for event in march_30["workshops"]
-            )
+            any(event["name"] == "Chevauchement T1" for event in march_30["workshops"])
         )
 
     def test_legend_contains_anor_pink(self):
@@ -2615,9 +2459,7 @@ class WorkshopQuarterViewTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         today = timezone.now().date()
-        self.assertEqual(
-            response.context["quarter"], (today.month - 1) // 3 + 1
-        )
+        self.assertEqual(response.context["quarter"], (today.month - 1) // 3 + 1)
 
     def test_requires_permission(self):
         response = self.client.get(reverse("workshop_quarter"))
@@ -2639,3 +2481,155 @@ class WorkshopQuarterViewTests(TestCase):
             location.full_clean()
         location.color = "#ec4899"
         location.full_clean()
+
+
+class WorkshopAgeRangeTests(TestCase):
+    """Tranche d'âge des ateliers classiques (miroir médiathèque)."""
+
+    def setUp(self):
+        self.location = Location.objects.create(
+            name="Loc", address="1 Rue", city="Paris", zip_code="75"
+        )
+        self.user = User.objects.create_user(
+            username="admin", password="pass", is_staff=True
+        )
+
+    def login(self):
+        self.client.login(username="admin", password="pass")
+
+    def make_workshop(self, **kwargs):
+        defaults = {
+            "name": "Atelier Âge",
+            "location": self.location,
+            "date": date(2026, 6, 15),
+            "start_time": "09:00",
+            "end_time": "12:00",
+            "poster_required": False,
+        }
+        defaults.update(kwargs)
+        return Workshop.objects.create(**defaults)
+
+    def base_post_data(self, **kwargs):
+        data = {
+            "name": "Atelier Âge",
+            "location": self.location.pk,
+            "date": "2026-06-15",
+            "start_time": "09:00",
+            "end_time": "12:00",
+            "is_all_ages": "on",
+        }
+        data.update(kwargs)
+        return data
+
+    def test_display_all_ages_by_default(self):
+        self.assertEqual(self.make_workshop().age_range_display, "Tout public")
+
+    def test_display_full_range(self):
+        workshop = self.make_workshop(is_all_ages=False, min_age=7, max_age=12)
+        self.assertEqual(workshop.age_range_display, "De 7 à 12 ans")
+
+    def test_display_single_age(self):
+        workshop = self.make_workshop(is_all_ages=False, min_age=6, max_age=6)
+        self.assertEqual(workshop.age_range_display, "6 ans")
+
+    def test_display_min_only(self):
+        workshop = self.make_workshop(is_all_ages=False, min_age=13)
+        self.assertEqual(workshop.age_range_display, "À partir de 13 ans")
+
+    def test_display_max_only(self):
+        workshop = self.make_workshop(is_all_ages=False, max_age=5)
+        self.assertEqual(workshop.age_range_display, "Jusqu'à 5 ans")
+
+    def test_model_clean_requires_an_age(self):
+        workshop = self.make_workshop(is_all_ages=False)
+        with self.assertRaises(ValidationError):
+            workshop.full_clean()
+
+    def test_model_clean_rejects_min_greater_than_max(self):
+        workshop = self.make_workshop(is_all_ages=False, min_age=12, max_age=7)
+        with self.assertRaises(ValidationError):
+            workshop.full_clean()
+
+    def test_create_with_age_range(self):
+        self.login()
+        response = self.client.post(
+            reverse("workshop_create"),
+            self.base_post_data(is_all_ages="", min_age="7", max_age="12"),
+            follow=True,
+        )
+        self.assertRedirects(response, reverse("workshop_list"))
+        workshop = Workshop.objects.get(name="Atelier Âge")
+        self.assertFalse(workshop.is_all_ages)
+        self.assertEqual(workshop.min_age, 7)
+        self.assertEqual(workshop.max_age, 12)
+
+    def test_create_all_ages_clears_min_max(self):
+        self.login()
+        self.client.post(
+            reverse("workshop_create"),
+            self.base_post_data(min_age="7", max_age="12"),
+            follow=True,
+        )
+        workshop = Workshop.objects.get(name="Atelier Âge")
+        self.assertTrue(workshop.is_all_ages)
+        self.assertIsNone(workshop.min_age)
+        self.assertIsNone(workshop.max_age)
+
+    def test_create_without_age_is_rejected(self):
+        self.login()
+        response = self.client.post(
+            reverse("workshop_create"), self.base_post_data(is_all_ages="")
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "au moins un âge minimum ou maximum")
+        self.assertFalse(Workshop.objects.exists())
+
+    def test_recurrence_propagates_age_range(self):
+        self.login()
+        self.client.post(
+            reverse("workshop_create"),
+            self.base_post_data(
+                is_all_ages="",
+                min_age="3",
+                max_age="6",
+                recurrence=RECURRENCE_WEEKLY,
+                recurrence_count=2,
+            ),
+            follow=True,
+        )
+        workshops = Workshop.objects.filter(name="Atelier Âge")
+        self.assertEqual(workshops.count(), 2)
+        for workshop in workshops:
+            self.assertFalse(workshop.is_all_ages)
+            self.assertEqual(workshop.min_age, 3)
+            self.assertEqual(workshop.max_age, 6)
+
+    def test_duplicate_prefills_age_range(self):
+        self.login()
+        source = self.make_workshop(is_all_ages=False, min_age=7, max_age=12)
+        response = self.client.get(reverse("workshop_create"), {"from": source.pk})
+        self.assertEqual(response.status_code, 200)
+        form = response.context["form"]
+        self.assertFalse(form.initial.get("is_all_ages"))
+        self.assertEqual(form.initial.get("min_age"), 7)
+        self.assertEqual(form.initial.get("max_age"), 12)
+
+    def test_detail_shows_age_range(self):
+        self.login()
+        workshop = self.make_workshop(is_all_ages=False, min_age=7, max_age=12)
+        response = self.client.get(reverse("workshop_detail", args=[workshop.pk]))
+        self.assertContains(response, "De 7 à 12 ans")
+
+    def test_valide_poster_recap_shows_age_range(self):
+        group, _ = Group.objects.get_or_create(name="communication")
+        self.user.groups.add(group)
+        self.login()
+        workshop = self.make_workshop(
+            is_all_ages=False, min_age=7, max_age=12, poster_required=True
+        )
+        response = self.client.get(
+            reverse("workshop_valide_poster", args=[workshop.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Public cible")
+        self.assertContains(response, "De 7 à 12 ans")

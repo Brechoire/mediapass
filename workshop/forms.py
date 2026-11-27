@@ -124,6 +124,27 @@ class WorkshopForm(forms.ModelForm):
         widget=forms.CheckboxInput(),
         label="Accueil de classe ?",
     )
+    is_all_ages = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(),
+        label="Tout public",
+        help_text="Cochez si l'atelier est ouvert à tous les âges.",
+    )
+    min_age = forms.IntegerField(
+        required=False,
+        min_value=0,
+        max_value=100,
+        widget=forms.HiddenInput(),
+        label="Âge minimum",
+    )
+    max_age = forms.IntegerField(
+        required=False,
+        min_value=0,
+        max_value=100,
+        widget=forms.HiddenInput(),
+        label="Âge maximum",
+    )
     poster_required = forms.BooleanField(
         required=False,
         widget=forms.CheckboxInput(),
@@ -149,9 +170,7 @@ class WorkshopForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         image_field = self.fields.get("image")
         if image_field:
-            image_field.widget.attrs["accept"] = (
-                ".png,.jpg,.jpeg,.gif,.webp"
-            )
+            image_field.widget.attrs["accept"] = ".png,.jpg,.jpeg,.gif,.webp"
             image_field.help_text = (
                 "PNG, JPG, GIF ou WebP, 5 Mo maximum. Les grandes images "
                 "sont automatiquement redimensionnées."
@@ -163,12 +182,8 @@ class WorkshopForm(forms.ModelForm):
             )
         location_field = self.fields.get("location")
         if location_field:
-            location_field.label_from_instance = (
-                lambda obj: (
-                    f"{obj.name} — {obj.city}"
-                    if obj.city
-                    else obj.name
-                )
+            location_field.label_from_instance = lambda obj: (
+                f"{obj.name} — {obj.city}" if obj.city else obj.name
             )
         name_field = self.fields.get("name")
         if name_field:
@@ -236,14 +251,31 @@ class WorkshopForm(forms.ModelForm):
         if conflicts:
             raise forms.ValidationError(conflict_message(conflicts))
         self._validate_recurrence(cleaned_data)
+        self._validate_age_range(cleaned_data)
         return cleaned_data
+
+    def _validate_age_range(self, cleaned_data):
+        """Vérifie la tranche d'âge (miroir des ateliers médiathèque)."""
+        is_all_ages = cleaned_data.get("is_all_ages")
+        min_age = cleaned_data.get("min_age")
+        max_age = cleaned_data.get("max_age")
+        if is_all_ages:
+            cleaned_data["min_age"] = None
+            cleaned_data["max_age"] = None
+            return
+        if min_age is None and max_age is None:
+            raise forms.ValidationError(
+                "Veuillez spécifier au moins un âge minimum ou maximum."
+            )
+        if min_age is not None and max_age is not None and min_age > max_age:
+            raise forms.ValidationError(
+                "L'âge minimum ne peut pas être supérieur à l'âge maximum."
+            )
 
     def _validate_recurrence(self, cleaned_data):
         """Vérifie que toutes les occurrences d'une série sont libres."""
         self._occurrence_plan = None
-        recurrence = (
-            cleaned_data.get("recurrence") or RECURRENCE_NONE
-        )
+        recurrence = cleaned_data.get("recurrence") or RECURRENCE_NONE
         if self.instance.pk or recurrence == RECURRENCE_NONE:
             return
         if "recurrence_count" in self.errors:
@@ -264,9 +296,7 @@ class WorkshopForm(forms.ModelForm):
         )
         self._occurrence_plan = plan
 
-        for (start_a, end_a), (start_b, _end_b) in zip(
-            plan, plan[1:]
-        ):
+        for (start_a, end_a), (start_b, _end_b) in zip(plan, plan[1:]):
             if start_b <= (end_a or start_a):
                 raise forms.ValidationError(
                     "La durée de l'atelier chevauche l'occurrence "
@@ -308,15 +338,19 @@ class WorkshopForm(forms.ModelForm):
         """Retourne les couples (date de début, date de fin) à créer."""
         start = self.cleaned_data.get("date")
         if self.instance.pk or not start:
-            return [
-                (start, self.cleaned_data.get("date_end"))
-            ]
+            return [(start, self.cleaned_data.get("date_end"))]
         return occurrence_dates(
             start,
             self.cleaned_data.get("date_end"),
             self.cleaned_data.get("recurrence") or RECURRENCE_NONE,
             self.cleaned_data.get("recurrence_count"),
         )
+
+    def clean_is_all_ages(self):
+        """Champ absent (anciens envois) = Tout public par défaut."""
+        if "is_all_ages" not in (self.data or {}):
+            return True
+        return self.cleaned_data.get("is_all_ages")
 
     def clean_number_registered(self):
         """Ramène un champ vide à zéro."""
@@ -361,6 +395,9 @@ class WorkshopForm(forms.ModelForm):
             "number_registered",
             "number_attendees",
             "class_welcome",
+            "is_all_ages",
+            "min_age",
+            "max_age",
             "observations",
             "DELETE",
         )
@@ -380,11 +417,7 @@ class WorkshopForm(forms.ModelForm):
         old_image = None
         if commit and workshop.pk and (new_image or delete_image):
             try:
-                old_image = (
-                    Workshop.objects.only("image")
-                    .get(pk=workshop.pk)
-                    .image
-                )
+                old_image = Workshop.objects.only("image").get(pk=workshop.pk).image
             except Workshop.DoesNotExist:
                 old_image = None
 
@@ -403,13 +436,12 @@ class WorkshopForm(forms.ModelForm):
         if commit:
             workshop.save()
             self.save_m2m()
-            if old_image and old_image.name and (
-                not workshop.image
-                or old_image.name != workshop.image.name
+            if (
+                old_image
+                and old_image.name
+                and (not workshop.image or old_image.name != workshop.image.name)
             ):
-                transaction.on_commit(
-                    lambda: _delete_old_image(old_image)
-                )
+                transaction.on_commit(lambda: _delete_old_image(old_image))
         return workshop
 
     def save_series(self, user=None):
@@ -423,9 +455,7 @@ class WorkshopForm(forms.ModelForm):
             series_id = uuid4()
             first.series = series_id
             first.series_index = 1
-            first.save(
-                update_fields=["series", "series_index", "updated_at"]
-            )
+            first.save(update_fields=["series", "series_index", "updated_at"])
 
             created = [first]
             for index, (start, end) in enumerate(plan[1:], start=2):
@@ -442,6 +472,9 @@ class WorkshopForm(forms.ModelForm):
                     number_registered=first.number_registered,
                     number_attendees=first.number_attendees,
                     class_welcome=first.class_welcome,
+                    is_all_ages=first.is_all_ages,
+                    min_age=first.min_age,
+                    max_age=first.max_age,
                     instagram=first.instagram,
                     facebook=first.facebook,
                     mail=first.mail,
@@ -512,22 +545,17 @@ class LocationForm(forms.ModelForm):
         """
         data = self.cleaned_data["name"]
         if len(data) < 3:
-            raise forms.ValidationError(
-                "Le nom doit contenir au moins 3 caractères."
-            )
+            raise forms.ValidationError("Le nom doit contenir au moins 3 caractères.")
         return data
 
 
 class WorkshopPosterForm(forms.ModelForm):
     """Gérer l'affiche d'un atelier.
 
-    Ajouter ou modifier l'affiche d'un atelier et gérer sa diffusion
-    sur différents canaux.
+    Ajouter ou modifier l'affiche (visuel) d'un atelier.
     """
 
-    DELETE = forms.BooleanField(
-        required=False, label="Supprimer l'image actuelle"
-    )
+    DELETE = forms.BooleanField(required=False, label="Supprimer l'image actuelle")
     image = forms.ImageField(
         widget=forms.FileInput(
             attrs={
@@ -538,31 +566,6 @@ class WorkshopPosterForm(forms.ModelForm):
         required=False,
         label="Affiche",
     )
-    facebook = forms.BooleanField(
-        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
-        required=False,
-        label="Facebook",
-    )
-    instagram = forms.BooleanField(
-        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
-        required=False,
-        label="Instagram",
-    )
-    mail = forms.BooleanField(
-        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
-        required=False,
-        label="Mail",
-    )
-    portail = forms.BooleanField(
-        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
-        required=False,
-        label="Portail",
-    )
-    vdn = forms.BooleanField(
-        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
-        required=False,
-        label="VDN",
-    )
 
     class Meta:
         """Configurez le formulaire."""
@@ -570,11 +573,6 @@ class WorkshopPosterForm(forms.ModelForm):
         model = Workshop
         fields = (
             "image",
-            "facebook",
-            "instagram",
-            "mail",
-            "portail",
-            "vdn",
             "DELETE",
         )
 
@@ -625,11 +623,7 @@ class WorkshopPosterForm(forms.ModelForm):
         old_image = None
         if commit and workshop.pk and (new_image or delete_image):
             try:
-                old_image = (
-                    Workshop.objects.only("image")
-                    .get(pk=workshop.pk)
-                    .image
-                )
+                old_image = Workshop.objects.only("image").get(pk=workshop.pk).image
             except Workshop.DoesNotExist:
                 old_image = None
 
@@ -648,13 +642,12 @@ class WorkshopPosterForm(forms.ModelForm):
         if commit:
             workshop.save()
             self.save_m2m()
-            if old_image and old_image.name and (
-                not workshop.image
-                or old_image.name != workshop.image.name
+            if (
+                old_image
+                and old_image.name
+                and (not workshop.image or old_image.name != workshop.image.name)
             ):
-                transaction.on_commit(
-                    lambda: _delete_old_image(old_image)
-                )
+                transaction.on_commit(lambda: _delete_old_image(old_image))
         return workshop
 
 
@@ -717,16 +710,12 @@ class WorkshopFilterForm(forms.Form):
     )
     date_from = forms.DateField(
         required=False,
-        widget=forms.DateInput(
-            attrs={"type": "date", **WIDGET_ATTRS}
-        ),
+        widget=forms.DateInput(attrs={"type": "date", **WIDGET_ATTRS}),
         label="Date du",
     )
     date_to = forms.DateField(
         required=False,
-        widget=forms.DateInput(
-            attrs={"type": "date", **WIDGET_ATTRS}
-        ),
+        widget=forms.DateInput(attrs={"type": "date", **WIDGET_ATTRS}),
         label="Date au",
     )
     class_welcome = forms.ChoiceField(
@@ -755,30 +744,22 @@ class WorkshopFilterForm(forms.Form):
     )
     number_registered_min = forms.IntegerField(
         required=False,
-        widget=forms.NumberInput(
-            attrs={**WIDGET_ATTRS, "placeholder": "Min"}
-        ),
+        widget=forms.NumberInput(attrs={**WIDGET_ATTRS, "placeholder": "Min"}),
         label="Inscrits (min)",
     )
     number_registered_max = forms.IntegerField(
         required=False,
-        widget=forms.NumberInput(
-            attrs={**WIDGET_ATTRS, "placeholder": "Max"}
-        ),
+        widget=forms.NumberInput(attrs={**WIDGET_ATTRS, "placeholder": "Max"}),
         label="Inscrits (max)",
     )
     number_attendees_min = forms.IntegerField(
         required=False,
-        widget=forms.NumberInput(
-            attrs={**WIDGET_ATTRS, "placeholder": "Min"}
-        ),
+        widget=forms.NumberInput(attrs={**WIDGET_ATTRS, "placeholder": "Min"}),
         label="Présents (min)",
     )
     number_attendees_max = forms.IntegerField(
         required=False,
-        widget=forms.NumberInput(
-            attrs={**WIDGET_ATTRS, "placeholder": "Max"}
-        ),
+        widget=forms.NumberInput(attrs={**WIDGET_ATTRS, "placeholder": "Max"}),
         label="Présents (max)",
     )
 
@@ -786,13 +767,9 @@ class WorkshopFilterForm(forms.Form):
         """Initialise le formulaire avec la liste dynamique des villes."""
         super().__init__(*args, **kwargs)
         cities = (
-            Location.objects.values_list("city", flat=True)
-            .distinct()
-            .order_by("city")
+            Location.objects.values_list("city", flat=True).distinct().order_by("city")
         )
-        self.fields["city"].choices = [("", "Toutes")] + [
-            (c, c) for c in cities
-        ]
+        self.fields["city"].choices = [("", "Toutes")] + [(c, c) for c in cities]
 
 
 class WorkshopStatsFilterForm(forms.Form):
@@ -827,8 +804,7 @@ class WorkshopStatsFilterForm(forms.Form):
     )
     month = forms.ChoiceField(
         required=False,
-        choices=[("", "Tous")]
-        + [(str(m), f"{m:02d}") for m in range(1, 13)],
+        choices=[("", "Tous")] + [(str(m), f"{m:02d}") for m in range(1, 13)],
         widget=forms.Select(attrs={"class": "form-control"}),
         label="Mois",
     )
@@ -876,14 +852,8 @@ class WorkshopStatsFilterForm(forms.Form):
         """Initialise les choix dynamiques d'années et de villes."""
         available_years = kwargs.pop("available_years", [])
         super().__init__(*args, **kwargs)
-        self.fields["year"].widget.choices = [
-            (y, str(y)) for y in available_years
-        ]
+        self.fields["year"].widget.choices = [(y, str(y)) for y in available_years]
         cities = (
-            Location.objects.values_list("city", flat=True)
-            .distinct()
-            .order_by("city")
+            Location.objects.values_list("city", flat=True).distinct().order_by("city")
         )
-        self.fields["city"].choices = [("", "Toutes")] + [
-            (c, c) for c in cities
-        ]
+        self.fields["city"].choices = [("", "Toutes")] + [(c, c) for c in cities]

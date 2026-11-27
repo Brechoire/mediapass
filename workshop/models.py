@@ -215,6 +215,25 @@ class Workshop(models.Model):
         validators=[MinValueValidator(0)],
     )
     class_welcome = models.BooleanField(default=False, db_index=True)
+    is_all_ages = models.BooleanField(
+        default=True,
+        verbose_name="Tout public",
+        help_text="Cochez si l'atelier est ouvert à tous les âges",
+    )
+    min_age = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        verbose_name="Âge minimum",
+        help_text="Âge minimum requis (0-100 ans)",
+    )
+    max_age = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        verbose_name="Âge maximum",
+        help_text="Âge maximum autorisé (0-100 ans)",
+    )
     instagram = models.BooleanField(default=False, null=True, db_index=True)
     facebook = models.BooleanField(default=False, null=True, db_index=True)
     mail = models.BooleanField(default=False, null=True, db_index=True)
@@ -272,6 +291,21 @@ class Workshop(models.Model):
         """
         return self.name
 
+    @property
+    def age_range_display(self):
+        """Retourne l'affichage de la tranche d'âge."""
+        if self.is_all_ages:
+            return "Tout public"
+        if self.min_age is not None and self.max_age is not None:
+            if self.min_age == self.max_age:
+                return f"{self.min_age} ans"
+            return f"De {self.min_age} à {self.max_age} ans"
+        if self.min_age is not None:
+            return f"À partir de {self.min_age} ans"
+        if self.max_age is not None:
+            return f"Jusqu'à {self.max_age} ans"
+        return "Tout public"
+
     def clean(self):
         """Vérifier les contraintes du modèle.
 
@@ -306,3 +340,18 @@ class Workshop(models.Model):
                 "L'heure de fin ne peut pas être antérieure à l'heure "
                 "de début."
             )
+
+        # Valider la tranche d'âge (miroir des ateliers médiathèque)
+        if not self.is_all_ages:
+            if self.min_age is None and self.max_age is None:
+                raise ValidationError(
+                    "Veuillez spécifier au moins un âge minimum ou maximum."
+                )
+            if (
+                self.min_age is not None
+                and self.max_age is not None
+                and self.min_age > self.max_age
+            ):
+                raise ValidationError(
+                    "L'âge minimum ne peut pas être supérieur à l'âge maximum."
+                )

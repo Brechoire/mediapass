@@ -1,0 +1,60 @@
+{% load widget_tweaks %}
+<div class="form-section" role="group" aria-labelledby="section-age-title">
+    <h2 class="form-section-title" id="section-age-title"><i class="bx bx-user" aria-hidden="true"></i> Public cible</h2>
+    <div class="form-section-body">
+        <div class="form-check-wrapper">
+            <input type="hidden" name="{{ form.is_all_ages.html_name }}" value="">
+            <label class="form-check-card" for="{{ form.is_all_ages.id_for_label }}">
+                {{ form.is_all_ages }}
+                <span class="form-check-label">{{ form.is_all_ages.label }}</span>
+            </label>
+            {% if form.is_all_ages.help_text %}
+            <p id="{{ form.is_all_ages.auto_id }}_help" class="form-help">{{ form.is_all_ages.help_text }}</p>
+            {% endif %}
+            {% if form.is_all_ages.errors %}
+            <p id="{{ form.is_all_ages.auto_id }}_error" class="form-error" role="alert">
+                <i class="bx bx-error-circle" aria-hidden="true"></i>
+                {{ form.is_all_ages.errors|join:", " }}
+            </p>
+            {% endif %}
+        </div>
+
+        <div id="age-presets">
+            <p class="form-help form-help-uppercase">Tranches d'âge communes</p>
+            <div class="age-presets">
+                <button type="button" class="age-preset" data-min="3" data-max="6" aria-pressed="false">3-6 ans</button>
+                <button type="button" class="age-preset" data-min="7" data-max="12" aria-pressed="false">7-12 ans</button>
+                <button type="button" class="age-preset" data-min="13" data-max="17" aria-pressed="false">13-17 ans</button>
+                <button type="button" class="age-preset" data-min="18" data-max="25" aria-pressed="false">18-25 ans</button>
+                <button type="button" class="age-preset" data-min="26" data-max="64" aria-pressed="false">26-64 ans</button>
+                <button type="button" class="age-preset" data-min="60" data-max="100" aria-pressed="false">60+ ans</button>
+            </div>
+        </div>
+
+        <div id="age-slider-container">
+            <p class="form-help form-help-uppercase">Sélection personnalisée</p>
+            <div class="age-slider-wrapper">
+                <div class="age-slider">
+                    <div class="age-slider-track"></div>
+                    <input type="range" class="age-slider-input age-slider-min" min="0" max="100" value="0" step="1" aria-label="Âge minimum du curseur">
+                    <input type="range" class="age-slider-input age-slider-max" min="0" max="100" value="100" step="1" aria-label="Âge maximum du curseur">
+                </div>
+                <div class="age-slider-values">
+                    <span class="age-min-value">0 ans</span>
+                    <span class="age-max-value">100 ans</span>
+                </div>
+            </div>
+            <p class="age-summary" aria-live="polite">Sélection : <strong class="age-summary-value">Tout public</strong></p>
+            <p class="form-help">Glissez les poignées pour définir la tranche d'âge.</p>
+        </div>
+
+        {{ form.min_age }}
+        {{ form.max_age }}
+        {% if form.min_age.errors or form.max_age.errors %}
+        <p id="age-range-error" class="form-error" role="alert">
+            <i class="bx bx-error-circle" aria-hidden="true"></i>
+            {{ form.min_age.errors|join:", " }} {{ form.max_age.errors|join:", " }}
+        </p>
+        {% endif %}
+    </div>
+</div>

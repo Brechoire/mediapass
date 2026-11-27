@@ -74,6 +74,7 @@ class WorkshopAdmin(admin.ModelAdmin):
         "date",
         "start_time",
         "end_time",
+        "age_range_display",
         "number_registered",
     )
     list_filter = (
@@ -81,6 +82,7 @@ class WorkshopAdmin(admin.ModelAdmin):
         "date",
         "poster_required",
         "class_welcome",
+        "is_all_ages",
     )
     search_fields = ("name", "location__name")
     date_hierarchy = "date"
@@ -115,6 +117,9 @@ class WorkshopAdmin(admin.ModelAdmin):
                     "number_registered",
                     "number_attendees",
                     "class_welcome",
+                    "is_all_ages",
+                    "min_age",
+                    "max_age",
                 )
             },
         ),
@@ -152,6 +157,11 @@ class WorkshopAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+    @admin.display(description="Tranche d'âge")
+    def age_range_display(self, obj):
+        """Affiche la tranche d'âge cible."""
+        return obj.age_range_display
 
     def save_model(self, request, obj, form, change):
         """Canonise le nom et renseigne l'audit utilisateur."""
